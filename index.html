@@ -1208,9 +1208,10 @@ function fireEvents(){const key=G.month+'-'+G.week;
   case '11-2':if(G.flags.jingu)startTourney('jingu');break;
   case '12-3':enqueue({type:'camp',season:'冬'});break;
   case '1-2':refreshMarkets();notice('監督・スカウトの候補者情報が更新された（経営タブ）。');break;
+  case '1-4':senbatsuSelection();break;
   case '2-3':enqueue({type:'budget'});break;
   case '2-4':recruitClose();break;
-  case '3-1':enqueue({type:'invite'});break;
+  case '3-1':if(G.flags.senbatsu)startTourney('senbatsu');else enqueue({type:'invite'});break;
   case '3-3':enqueue({type:'graduation'});break;
   case '3-4':staffLeaveCheck();yearEndRecord();if(G.goal)evaluateGoal();enqueue({type:'yearEnd'});break;
  }
@@ -1242,7 +1243,7 @@ const GOALS=[
 {lv:1,text:'夏の県大会ベスト8以上',check:r=>['優勝','準優勝','ベスト4','ベスト8'].includes(r.pref)},
 {lv:2,text:'夏の県大会ベスト4以上',check:r=>['優勝','準優勝','ベスト4'].includes(r.pref)},
 {lv:3,text:'夏の県大会 決勝進出',check:r=>['優勝','準優勝'].includes(r.pref)},
-{lv:4,text:'夏の甲子園出場',check:r=>r.pref==='優勝'},
+{lv:4,text:'甲子園出場（春または夏）',check:r=>r.pref==='優勝'||!!r.senbatsu},
 {lv:5,text:'甲子園ベスト8以上',check:r=>r.pref==='優勝'&&['優勝','準優勝','ベスト4','ベスト8'].includes(r.koshien)},
 {lv:6,text:'甲子園ベスト4以上',check:r=>r.pref==='優勝'&&['優勝','準優勝','ベスト4'].includes(r.koshien)},
 {lv:7,text:'甲子園優勝',check:r=>r.koshien==='優勝'},
@@ -1779,6 +1780,7 @@ const TOURNEY_DEFS={
  invite1:{name:'春季交流招待大会',imp:0.9,mercy:true},
  invite2:{name:'強豪校招待大会',imp:1.4,mercy:true},
  invite3:{name:'全国選抜招待大会',imp:1.8,mercy:false},
+ senbatsu:{name:'選抜高校野球大会（春の甲子園）',imp:1.9,mercy:false},
  practice:{name:'練習試合',imp:0.6,mercy:true},
 };
 function userTeamRef(){return {name:G.school.name,strength:teamStrength(),isUser:true,pref:G.school.pref};}
@@ -1794,6 +1796,9 @@ function buildTeams(kind){const u=userTeamRef();const cp=s=>({name:s.name,streng
   case 'jingu':{const arr=[u];for(const rg of REGIONS){if(rg===G.school.region)continue;const pr=pick(PREF_DATA.filter(p=>p.region===rg));const pw=G.schools.powers[pr.name].slice().sort((a,b)=>b.strength-a.strength)[0];arr.push({name:pw.name,strength:Math.round(clamp(pw.strength+ri(2,8),50,97)),pref:pr.name});}return arr;}
   case 'invite1':{const arr=[u];for(let i=0;i<7;i++){const pr=pick(PREF_DATA);arr.push({name:genSchoolName(pr.name),strength:ri(42,66),pref:pr.name});}return arr;}
   case 'invite2':{const arr=[u];for(let i=0;i<7;i++){const pr=pick(PREF_DATA);const pw=pick(G.schools.powers[pr.name]);arr.push({name:pw.name,strength:Math.round(clamp(pw.strength+gauss(2,4),60,95)),pref:pr.name});}return arr;}
+  case 'senbatsu':{const arr=[u];const quota=Object.assign({},SENBATSU_SLOTS);quota[G.school.region]=Math.max(0,quota[G.school.region]-1);
+   for(const rg of REGIONS){const prs=PREF_DATA.filter(p=>p.region===rg);for(let i=0;i<(quota[rg]||0);i++){const pr=pick(prs);const pw=G.schools.powers[pr.name].slice().sort((a,b)=>b.strength-a.strength);const sch=pw[Math.min(i<2?0:1,pw.length-1)];const name=arr.some(x=>x.name===sch.name)?genSchoolName(pr.name):sch.name;arr.push({name,strength:Math.round(clamp(sch.strength+gauss(3,4),62,97)),pref:pr.name});}}
+   while(arr.length<32){const pr=pick(PREF_DATA);arr.push({name:genSchoolName(pr.name),strength:Math.round(clamp(58+pr.pw*5+gauss(0,5),50,90)),pref:pr.name});}return arr.slice(0,32);}
   case 'invite3':{const arr=[u];for(let i=0;i<15;i++){const pr=pick(PREF_DATA);const pw=G.schools.powers[pr.name].slice().sort((a,b)=>b.strength-a.strength)[0];arr.push({name:pw.name,strength:Math.round(clamp(pw.strength+gauss(5,4),65,97)),pref:pr.name});}return arr;}
  }return [u];}
 /* 固定トーナメント（勝ち上がりの木構造） */
@@ -1816,7 +1821,35 @@ function tourneyAdvance(){const t=G.tourney;if(!t||t.done)return 'done';const r=
 function tourneyUserResult(res){const t=G.tourney;const m=userMatch(t);if(!m)return;const opp=m.a.isUser?m.b:m.a;m.w=res.won?(m.a.isUser?'a':'b'):(m.a.isUser?'b':'a');m.s=m.a.isUser?[res.score[0],res.score[1]]:[res.score[1],res.score[0]];t.userGames.push({round:roundName(t,t.cur),opp:opp.name,won:res.won,score:res.score.slice(),mvp:res.mvpName||''});
  if(!res.won){t.userAlive=false;t.userOut=t.cur;}t.um=null;tourneyAdvance();}
 function userLabel(t){if(t.champion&&t.champion.isUser)return '優勝';if(t.userOut==null)return '不出場';const n=t.rounds[t.userOut].length;if(n===1)return '準優勝';if(n===2)return 'ベスト4';if(n===4)return 'ベスト8';return (t.userOut+1)+'回戦敗退';}
-const REP_TABLE={district:[3,1,0,0],pref:[10,5,3,1],koshien:[25,15,10,7],autumnDistrict:[2,1,0,0],autumnPref:[5,3,1,0],regional:[8,5,3,1],jingu:[12,8,4,2],invite1:[1,0,0,0],invite2:[4,2,1,0],invite3:[10,6,3,1]};
+const REP_TABLE={district:[3,1,0,0],pref:[10,5,3,1],koshien:[25,15,10,7],autumnDistrict:[2,1,0,0],autumnPref:[5,3,1,0],regional:[8,5,3,1],jingu:[12,8,4,2],invite1:[1,0,0,0],invite2:[4,2,1,0],invite3:[10,6,3,1],senbatsu:[22,13,9,6]};
+/* 選抜の地区別出場枠（概ね実際の配分） */
+const SENBATSU_SLOTS={北海道:1,東北:3,関東:6,北信越:2,東海:3,近畿:6,中国:3,四国:2,九州:4};
+/* 1月下旬：選抜出場校の選考 */
+function senbatsuSelection(){const r=G.results;const reg=r.regional||null;const pref=r.autumnPref||null;const region=G.school.region;let slots=SENBATSU_SLOTS[region]||2;
+ let sel=null,reason='';const notes=[];
+ /* 神宮枠：地区の代表が神宮大会で優勝すると地区の枠が1つ増える */
+ let jinguBonus=false;if(r.jingu==='優勝'){jinguBonus=true;}else if(reg&&reg!=='優勝'&&R()<1/9){jinguBonus=true;}
+ if(jinguBonus)slots++;
+ if(reg){const rank=reg==='優勝'?1:reg==='準優勝'?2:reg==='ベスト4'?3:reg==='ベスト8'?5:9;
+  if(rank===1){sel='一般選考';reason=`秋季${region}地区大会優勝`;}
+  else if(rank===2&&slots>=2){sel='一般選考';reason=`秋季${region}地区大会準優勝`;}
+  else if(rank===3){if(slots>=4||(slots===3&&R()<0.62)||(slots===2&&R()<0.18)){sel=jinguBonus&&slots<=3?'神宮枠':'一般選考';reason=`秋季${region}地区大会ベスト4${jinguBonus?'（神宮枠で地区の枠が増加）':''}`;}}
+  else if(rank===5){if(slots>=6&&R()<0.4){sel='一般選考';reason=`秋季${region}地区大会ベスト8（内容を評価）`;}}}
+ /* 21世紀枠：県大会ベスト8以上で、公立・学業・規模・甲子園から遠ざかっている等を評価 */
+ let c21=0;
+ if(!sel&&pref&&['優勝','準優勝','ベスト4','ベスト8'].includes(pref)){c21=0.02;const h=G.history;
+  if(G.school.type==='公立')c21+=0.04;else c21-=0.02;
+  if(G.school.hensachi>=60)c21+=0.04;if(G.school.hensachi>=68)c21+=0.03;if(G.school.size==='小')c21+=0.03;
+  if(!h.some(x=>x.results&&(x.results.koshien||x.results.senbatsu))&&!G.results.koshien)c21+=0.04;
+  if(pref==='優勝')c21+=0.05;else if(pref==='準優勝')c21+=0.03;else if(pref==='ベスト4')c21+=0.01;
+  if(reg)c21+=0.03;if(G.rep<70)c21+=0.01;
+  if(Object.values(G.fac).filter(f=>f&&!f.broken).length<=3)c21+=0.02;
+  c21=clamp(c21,0,0.25);if(R()<c21){sel='21世紀枠';reason=`秋季県大会${pref}。${G.school.type==='公立'?'公立校として':''}${G.school.hensachi>=60?'文武両道の':''}取り組みが評価され、21世紀枠に選出`;}}
+ if(sel){G.flags.senbatsu={type:sel,reason};
+  addNews('大会',`${G.school.name}、選抜高校野球に出場決定！${sel==='21世紀枠'?'（21世紀枠）':sel==='神宮枠'?'（神宮枠）':''}`,`選抜高校野球大会の出場校が発表され、${G.school.name}の出場が決まった。選考理由は「${reason}」。春の甲子園は3月下旬に開幕する。`,{imp:3});
+  enqueue({type:'msg',title:'選抜高校野球 出場決定！',body:`${G.school.name}は選抜高校野球大会（春の甲子園）への出場が決まりました。\n選考区分：${sel}\n理由：${reason}\n\n大会は3月第1週に開幕します。オーダーと調整を進めましょう。`});}
+ else if(reg||c21>0){const why=reg?`秋季${region}地区大会${reg}だったが、地区の出場枠（${slots}校）に届かなかった`:'21世紀枠の候補に挙がったが選出には至らなかった';addNews('大会',`${G.school.name}、選抜は落選`,`選抜高校野球大会の出場校が発表されたが、${G.school.name}の名前はなかった。${why}。春は招待大会で夏への準備を進める。`,{imp:1});notice(`選抜高校野球の出場校が発表された。${G.school.name}は落選…（${why}）`);}
+ return sel;}
 function onTourneyEnd(t){const lbl=userLabel(t);t.userLabel=lbl;G.results[t.kind]=lbl;const champ=t.champion;
  const idx=lbl==='優勝'?0:lbl==='準優勝'?1:lbl==='ベスト4'?2:lbl==='ベスト8'?3:-1;let dr=idx>=0?(REP_TABLE[t.kind]||[0,0,0,0])[idx]:0;
  if(t.kind==='pref'&&idx<0&&lbl.startsWith('1'))dr=-1;if(t.kind==='koshien')dr=Math.max(dr,4);
@@ -1825,13 +1858,14 @@ function onTourneyEnd(t){const lbl=userLabel(t);t.userLabel=lbl;G.results[t.kind
  switch(t.kind){
   case 'district':break;
   case 'pref':if(lbl==='優勝'){G.flags.koshien=true;addNews('大会',`${G.school.name}、甲子園出場決定！`,`${t.name}で${G.school.name}が優勝し、夏の甲子園への切符をつかんだ。${mvp?mvp.name+'（'+mvp.grade+'年）が大会を通じて中心となった。':''}`,{imp:3,pid:mvp?mvp.id:null});}else{retireThirdYears('夏の大会終了');}break;
-  case 'koshien':retireThirdYears('甲子園終了');if(lbl==='優勝'){G.flags.koshienWin=true;addNews('大会',`${G.school.name}、全国制覇！`,`甲子園の決勝を制し、${G.school.name}が深紅の大優勝旗を手にした。${G.school.pref}勢の快挙に学校周辺は祝賀ムードに包まれている。`,{imp:3,pid:mvp?mvp.id:null});}else addNews('大会',`${G.school.name}、甲子園は${lbl}`,`全国の舞台で${G.school.name}は${lbl}。${champ.name}（${champ.pref}）が頂点に立った。`,{imp:2,pid:mvp?mvp.id:null});break;
+  case 'koshien':retireThirdYears('甲子園終了');if(lbl==='優勝'){G.flags.koshienWin=true;if(G.history.length&&G.history[G.history.length-1].results&&G.history[G.history.length-1].results.senbatsu==='優勝'){addNews('特集',`${G.school.name}、史上まれな春夏連覇！`,`春の選抜に続いて夏の選手権も制し、${G.school.name}が春夏連覇を達成した。${G.school.pref}の高校野球史に残る快挙。`,{imp:3,pid:mvp?mvp.id:null});}addNews('大会',`${G.school.name}、全国制覇！`,`甲子園の決勝を制し、${G.school.name}が深紅の大優勝旗を手にした。${G.school.pref}勢の快挙に学校周辺は祝賀ムードに包まれている。`,{imp:3,pid:mvp?mvp.id:null});}else addNews('大会',`${G.school.name}、甲子園は${lbl}`,`全国の舞台で${G.school.name}は${lbl}。${champ.name}（${champ.pref}）が頂点に立った。`,{imp:2,pid:mvp?mvp.id:null});break;
   case 'autumnDistrict':if(['優勝','準優勝'].includes(lbl))G.flags.autumnPref=true;break;
   case 'autumnPref':if(['優勝','準優勝'].includes(lbl)){G.flags.regional=true;addNews('大会',`${G.school.name}、秋季地区大会へ`,`${t.name}で${lbl}となり、${G.school.region}地区大会への出場を決めた。`);}break;
-  case 'regional':if(lbl==='優勝')G.flags.jingu=true;if(['優勝','準優勝','ベスト4'].includes(lbl)){G.flags.senbatsu=true;addNews('大会',`${G.school.name}、春の全国選抜招待に前進`,`${t.name}で${lbl}。来春の全国選抜招待大会への出場が有力となった。`);}break;
+  case 'regional':if(lbl==='優勝')G.flags.jingu=true;if(['優勝','準優勝','ベスト4'].includes(lbl)){G.flags.senbatsuCand=true;addNews('大会',`${G.school.name}、春の選抜出場に前進`,`${t.name}で${lbl}。来春の選抜高校野球大会（春の甲子園）への出場が${lbl==='優勝'?'確実':lbl==='準優勝'?'濃厚':'有力'}となった。出場校は1月下旬に発表される。`);}break;
+  case 'senbatsu':if(lbl==='優勝'){G.flags.senbatsuWin=true;addNews('大会',`${G.school.name}、選抜高校野球で優勝！`,`春の甲子園の決勝を制し、${G.school.name}が紫紺の大優勝旗を手にした。夏の春夏連覇にも期待がかかる。`,{imp:3,pid:mvp?mvp.id:null});}else addNews('大会',`${G.school.name}、選抜は${lbl}`,`春の甲子園で${G.school.name}は${lbl}。${champ.name}（${champ.pref}）が紫紺の優勝旗を手にした。`,{imp:2,pid:mvp?mvp.id:null});break;
   case 'jingu':if(lbl==='優勝')addNews('大会',`${G.school.name}が神宮大会制覇`,`秋の日本一を決める明治神宮大会で${G.school.name}が優勝した。`);break;
  }
- if(!['pref','koshien'].includes(t.kind)||(t.kind==='pref'&&lbl!=='優勝'))addNews('大会',`${t.name}：${champ.name}が優勝`,`${t.name}は${champ.name}（${champ.pref}）の優勝で幕を閉じた。${G.school.name}は${lbl}${mvp&&idx>=0&&idx<=1?'。'+mvp.name+'が大会を通じて活躍した':''}。`,{imp:idx===0?3:idx===1?2:1,pid:mvp&&idx<=1?mvp.id:null,avatar:idx>1||!mvp?{seed:champ.name,pref:champ.pref}:null});
+ if(!['pref','koshien','senbatsu'].includes(t.kind)||(t.kind==='pref'&&lbl!=='優勝'))addNews('大会',`${t.name}：${champ.name}が優勝`,`${t.name}は${champ.name}（${champ.pref}）の優勝で幕を閉じた。${G.school.name}は${lbl}${mvp&&idx>=0&&idx<=1?'。'+mvp.name+'が大会を通じて活躍した':''}。`,{imp:idx===0?3:idx===1?2:1,pid:mvp&&idx<=1?mvp.id:null,avatar:idx>1||!mvp?{seed:champ.name,pref:champ.pref}:null});
  if(mvp&&idx===0&&t.imp>=1.3)mvp.star=(mvp.star||0)+1;
  G.flags.lastTourney={kind:t.kind,label:lbl};}
 function bestOfTourney(t){let best=null,bv=-1;for(const g of t.userGames){if(!g.mvp)continue;const p=G.players.find(x=>x.name===g.mvp);if(!p)continue;const v=1;if(v>bv){bv=v;best=p;}}return best;}
@@ -1881,7 +1915,7 @@ function staffLeaveCheck(){const c=G.coach;let msgs=[];
  const s=G.scout;if(s){let reason=null;if(s.age>=66&&R()<0.5)reason='高齢のため引退';else if(R()<0.06)reason='家庭の事情で退職';else if(s.level>=6&&G.rep<55&&R()<0.15)reason='強豪校からの引き抜き';if(reason){msgs.push(`スカウト${s.name}が${reason}しました。`);addNews('学校',`スカウト${s.name}氏が退職`,`${G.school.name}のスカウト${s.name}氏が${reason}。`);G.scout=null;}}
  if(msgs.length)enqueue({type:'msg',title:'スタッフの異動',body:msgs.join('\n')});}
 /* ================= 予算委員会 ================= */
-function resultScore(){const r=G.results;const sc=(k,tbl)=>{const l=r[k];if(!l)return 0;return tbl[l]||0;};return sc('district',{優勝:2,準優勝:1})+sc('pref',{優勝:10,準優勝:5,ベスト4:3,ベスト8:1})+sc('koshien',{優勝:20,準優勝:12,ベスト4:8,ベスト8:5,'3回戦敗退':3,'2回戦敗退':2,'1回戦敗退':1})+sc('autumnPref',{優勝:3,準優勝:2})+sc('regional',{優勝:6,準優勝:4,ベスト4:2})+sc('jingu',{優勝:8,準優勝:5})+sc('invite3',{優勝:4,準優勝:2});}
+function resultScore(){const r=G.results;const sc=(k,tbl)=>{const l=r[k];if(!l)return 0;return tbl[l]||0;};return sc('district',{優勝:2,準優勝:1})+sc('pref',{優勝:10,準優勝:5,ベスト4:3,ベスト8:1})+sc('koshien',{優勝:20,準優勝:12,ベスト4:8,ベスト8:5,'3回戦敗退':3,'2回戦敗退':2,'1回戦敗退':1})+sc('autumnPref',{優勝:3,準優勝:2})+sc('regional',{優勝:6,準優勝:4,ベスト4:2})+sc('jingu',{優勝:8,準優勝:5})+sc('invite3',{優勝:4,準優勝:2})+sc('senbatsu',{優勝:18,準優勝:11,ベスト4:7,ベスト8:4,'2回戦敗退':2,'1回戦敗退':1});}
 function committeeStart(){const mood=clamp(45+(alumniEff('budget')?8:0)+(G.school.type==='私立'?4:0)+Math.round((G.rep-30)/5)+(G.money<0?-10:0),10,80);G.committee={round:1,mood,used:[],log:[],done:false,result:null};return G.committee;}
 function committeeOptions(){const rs=resultScore();const missing=FAC_KEYS.filter(k=>!G.fac[k]).length,broken=FAC_KEYS.filter(k=>G.fac[k]&&G.fac[k].broken).length;const grads=G.graduates.filter(g=>g.gradYear===G.calYear);const pro=grads.filter(g=>g.path==='プロ'||g.path==='MLB').length,univ=grads.filter(g=>g.path==='大学').length;const rich=G.graduates.some(g=>g.rich||g.path==='プロ'||g.path==='MLB');
  return [
@@ -2223,7 +2257,7 @@ const TABS=[['home','🏠','ホーム'],['players','👥','部員'],['mgmt','�
 function renderNav(){$('#nav').innerHTML=TABS.map(t=>`<button class="${UI.tab===t[0]?'on':''}" data-act="tab" data-tab="${t[0]}"><span class="ic">${t[1]}</span>${t[2]}</button>`).join('');}
 ACT.tab=d=>{UI.tab=d.tab;render();window.scrollTo(0,0);};
 function renderTab(){const c=$('#content');let h='';switch(UI.tab){case 'home':h=viewHome();break;case 'players':h=viewPlayers();break;case 'mgmt':h=viewMgmt();break;case 'match':h=viewMatch();break;case 'scout':h=viewScout();break;case 'more':h=viewMore();break;}c.innerHTML=`<div class="fade">${h}</div>`;}
-function nextEvents(){const ev=[['4-1','入学式・新年度'],['5-2','春季地区大会'],['6-1','中学生情報の公開'],['7-2','夏の甲子園予選'],['8-1','甲子園（出場時）'],['8-3','夏合宿'],['8-4','U-18代表選考'],['9-2','秋季地区予選'],['9-3','秋季県大会（進出時）'],['10-2','秋季地区大会（進出時）'],['11-2','神宮大会（進出時）'],['12-3','冬合宿'],['1-2','監督・スカウト候補の更新'],['2-3','予算委員会'],['2-4','スカウト締切'],['3-1','招待大会'],['3-3','卒業式・進路相談']];const order=[4,5,6,7,8,9,10,11,12,1,2,3];const cur=order.indexOf(G.month)*4+G.week;const list=ev.map(e=>{const [m,w]=e[0].split('-').map(Number);let idx=order.indexOf(m)*4+w;if(idx<=cur)idx+=48;return {name:e[1],weeks:idx-cur,key:e[0]};}).sort((a,b)=>a.weeks-b.weeks);return list.slice(0,3);}
+function nextEvents(){const ev=[['4-1','入学式・新年度'],['5-2','春季地区大会'],['6-1','中学生情報の公開'],['7-2','夏の甲子園予選'],['8-1','甲子園（出場時）'],['8-3','夏合宿'],['8-4','U-18代表選考'],['9-2','秋季地区予選'],['9-3','秋季県大会（進出時）'],['10-2','秋季地区大会（進出時）'],['11-2','神宮大会（進出時）'],['12-3','冬合宿'],['1-2','監督・スカウト候補の更新'],['1-4','選抜出場校の発表'],['2-3','予算委員会'],['2-4','スカウト締切'],['3-1','選抜高校野球／招待大会'],['3-3','卒業式・進路相談']];const order=[4,5,6,7,8,9,10,11,12,1,2,3];const cur=order.indexOf(G.month)*4+G.week;const list=ev.map(e=>{const [m,w]=e[0].split('-').map(Number);let idx=order.indexOf(m)*4+w;if(idx<=cur)idx+=48;return {name:e[1],weeks:idx-cur,key:e[0]};}).sort((a,b)=>a.weeks-b.weeks);return list.slice(0,3);}
 /* ================= ホーム ================= */
 function viewHome(){const ev=nextEvents();const a=active();const inj=a.filter(p=>p.injury>0).length;const fat=Math.round(avg(a.map(p=>p.fatigue)));
  const evh=ev.map(e=>`<div class="ev ${e.weeks<=1?'warn':''}"><span>${esc(e.name)}</span><span class="muted">${e.weeks===0?'今週':e.weeks+'週後'}</span></div>`).join('');
@@ -2415,7 +2449,7 @@ function viewMatch(){const lm=G.lastMatch;const t=G.tourney;
  ${lm?`<section class="card"><h3>直近の試合 <small>${esc(lm.date)}</small></h3><div class="row"><b>${esc(lm.label)}</b><span>${lm.won?'<span class="badge">勝利</span>':'<span class="badge red">敗戦</span>'}</span></div><div class="center" style="font-size:22px" ><span class="num">${esc(G.school.name)} ${lm.score[0]} - ${lm.score[1]} ${esc(lm.opp)}</span></div>${lm.mvpName?`<div class="center small">活躍：${esc(lm.mvpName)}</div>`:''}<div style="margin-top:6px">${b('詳細を見る','lastMatch',{},'sm')}</div></section>`:''}
  <section class="card"><h3>今季の打撃成績</h3><div class="tw"><table class="t"><tr><th class="l">選手</th><th>試</th><th>打数</th><th>打率</th><th>安</th><th>本</th><th>点</th><th>盗</th><th>四</th><th>三振</th></tr>${batT||'<tr><td colspan="10" class="muted">まだ試合がありません</td></tr>'}</table></div></section>
  <section class="card"><h3>今季の投手成績</h3><div class="tw"><table class="t"><tr><th class="l">選手</th><th>試</th><th>勝</th><th>敗</th><th>回</th><th>防御率</th><th>奪三振</th><th>四死球</th><th>被安打</th></tr>${pitT||'<tr><td colspan="9" class="muted">まだ試合がありません</td></tr>'}</table></div></section>
- <section class="card"><h3>年間スケジュール</h3><div class="small">5月 春季地区大会 → 7月 甲子園予選（${G.school.pref}大会） → 8月 甲子園 → 8月末 夏合宿・U-18 → 9月 秋季地区予選・県大会 → 10月 ${G.school.region}地区大会 → 11月 神宮大会 → 12月 冬合宿 → 2月 予算委員会 → 3月 招待大会・卒業</div></section>`;}
+ <section class="card"><h3>年間スケジュール</h3><div class="small">5月 春季地区大会 → 7月 甲子園予選（${G.school.pref}大会） → 8月 甲子園 → 8月末 夏合宿・U-18 → 9月 秋季地区予選・県大会 → 10月 ${G.school.region}地区大会 → 11月 神宮大会 → 12月 冬合宿 → 1月 選抜出場校発表 → 2月 予算委員会 → 3月 選抜高校野球（出場時）／招待大会・卒業</div><div class="hint">選抜（春の甲子園）は秋の地区大会の成績で選ばれます（地区ごとの枠：${Object.entries(SENBATSU_SLOTS).map(x=>x[0]+x[1]).join('・')}）。神宮大会優勝で地区の枠が1つ増える「神宮枠」、県大会ベスト8以上の公立・文武両道校などが選ばれる「21世紀枠」もあります。</div></section>`;}
 ACT.lineupAuto=()=>{autoLineup();autoNumbers();saveGame();render();toast('オーダーを自動編成しました');};
 ACT.lineupEdit=()=>{showLineupModal(null);};
 ACT.lastMatch=()=>{if(G.lastMatch)openModal(matchResultHtml(G.lastMatch,false));};
@@ -2480,7 +2514,7 @@ function processQueue(){if(!G.queue.length||UI.modal)return;const ev=G.queue[0];
   case 'camp':{openModal(`<h2>${ev.season}合宿</h2><div class="hint">合宿中は成長速度に大きな補正がかかります（最大2週間）。費用は合宿先×週数。残金 ${yen(G.money)}</div>${CAMPS.map(c=>`<div class="card"><div class="row"><div><b>${esc(c.name)}</b> <span class="small muted">成長×${c.mult}・疲労+${c.fat}/週</span><div class="tiny muted">${esc(c.desc)}${c.rep?'（評判'+c.rep+'以上）':''}</div></div></div><div class="wrap" style="margin-top:6px">${[1,2].map(w=>b(w+'週間 '+yen(c.cost*w),'campGo',{id:c.id,w},'sm'+((G.money<c.cost*w||(c.rep&&G.rep<c.rep))?' ':' primary'))).join('')}</div></div>`).join('')}${b('今回は合宿しない','qShift',{},'')}`,true);break;}
   case 'u18':{const ps=ev.ids.map(pById).filter(Boolean);openModal(`<h2>U-18日本代表 選考</h2><div class="hint">以下の選手が日本代表に選ばれました。出場を許可すると大きな経験値を得られますが、活躍できなかったりチームが惨敗するとマイナス特能を持ち帰ることがあります。MVP級の活躍なら固有特能を獲得します。</div>${ps.map(p=>`<label class="check"><input type="checkbox" class="u18chk" value="${p.id}" checked> <span><b>${esc(p.name)}</b>（${p.grade}年 ${esc(playerPosLabel(p))}）${rk(rating(p))} 疲労${Math.round(p.fatigue)}</span></label>`).join('')}<div style="margin-top:10px">${b('決定','u18Go',{},'primary big')}</div>`,true);break;}
   case 'budget':showBudgetModal();break;
-  case 'invite':{const sen=G.flags.senbatsu||G.rep>=70;openModal(`<h2>春の招待大会</h2><div class="hint">参加する大会を選んでください。強豪校が揃う大会ほど経験値は大きいですが、大敗が続くとあまり得られません。費用は不要。</div>${b('春季交流招待大会（8校・中堅校中心）','inviteGo',{k:'invite1'},'optbtn')}${b('強豪校招待大会（8校・各地の強豪）','inviteGo',{k:'invite2'},'optbtn')}${sen?b('全国選抜招待大会（16校・全国の精鋭）','inviteGo',{k:'invite3'},'optbtn primary'):'<div class="muted small" style="margin-bottom:6px">全国選抜招待大会：秋の地区大会ベスト4以上または評判70以上で参加可能</div>'}${b('参加しない','qShift',{},'optbtn ghost')}`,true);break;}
+  case 'invite':{openModal(`<h2>春の招待大会</h2><div class="hint">選抜高校野球には選ばれなかったため、招待大会で春を戦います。強豪校が揃う大会ほど経験値は大きいですが、大敗が続くとあまり得られません。費用は不要。</div>${b('春季交流招待大会（8校・中堅校中心）','inviteGo',{k:'invite1'},'optbtn')}${b('強豪校招待大会（8校・各地の強豪）','inviteGo',{k:'invite2'},'optbtn')}${b('参加しない','qShift',{},'optbtn ghost')}`,true);break;}
   case 'graduation':showCareerModal('grad');break;
   case 'career':showCareerModal('career');break;
   case 'draft':startDraftUI(ev);break;
@@ -2534,7 +2568,7 @@ function startDraftUI(ev){UI.draft={ev,board:ev.board,r:0,i:0,phase:'intro',pres
 function renderDraft(){const D=UI.draft;const yr=G.calYear;let html='';
  if(D.phase==='intro'){const ps=D.ev.ids.map(pById).filter(Boolean);html=`<div class="draft"><div class="dtitle">${yr}年 プロ野球ドラフト会議</div><div class="dsub">${esc(G.school.name)}からの志望者</div>${ps.map(p=>`<div class="dcand">${avatarFor({pid:p.id,size:56})}<div><b>${esc(p.name)}</b> ${esc(playerPosLabel(p))} ${rk(rating(p))}<div class="tiny muted">${p.path==='MLB'?'海外挑戦（MLB）':'プロ志望届 提出'}${isPitcher(p)?'・最速'+(p.maxVelo||Math.round(p.pit.velo))+'km/h':'・通算'+p.career.hr+'本塁打'}</div></div></div>`).join('')}<div style="margin-top:12px">${b('会議開始','draftNext',{},'primary big')}</div></div>`;}
  else if(D.phase==='round'){const rd=D.board[D.r];const n=rd.rd===1?D.i:rd.picks.length;const rows=rd.picks.slice(0,n).map((x,idx)=>`<div class="dpick ${x.pick.ours?'ours':''} ${idx===n-1&&rd.rd===1?'reveal':''}"><span class="dteam">${esc(x.team)}</span><span class="dname">${esc(x.pick.name)}</span><span class="dinfo">${esc(x.pick.pos)}・${esc(x.pick.src)}</span></div>`).join('');
-  const last=rd.rd===1&&n>0?rd.picks[n-1].pick:null;const lot=last&&last.ours&&last.lottery&&last.lottery.length>1;
+  const last=rd.rd===1&&n>0?rd.picks[n-1].pick:null;const lot=last&&last.ours&&last.lottery&&last.lottery.length>1&&D.lotDone!==n;
   html=`<div class="draft"><div class="dtitle">${yr}年 プロ野球ドラフト会議</div><div class="dsub">${esc(rd.label)}</div><div class="dlist">${rows||'<div class="muted small">発表をお待ちください…</div>'}</div>${lot?`<div class="dlot">${last.lottery.length}球団が競合！ ${last.lottery.map(esc).join('・')}</div><div style="margin-top:10px">${b('抽選へ','draftLottery',{},'primary big')}</div>`:`<div style="margin-top:10px">${b(rd.rd===1&&n<rd.picks.length?'次の指名':'次へ','draftNext',{},'primary big')}${rd.rd===1&&n<rd.picks.length?b('この巡を一気に進める','draftSkipRound',{},'sm ghost'):''}</div>`}</div>`;}
  else if(D.phase==='lottery'){const rd=D.board[D.r];const pk=rd.picks[D.i-1].pick;const p=pById(pk.pid);const d=p.draft;const shown=!!D.lotShown;html=`<div class="draft"><div class="dtitle">抽選</div><div class="dsub">${esc(pk.name)}（${esc(G.school.name)}）の交渉権</div><div class="dlotteams">${d.lottery.map(t=>`<div class="dball ${shown&&t===d.team?'win':''}">${esc(t)}</div>`).join('')}</div>${shown?`<div class="dwin">交渉権獲得：<b>${esc(d.team)}</b></div><div style="margin-top:10px">${b('次へ','draftNext',{},'primary big')}</div>`:`<div class="dwin">各球団の代表がくじを引く…</div><div style="margin-top:10px">${b('抽選結果を見る','draftLotShow',{},'primary big')}</div>`}</div>`;}
  else if(D.phase==='result'){const ps=D.ev.ids.map(pById).filter(Boolean);html=`<div class="draft"><div class="dtitle">ドラフト会議 結果</div>${ps.map(p=>{const d=p.draft||{};return `<div class="dcand">${avatarFor({pid:p.id,size:56})}<div><b>${esc(p.name)}</b> ${esc(playerPosLabel(p))}<div class="${d.status==='指名漏れ'?'err':'ok'}" style="font-size:14px">${d.status==='MLB'?'MLB '+esc(d.team)+' と契約合意':d.status==='指名'?esc(d.round)+'　'+esc(d.team)+(d.lottery&&d.lottery.length>1?'（'+d.lottery.length+'球団競合）':''):'指名漏れ…（大学・社会人から再挑戦）'}</div></div></div>`;}).join('')}<div style="margin-top:12px">${b(D.press.length?'記者会見へ':'閉じる','draftNext',{},'primary big')}</div></div>`;}
@@ -2542,8 +2576,8 @@ function renderDraft(){const D=UI.draft;const yr=G.calYear;let html='';
  openModal(html,true);}
 ACT.draftNext=()=>{const D=UI.draft;if(!D)return;
  if(D.phase==='intro'){D.phase='round';D.r=0;D.i=0;}
- else if(D.phase==='round'){const rd=D.board[D.r];if(rd.rd===1&&D.i<rd.picks.length){D.i++;}else{if(D.r+1<D.board.length){D.r++;D.i=0;}else D.phase='result';}}
- else if(D.phase==='lottery'){const rd=D.board[D.r];if(D.i<rd.picks.length)D.phase='round';else{if(D.r+1<D.board.length){D.r++;D.i=0;D.phase='round';}else D.phase='result';}}
+ else if(D.phase==='round'){const rd=D.board[D.r];if(rd.rd===1&&D.i<rd.picks.length){D.i++;}else{if(D.r+1<D.board.length){D.r++;D.i=0;D.lotDone=null;}else D.phase='result';}}
+ else if(D.phase==='lottery'){const rd=D.board[D.r];D.lotDone=D.i;D.lotShown=false;D.phase='round';if(rd.rd===1&&D.i<rd.picks.length){D.i++;}else{if(D.r+1<D.board.length){D.r++;D.i=0;D.lotDone=null;}else D.phase='result';}}
  else if(D.phase==='result'){if(D.press.length){D.phase='press';D.pi=0;}else{endDraft();return;}}
  else if(D.phase==='press'){if(D.pi+1<D.press.length)D.pi++;else{endDraft();return;}}
  renderDraft();};
