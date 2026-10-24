@@ -436,6 +436,7 @@ label.f>*{color:var(--ink)}
 </div>
 <div id="overlay" class="overlay" hidden><div class="modal" id="modal" role="dialog" aria-modal="true"></div></div>
 <div id="toast" class="toast" hidden></div>
+<script>const R3_ASSET_BASE="assets/";</script>
 <script>
 
 /**
@@ -3051,7 +3052,12 @@ function arDraw(now){const g=AR.g;if(!g)return;AR.drawN=(AR.drawN||0)+1;const W=
  if(AR.phase==='half'){arDrawBackdrop();if(AR.bannerEl!==AR.banner){AR.bannerEl=AR.banner;arOverlayHtml(arBannerHtml());}return;}
  if(AR.phase==='sim'){arDrawBackdrop();arDrawBannerCv();return;}
  if(AR.side==='bat')arDrawCatcherView(now);else arDrawPitcherView(now);}
-function arTeamColors(t){if(t.isUser)return {base:G.uniform.base,trim:G.uniform.trim,cap:G.uniform.cap,pants:G.uniform.pants||'#f4f4f4'};let h=0;for(const ch of t.name)h=(h*31+ch.charCodeAt(0))>>>0;const pal=[['#cfd6de','#0b2a4a','#0b2a4a'],['#e8d9c2','#9b1c1c','#9b1c1c'],['#cfe0d2','#14532d','#14532d'],['#c9daf0','#102c6b','#102c6b'],['#e4d9f2','#6b21a8','#1b1b1b'],['#f1d4d4','#c81e1e','#1b1b1b'],['#cfe6ec','#0891b2','#0b2a4a'],['#f6e2c6','#f97316','#1b1b1b'],['#2b2f36','#e0b347','#1b1b1b'],['#1e3a5f','#f4f4f4','#1e3a5f']];const c=pal[h%pal.length];return {base:c[0],trim:c[1],cap:c[2],pants:c[0]==='#2b2f36'||c[0]==='#1e3a5f'?'#d9d9d9':'#f4f4f4'};}
+/* チームのユニフォーム（色・デザイン・胸文字）。同じチームには同じオブジェクトを返す（3Dの材質キャッシュ用） */
+const AR_UNI=new WeakMap();
+function arTeamColors(t){if(t.isUser){const u=G.uniform;const key=JSON.stringify(u)+'|'+JSON.stringify(G.emblem||{});const c=AR_UNI.get(t);if(c&&c._key===key)return c;const o=Object.assign({},u,{pants:u.pants||'#f4f4f4',text:u.text||arAbbr(t.name),mark:G.emblem&&G.emblem.text?[...G.emblem.text][0]:[...(u.text||arAbbr(t.name))][0],_key:key});AR_UNI.set(t,o);return o;}
+ const cached=AR_UNI.get(t);if(cached)return cached;let h=0;for(const ch of t.name)h=(h*31+ch.charCodeAt(0))>>>0;const pal=[['#cfd6de','#0b2a4a','#0b2a4a'],['#e8d9c2','#9b1c1c','#9b1c1c'],['#cfe0d2','#14532d','#14532d'],['#c9daf0','#102c6b','#102c6b'],['#e4d9f2','#6b21a8','#1b1b1b'],['#f1d4d4','#c81e1e','#1b1b1b'],['#cfe6ec','#0891b2','#0b2a4a'],['#f6e2c6','#f97316','#1b1b1b'],['#2b2f36','#e0b347','#1b1b1b'],['#1e3a5f','#f4f4f4','#1e3a5f']];const c=pal[h%pal.length];
+ const styles=['plain','pin','sleeve','placket','band','raglan','plain','sleeve'];const fonts=['graduate','dela','reggae','zen','rock','oswald','shippori','noto'];const abbr=arAbbr(t.name);
+ const o={base:c[0],trim:c[1],cap:c[2],capBrim:c[2],pants:c[0]==='#2b2f36'||c[0]==='#1e3a5f'?'#d9d9d9':'#f4f4f4',style:styles[(h>>>3)%styles.length],text:abbr,textFont:fonts[(h>>>7)%fonts.length],textColor:c[1],textOutline:c[0],numFont:'oswald',numColor:c[1],numOutline:c[0],mark:[...abbr][0]||''};AR_UNI.set(t,o);return o;}
 /* 捕手視点の簡易パース：ワールド(xw[m], 本塁からの距離D[m]) → 画面 [x,y,px/m] */
 function arPersp(xw,D){const W=AR.W,H=AR.H;const z=arZone();const feetY=z.cy-z.h*0.6;const fenceY=H*0.31;const plateY=z.cy+z.h*0.78;
  let y;if(D<=18.4)y=plateY-(plateY-feetY)*(D/18.4);else y=feetY-(feetY-fenceY)*Math.pow(Math.min(1,(D-18.4)/99.6),0.62);
@@ -3267,6 +3273,7 @@ function arDrawHud3d(now){const g=AR.g,W=AR.W,H=AR.H;const ph=AR.phase;const m=A
  if(ph==='half'){if(AR.bannerEl!==AR.banner){AR.bannerEl=AR.banner;arOverlayHtml(arBannerHtml());}return;}
  if(ph==='sim'||ph==='idle')return;
  const pa=m.pa;const P=AR.cur;const S=actionSettings();const z=arZone();const bat=AR.side==='bat';
+ if(R3.lastPhaseReact)return;/* リアクションカメラ中はゾーン等を描かない */
  r3DrawZone(g,bat?0.85:0.95);arDrawDots(g,bat?8:Math.max(4,Math.round(z.w*0.1)));
  const st=P&&(ph==='flight'||ph==='after')?arPitchState(now):null;
  if(st&&ph==='flight'&&!st.hit&&S.assist&&bat&&st.u>0.3){const [ax,ay]=arZ2S(P.x,P.y);g.strokeStyle='rgba(255,230,120,.75)';g.lineWidth=1.5;g.beginPath();g.arc(ax,ay,9,0,Math.PI*2);g.stroke();}
@@ -3587,7 +3594,7 @@ const R3={on:false,broken:false,renderer:null,scene:null,cam:null,cv:null,W:1,H:
  fielders:{},batter:null,runners:[],umps:[],ball:null,glow:null,trailM:[],trailP:[],mitt:null,board:null,boardCv:null,boardTex:null,crowd:null,lamps:[],relPos:null,relAt:0,hit:null,fx:[],t0:0,fill:0.6,sky:null,skyTex:null,fog:null,stands:[],walls:[],sunT:null};
 const R3C={ZX:0.25,ZH0:0.8,ZH:0.3,PLATE_Z:-0.2,RUBBER:18.44,REL_H:1.45,FOV_BAT:50,FOV_PIT:20};
 const R3K={HIPS:0.48,DY:0.48/0.92};
-const R3_UMP={base:'#2b3340',trim:'#2b3340',cap:'#1b1f26',pants:'#3a4250'};
+const R3_UMP={base:'#2b3340',trim:'#2b3340',cap:'#1b1f26',capBrim:'#1b1f26',pants:'#4a515c',style:'plain',text:'',mark:''};
 function r3on(){return R3.on&&!!R3.renderer;}
 function r3Supported(){try{if(typeof THREE==='undefined')return false;if(R3.broken)return false;const c=document.createElement('canvas');return !!(c.getContext('webgl2')||c.getContext('webgl'));}catch(e){return false;}}
 function r3V(X,Y,Z){return new THREE.Vector3(X,Z||0,-Y);}
@@ -3600,7 +3607,7 @@ function r3Start(stage){if(!r3Supported())return false;
    r3BuildWorld();}
  }catch(e){console.warn('3D init failed',e);R3.broken=true;return false;}
  stage.insertBefore(R3.cv,stage.firstChild);stage.classList.add('three');R3.on=true;R3.lastPhase=null;R3.camPos=null;R3.relPos=null;R3.hit=null;R3.trailP.length=0;
- R3.fill=clamp(0.18+((AR.ctx&&AR.ctx.importance)||(AR.m&&AR.m.opt&&AR.m.opt.importance)||1)*0.32,0.15,0.98);r3LayoutCrowd();
+ R3.fill=clamp(0.18+((AR.ctx&&AR.ctx.importance)||(AR.m&&AR.m.opt&&AR.m.opt.importance)||1)*0.32,0.15,0.98);r3LayoutCrowd();try{if(AR.m)r3DressCrowd(arTeamColors(AR.m.A),arTeamColors(AR.m.B));}catch(e){}
  r3Resize(AR.W,AR.H);r3SetNight(arNight(),true);r3UpdateBoard();return true;}
 function r3Stop(){if(R3.cv&&R3.cv.parentNode)R3.cv.parentNode.removeChild(R3.cv);const st=$('#arstage');if(st)st.classList.remove('three');R3.on=false;}
 function r3Fail(){r3Stop();R3.broken=true;try{toast('3D表示を停止しました（2D表示に切り替え）');}catch(e){}}
@@ -3695,7 +3702,12 @@ const RP={
  pend:{dy:-0.3,dz:1.1,hips:[0,0.35,0],torso:[1.0,0.6,-0.15],head:[-0.6,-0.6,0],lHip:[-0.8,0,0.15],lKnee:[0.6,0,0],rHip:[-0.9,0,-0.35],rKnee:[0.9,0,0],rSh:[-0.75,0,0.8],rEl:[-0.75,0,0],lSh:[0.75,0,0.5],lEl:[-1.25,0,0]},
  pland:{dy:-0.15,dz:1.15,torso:[0.45,0.2,0],head:[-0.25,-0.1,0],lHip:[-0.55,0,0.15],lKnee:[0.55,0,0],rHip:[-0.5,0,-0.2],rKnee:[0.6,0,0],rSh:[-0.35,0,-0.3],rEl:[-0.7,0,0],lSh:[-0.5,0,0.4],lEl:[-1.0,0,0]},
 };
-function r3MixPose(a,b,u){const o={};const keys=new Set([...Object.keys(a),...Object.keys(b)]);for(const k of keys){const x=a[k],y=b[k];if(k==='dy'||k==='dz'){o[k]=(x||0)+((y||0)-(x||0))*u;continue;}const X=x||[0,0,0],Y=y||[0,0,0];o[k]=[X[0]+(Y[0]-X[0])*u,X[1]+(Y[1]-X[1])*u,X[2]+(Y[2]-X[2])*u];}return o;}
+/* ポーズの補間：関節の回転はクォータニオンで球面補間（大きな回転でも最短経路で滑らか）、batDir は方向を正規化して補間 */
+const R3_QA=new THREE.Quaternion(),R3_QB=new THREE.Quaternion(),R3_EU=new THREE.Euler();
+function r3MixPose(a,b,u){const o={};const keys=new Set([...Object.keys(a),...Object.keys(b)]);for(const k of keys){const x=a[k],y=b[k];if(k==='dy'||k==='dz'){o[k]=(x||0)+((y||0)-(x||0))*u;continue;}if(k==='ik'){o[k]=u<0.5?x:y;continue;}const X=x||[0,0,0],Y=y||[0,0,0];
+  if(k==='batDir'){const v=[X[0]+(Y[0]-X[0])*u,X[1]+(Y[1]-X[1])*u,X[2]+(Y[2]-X[2])*u];const l=Math.hypot(v[0],v[1],v[2])||1;o[k]=[v[0]/l,v[1]/l,v[2]/l];continue;}
+  const big=Math.abs(Y[0]-X[0])+Math.abs(Y[1]-X[1])+Math.abs(Y[2]-X[2]);if(big<0.9){o[k]=[X[0]+(Y[0]-X[0])*u,X[1]+(Y[1]-X[1])*u,X[2]+(Y[2]-X[2])*u];continue;}
+  R3_QA.setFromEuler(R3_EU.set(X[0],X[1],X[2]));R3_QB.setFromEuler(R3_EU.set(Y[0],Y[1],Y[2]));R3_QA.slerp(R3_QB,u);R3_EU.setFromQuaternion(R3_QA);o[k]=[R3_EU.x,R3_EU.y,R3_EU.z];}return o;}
 const RCLIP={
  swing:[[0,'stance'],[0.18,'load'],[0.4,'stride'],[0.53,'launch'],[0.62,'contact'],[0.74,'ext'],[1,'follow']],
  windup:[[0,'pset'],[0.42,'pbal'],[0.75,'pstride'],[1,'prel']],
@@ -3720,25 +3732,25 @@ function r3RunPose(ph,k){k=k==null?1:k;const s=Math.sin(ph),c=Math.cos(ph);retur
 /* ---- ワールド構築 ---- */
 function r3Rin(a){const A=Math.abs(a);if(A<=49)return FENCE(Math.min(45,A))+4;if(A>=117.4)return 22;
  /* サイドの壁（ポール付近→バックネット脇）との交点 */const W1=[13.5,-7],W2=[75.5,65.6];const dx=Math.sin(A*Math.PI/180),dy=Math.cos(A*Math.PI/180);const ex=W2[0]-W1[0],ey=W2[1]-W1[1];const den=dx*ey-dy*ex;if(Math.abs(den)<1e-6)return 60;const r=(W1[0]*ey-W1[1]*ex)/den;return Math.max(20,r)+4;}
-function r3BuildWorld(){const S=R3.scene=new THREE.Scene();R3.cam=new THREE.PerspectiveCamera(40,1,0.15,1200);
- /* 空 */const sk=document.createElement('canvas');sk.width=4;sk.height=256;R3.skyCv=sk;R3.skyTex=new THREE.CanvasTexture(sk);R3.skyTex.colorSpace=THREE.SRGBColorSpace;R3.sky=new THREE.Mesh(new THREE.SphereGeometry(900,24,16),new THREE.MeshBasicMaterial({map:R3.skyTex,side:THREE.BackSide,fog:false,toneMapped:false}));S.add(R3.sky);
+/* 環境マップ（空と芝の簡易環境）：選手の材質の映り込み・環境光に使う */
+function r3BuildEnv(){if(R3.env||!R3.renderer)return;try{const pm=new THREE.PMREMGenerator(R3.renderer);const es=new THREE.Scene();
+ const cv=document.createElement('canvas');cv.width=8;cv.height=128;const g=cv.getContext('2d');const gr=g.createLinearGradient(0,0,0,128);gr.addColorStop(0,'#6fa6e0');gr.addColorStop(0.48,'#dde9f3');gr.addColorStop(0.52,'#b9c2b0');gr.addColorStop(1,'#6e7a66');g.fillStyle=gr;g.fillRect(0,0,8,128);
+ const t=new THREE.CanvasTexture(cv);t.colorSpace=THREE.SRGBColorSpace;const sky=new THREE.Mesh(new THREE.SphereGeometry(50,16,12),new THREE.MeshBasicMaterial({map:t,side:THREE.BackSide}));es.add(sky);
+ const sun=new THREE.Mesh(new THREE.SphereGeometry(4,8,6),new THREE.MeshBasicMaterial({color:0xfff2d0}));sun.position.set(-20,28,-10);es.add(sun);
+ R3.env=pm.fromScene(es,0.05).texture;pm.dispose();}catch(e){console.warn('env map failed',e);R3.env=null;}}
+function r3BuildWorld(){const S=R3.scene=new THREE.Scene();R3.cam=new THREE.PerspectiveCamera(40,1,0.15,1200);r3BuildEnv();
+ /* 空 */const sk=document.createElement('canvas');sk.width=1024;sk.height=256;R3.skyCv=sk;R3.skyTex=new THREE.CanvasTexture(sk);R3.skyTex.colorSpace=THREE.SRGBColorSpace;R3.sky=new THREE.Mesh(new THREE.SphereGeometry(900,24,16),new THREE.MeshBasicMaterial({map:R3.skyTex,side:THREE.BackSide,fog:false,toneMapped:false}));S.add(R3.sky);
  R3.fog=new THREE.Fog(0xc9dcea,180,900);S.fog=R3.fog;
  /* 光 */R3.hemi=new THREE.HemisphereLight(0xcfe3ff,0x4a6b3a,0.75);S.add(R3.hemi);
  R3.sun=new THREE.DirectionalLight(0xfff1dc,1.2);R3.sun.position.set(-70,120,-30);R3.sun.castShadow=true;R3.sun.shadow.mapSize.set(1536,1536);const sc=R3.sun.shadow.camera;sc.near=10;sc.far=400;sc.left=-110;sc.right=110;sc.top=130;sc.bottom=-60;R3.sun.shadow.bias=-0.0006;R3.sun.shadow.normalBias=0.02;S.add(R3.sun);S.add(R3.sun.target);R3.sun.target.position.set(0,0,-50);
  /* 地面 */const gt=r3GroundTex(false);R3.groundTex=gt;const ground=new THREE.Mesh(new THREE.PlaneGeometry(260,260),new THREE.MeshLambertMaterial({map:gt}));ground.rotation.x=-Math.PI/2;ground.position.set(0,0,-90);ground.receiveShadow=true;S.add(ground);R3.ground=ground;
  const far=new THREE.Mesh(new THREE.PlaneGeometry(2000,2000),r3Mat('#4b6b3b'));far.rotation.x=-Math.PI/2;far.position.set(0,-0.05,-90);S.add(far);
  /* 本塁周辺の高解像度デカール（打席の白線が近くでもにじまない） */R3.homeTex=r3HomeTex(false);const home=new THREE.Mesh(new THREE.PlaneGeometry(R3_HOME.W,R3_HOME.W),new THREE.MeshLambertMaterial({map:R3.homeTex,polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-2}));home.rotation.x=-Math.PI/2;home.position.set(0,0.004,-R3_HOME.CY);home.receiveShadow=true;S.add(home);R3.home=home;
- /* マウンド・プレート・ベース */const mound=new THREE.Mesh(new THREE.CylinderGeometry(1.0,3.0,0.26,28),r3Mat('#6b5443'));mound.position.set(0,0.13,-R3C.RUBBER);mound.receiveShadow=true;S.add(mound);R3.mound=mound;
+ /* マウンド・プレート・ベース */const mound=new THREE.Mesh(new THREE.CylinderGeometry(1.0,3.0,0.26,28),r3Mat('#5c4d43'));mound.position.set(0,0.13,-R3C.RUBBER);mound.receiveShadow=true;S.add(mound);R3.mound=mound;
  const rubber=new THREE.Mesh(r3Box(0.61,0.03,0.15,0),r3Mat('#f4f1e6'));rubber.position.set(0,0.27,-R3C.RUBBER);S.add(rubber);
  const plateShape=new THREE.Shape();plateShape.moveTo(-0.216,0);plateShape.lineTo(0.216,0);plateShape.lineTo(0.216,-0.216);plateShape.lineTo(0,-0.43);plateShape.lineTo(-0.216,-0.216);plateShape.closePath();const plate=new THREE.Mesh(new THREE.ShapeGeometry(plateShape),r3Mat('#f4f1e6'));plate.rotation.x=-Math.PI/2;plate.position.set(0,0.012,0.0);S.add(plate);
  for(const B of [[19.4,19.4],[0,38.8],[-19.4,19.4]]){const b=new THREE.Mesh(r3Box(0.38,0.1,0.38,0.05),r3Mat('#f4f1e6'));b.position.set(B[0],0,-B[1]);b.rotation.y=Math.PI/4;b.castShadow=true;S.add(b);}
- /* フェンス（外野） */R3.fence=r3Ribbon(S,a=>FENCE(Math.min(45,Math.abs(a))),-49,49,2,0,3.2,'#1f4d2b');const rail=r3Ribbon(S,a=>FENCE(Math.min(45,Math.abs(a)))-0.02,-49,49,2,3.05,3.3,'#f3c340');
- /* サイドの壁とバックネット */for(const sg of [-1,1]){const W1=[sg*13.5,-7],W2=[sg*75.5,65.6];r3WallSeg(S,W1,W2,2.4,'#2f4a38');}
- r3Ribbon(S,a=>18,117.4,242.6,4,0,3.4,'#2f4a38');
- /* スタンド */r3BuildStands(S);
- /* ファウルポール */for(const sg of [-1,1]){const p=[sg*FENCE(45)*Math.SQRT1_2,FENCE(45)*Math.SQRT1_2];const pole=new THREE.Mesh(new THREE.CylinderGeometry(0.18,0.18,16,8),r3Mat('#ffd84a'));pole.position.set(p[0],8,-p[1]);S.add(pole);}
- /* スコアボード */r3BuildBoard(S);
- /* 照明塔 */R3.lamps=[];for(const a of [-28,28,-72,72,-126,126]){const r=r3Rin(a)+26;const x=r*Math.sin(a*Math.PI/180),y=r*Math.cos(a*Math.PI/180);const tw=new THREE.Mesh(new THREE.CylinderGeometry(0.7,1.1,44,8),r3Mat('#7d848c'));tw.position.set(x,22,-y);S.add(tw);const lamp=new THREE.Mesh(r3Box(9,4,0.7,0),new THREE.MeshLambertMaterial({color:0x8a8f99,emissive:0x000000}));lamp.position.set(x,45,-y);lamp.lookAt(0,0,-40);S.add(lamp);R3.lamps.push(lamp);}
+ /* 球場（スタンド・銀傘・バックスクリーン・スコアボード・照明塔・観客） */r3BuildStadium(S);
  /* 選手 */r3BuildRigs(S);
  /* 捕手のミット（独立して動く） */R3.mitt=new THREE.Mesh(r3Geo('mitt',()=>{const g=new THREE.SphereGeometry(0.11,14,12);g.scale(1,1.1,0.55);return g;}),new THREE.MeshLambertMaterial({color:new THREE.Color('#9a6a3c'),emissive:0x221408,transparent:true,opacity:0.88}));R3.mitt.castShadow=true;S.add(R3.mitt);
  /* ボール */R3.ball=new THREE.Mesh(r3Sph(0.075),new THREE.MeshLambertMaterial({color:0xffffff,emissive:0x6a6a6a}));R3.ball.castShadow=true;S.add(R3.ball);
@@ -3751,47 +3763,55 @@ function r3BuildRigs(S){const all=[].concat(Object.values(R3.fielders||{}),R3.ba
  R3.fielders={};for(const k of ['投','捕','一','二','三','遊','左','中','右']){const r=r3NewRig();S.add(r.g);R3.fielders[k]=r;}
  R3.batter=r3NewRig();S.add(R3.batter.g);R3.batter.bat.visible=true;
  R3.runners=[];for(let i=0;i<4;i++){const r=r3NewRig();S.add(r.g);r.g.visible=false;R3.runners.push(r);}
- R3.umps=[];for(let i=0;i<3;i++){const r=r3NewRig();r.setColors(R3_UMP,false);S.add(r.g);R3.umps.push(r);}R3.rigModel=actionSettings().model3d;}
+ R3.umps=[];for(let i=0;i<3;i++){const r=r3NewRig();r.setColors(R3_UMP,false);r.setGear(i===0?'umpire':null);S.add(r.g);R3.umps.push(r);}R3.rigModel=actionSettings().model3d;}
 function r3RebuildRigs(){if(!R3.scene)return;if(R3.rigModel===actionSettings().model3d)return;r3BuildRigs(R3.scene);}
 /* リボン（極座標の壁）：r(a)、角度範囲、高さ */
 function r3Ribbon(S,rf,a0,a1,step,h0,h1,col){const pos=[],idx=[];let n=0;for(let a=a0;a<=a1+1e-6;a+=step){const r=rf(a);const x=r*Math.sin(a*Math.PI/180),y=r*Math.cos(a*Math.PI/180);pos.push(x,h0,-y,x,h1,-y);if(n>0){const b=(n-1)*2;idx.push(b,b+1,b+2,b+1,b+3,b+2);}n++;}
  const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));g.setIndex(idx);g.computeVertexNormals();const m=new THREE.Mesh(g,r3Mat(col,{side:THREE.DoubleSide}));m.receiveShadow=true;S.add(m);return m;}
 function r3WallSeg(S,P1,P2,h,col){const pos=[P1[0],0,-P1[1],P1[0],h,-P1[1],P2[0],0,-P2[1],P2[0],h,-P2[1]];const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));g.setIndex([0,1,2,1,3,2]);g.computeVertexNormals();const m=new THREE.Mesh(g,r3Mat(col,{side:THREE.DoubleSide}));S.add(m);return m;}
-function r3BuildStands(S){const tiers=[[0,7,1.2,5.2],[7,14,5.2,9.4],[14,21,9.4,13.8]];R3.stands=[];
- for(const [d0,d1,h0,h1] of tiers){const pos=[],idx=[];let n=0;for(let a=-180;a<=180+1e-6;a+=3){const ri=r3Rin(a);const s=Math.sin(a*Math.PI/180),c=Math.cos(a*Math.PI/180);pos.push((ri+d0)*s,h0,-(ri+d0)*c,(ri+d1)*s,h1,-(ri+d1)*c);if(n>0){const b=(n-1)*2;idx.push(b,b+2,b+1,b+1,b+2,b+3);}n++;}
-  const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));g.setIndex(idx);g.computeVertexNormals();const m=new THREE.Mesh(g,new THREE.MeshLambertMaterial({color:0x8d939c,side:THREE.DoubleSide}));m.receiveShadow=true;S.add(m);R3.stands.push(m);
-  /* 段の前面（縦の壁） */const pos2=[],idx2=[];n=0;for(let a=-180;a<=180+1e-6;a+=3){const ri=r3Rin(a);const s=Math.sin(a*Math.PI/180),c=Math.cos(a*Math.PI/180);pos2.push((ri+d0)*s,h0-1.2,-(ri+d0)*c,(ri+d0)*s,h0,-(ri+d0)*c);if(n>0){const b=(n-1)*2;idx2.push(b,b+1,b+2,b+1,b+3,b+2);}n++;}
-  const g2=new THREE.BufferGeometry();g2.setAttribute('position',new THREE.Float32BufferAttribute(pos2,3));g2.setIndex(idx2);g2.computeVertexNormals();const m2=new THREE.Mesh(g2,new THREE.MeshLambertMaterial({color:0x6f757e,side:THREE.DoubleSide}));S.add(m2);R3.stands.push(m2);}
- /* 観客（インスタンス：胴＋頭） */const N=3200;const geo=new THREE.CapsuleGeometry(0.24,0.42,3,8);geo.translate(0,0.45,0);const mat=new THREE.MeshLambertMaterial({color:0xffffff});const im=new THREE.InstancedMesh(geo,mat,N);im.castShadow=false;im.receiveShadow=false;S.add(im);R3.crowd=im;
- const hg=new THREE.SphereGeometry(0.19,8,6);hg.translate(0,0.93,0);const hm=new THREE.InstancedMesh(hg,new THREE.MeshLambertMaterial({color:0xf0c6a0}),N);hm.castShadow=false;S.add(hm);R3.crowdH=hm;
- let s=4242;const rnd=()=>{s=(s*1103515245+12345)&0x7fffffff;return s/0x7fffffff;};const cols=[0xe8e4da,0xd9534f,0x3b6fb6,0xf0c75e,0x8aa5c8,0xc9b7a0,0xf4f4f4,0x6aa84f,0x2b2f36,0xff8fab,0x1e3a5f,0xffffff,0xff7a1a,0x7bd1e8,0x9b59b6];
- R3.crowdSeed=[];const tmp=new THREE.Object3D();const colr=new THREE.Color();for(let i=0;i<N;i++){const a=-180+rnd()*360;const k=Math.floor(rnd()*3);const d=tiers[k][0]+0.6+rnd()*5.8;const h=tiers[k][2]+(d-tiers[k][0])/7*(tiers[k][3]-tiers[k][2])+0.25;const ri=r3Rin(a);const sn=Math.sin(a*Math.PI/180),cs=Math.cos(a*Math.PI/180);const x=(ri+d)*sn,z=-(ri+d)*cs;
-  R3.crowdSeed.push({x,y:h,z,rot:Math.atan2(-x,-z-40),p:rnd(),sc:0.85+rnd()*0.3});tmp.position.set(x,h,z);tmp.rotation.set(0,Math.atan2(-x,-z-40),0);tmp.updateMatrix();im.setMatrixAt(i,tmp.matrix);hm.setMatrixAt(i,tmp.matrix);colr.setHex(cols[Math.floor(rnd()*cols.length)]);im.setColorAt(i,colr);}
- im.instanceMatrix.needsUpdate=true;hm.instanceMatrix.needsUpdate=true;if(im.instanceColor)im.instanceColor.needsUpdate=true;}
 function r3LayoutCrowd(){const im=R3.crowd,hm=R3.crowdH;if(!im)return;const tmp=new THREE.Object3D();R3.crowdSeed.forEach((c,i)=>{const on=c.p<R3.fill;tmp.position.set(c.x,c.y,c.z);tmp.rotation.set(0,c.rot,0);tmp.scale.setScalar(on?c.sc:0.0001);tmp.updateMatrix();im.setMatrixAt(i,tmp.matrix);hm.setMatrixAt(i,tmp.matrix);});im.instanceMatrix.needsUpdate=true;hm.instanceMatrix.needsUpdate=true;}
-function r3BuildBoard(S){const cv=document.createElement('canvas');cv.width=1024;cv.height=400;R3.boardCv=cv;R3.boardTex=new THREE.CanvasTexture(cv);R3.boardTex.colorSpace=THREE.SRGBColorSpace;
- const y=FENCE(0)+30;const m=new THREE.Mesh(new THREE.PlaneGeometry(28,10.9),new THREE.MeshBasicMaterial({map:R3.boardTex,toneMapped:false}));m.position.set(0,22.5,-y);S.add(m);R3.board=m;
- const frame=new THREE.Mesh(r3Box(29.5,12.4,0.8,0),r3Mat('#1b2229'));frame.position.set(0,22.5,-y-0.5);S.add(frame);
- for(const x of [-9,9]){const p=new THREE.Mesh(new THREE.CylinderGeometry(0.5,0.6,17,8),r3Mat('#4a5560'));p.position.set(x,8.5,-y-0.5);S.add(p);}}
-function r3UpdateBoard(){if(!R3.boardCv||!AR.m)return;const m=AR.m;const g=R3.boardCv.getContext('2d');const W=1024,H=400;g.fillStyle='#0d1319';g.fillRect(0,0,W,H);g.strokeStyle='#2f3a45';g.lineWidth=6;g.strokeRect(3,3,W-6,H-6);
- const fn=getComputedStyle(document.body).getPropertyValue('--font-num')||'monospace';g.textAlign='center';g.textBaseline='middle';
- g.fillStyle='#e8e4da';g.font='700 56px sans-serif';g.fillText(arAbbr(m.A.name).slice(0,4),W*0.2,70);g.fillText(arAbbr(m.B.name).slice(0,4),W*0.8,70);
- g.fillStyle='#ffd166';g.font=`700 150px ${fn}`;g.fillText(String(m.score[0]),W*0.2,205);g.fillText(String(m.score[1]),W*0.8,205);
- g.fillStyle='#9fb3c8';g.font='52px sans-serif';g.fillText(`${m.inn}回${m.top?'表':'裏'}`,W*0.5,70);
+function r3BuildBoard(S){const cv=document.createElement('canvas');cv.width=1280;cv.height=480;R3.boardCv=cv;R3.boardTex=new THREE.CanvasTexture(cv);R3.boardTex.colorSpace=THREE.SRGBColorSpace;
+ const y=FENCE(0)+12.5;const m=new THREE.Mesh(new THREE.PlaneGeometry(32,12),new THREE.MeshBasicMaterial({map:R3.boardTex,toneMapped:false}));m.position.set(0,16.4,-y);S.add(m);R3.board=m;
+ const frame=new THREE.Mesh(r3Box(34,14,1.2,0),r3Mat('#1b2229'));frame.position.set(0,16.4,-y-0.7);S.add(frame);
+ const base=new THREE.Mesh(r3Box(30,1.0,2.4,0),r3Mat('#3a4149'));base.position.set(0,9.8,-y-0.6);S.add(base);
+ for(const x of [-12,0,12]){const p=new THREE.Mesh(new THREE.CylinderGeometry(0.5,0.7,10,8),r3Mat('#4a5560'));p.position.set(x,5,-y-1.2);S.add(p);}}
+function r3UpdateBoard(){if(!R3.boardCv||!AR.m)return;const m=AR.m;const g=R3.boardCv.getContext('2d');const W=R3.boardCv.width,H=R3.boardCv.height;g.fillStyle='#0b0f13';g.fillRect(0,0,W,H);
+ g.strokeStyle='#2a333c';g.lineWidth=4;g.strokeRect(2,2,W-4,H-4);
+ const fn=getComputedStyle(document.body).getPropertyValue('--font-num')||'monospace';g.textBaseline='middle';
+ const n=Math.max(9,m.inn);const abbr=t=>arAbbr(t.name).slice(0,4);const hits=t=>{try{return sum(Object.values(t.stats).map(x=>x.h));}catch(e){return 0;}};
+ /* 左右：打順（縦書き風に9人）／中央：イニング別得点 */
+ const names=(t,x)=>{g.fillStyle='#e6e2d8';g.font='26px sans-serif';g.textAlign='left';for(let i=0;i<9;i++){const sl=t.lineup[i];if(!sl)continue;const nm=(sl.p.name||'').replace(/\s/g,'');const pos=sl.pos||'';g.fillStyle='#9fb3c8';g.fillText(pos,x,96+i*34);g.fillStyle='#e6e2d8';g.fillText(nm.slice(0,5),x+34,96+i*34);}};
+ names(m.A,30);names(m.B,W-236);
+ const cx0=270,cw=(W-540)/(n+2);g.textAlign='center';
+ g.fillStyle='#ffd166';g.font='700 34px sans-serif';g.fillText(abbr(m.A),cx0-40,150);g.fillText(abbr(m.B),cx0-40,214);
+ g.fillStyle='#9fb3c8';g.font='28px sans-serif';for(let k=0;k<n;k++)g.fillText(String(k+1),cx0+cw*(k+0.5),98);g.fillText('R',cx0+cw*(n+0.5),98);g.fillText('H',cx0+cw*(n+1.5),98);
+ g.strokeStyle='#26303a';g.lineWidth=2;for(let k=0;k<=n+2;k++){const x=cx0+cw*k;g.beginPath();g.moveTo(x,78);g.lineTo(x,240);g.stroke();}
+ g.font=`700 44px ${fn}`;for(const i of [0,1]){const y=i?214:150;for(let k=0;k<n;k++){const v=m.line[i][k];g.fillStyle=v==null?'#4a5560':'#ffe9a8';g.fillText(v==null?'':String(v),cx0+cw*(k+0.5),y);}
+  g.fillStyle='#ffd166';g.fillText(String(m.score[i]),cx0+cw*(n+0.5),y);g.fillStyle='#e6e2d8';g.fillText(String(hits(i?m.B:m.A)),cx0+cw*(n+1.5),y);}
+ /* 下段：回・B/S/O・打者と投手 */
  const pa=m.pa;const live=pa&&!(AR.mode==='card'&&AR.phase==='pre');const bb=live?pa.balls:0,ss=live?pa.strikes:0;
- const lamp=(x,y,on,col)=>{g.fillStyle=on?col:'#263039';g.beginPath();g.arc(x,y,13,0,Math.PI*2);g.fill();};
- g.fillStyle='#9fb3c8';g.font='34px sans-serif';g.textAlign='right';g.fillText('B',W*0.42,150);g.fillText('S',W*0.42,205);g.fillText('O',W*0.42,260);g.textAlign='center';
- for(let i=0;i<3;i++)lamp(W*0.46+i*40,150,bb>i,'#3fd36b');for(let i=0;i<2;i++)lamp(W*0.46+i*40,205,ss>i,'#ffd166');for(let i=0;i<2;i++)lamp(W*0.46+i*40,260,m.outs>i,'#ff5a4a');
- const t=m.bat(),d=m.def();const b=pa?pa.b:t.lineup[t.batIdx].p;const p=pa?pa.p:d.pitcher;g.fillStyle='#e8e4da';g.font='40px sans-serif';g.fillText(`${t.batIdx+1}番 ${b.name}　　投手 ${p.name}`,W*0.5,340);
+ const lamp=(x,y,on,col)=>{g.fillStyle=on?col:'#263039';g.beginPath();g.arc(x,y,14,0,Math.PI*2);g.fill();};
+ g.textAlign='center';g.fillStyle='#e6e2d8';g.font='700 40px sans-serif';g.fillText(`${m.inn}回${m.top?'表':'裏'}`,W*0.5,296);
+ g.textAlign='right';g.font='32px sans-serif';g.fillStyle='#9fb3c8';g.fillText('B',W*0.5-140,350);g.fillText('S',W*0.5-140,350+44);g.fillText('O',W*0.5-140,350+88);
+ for(let i=0;i<3;i++)lamp(W*0.5-100+i*44,350,bb>i,'#3fd36b');for(let i=0;i<2;i++)lamp(W*0.5-100+i*44,394,ss>i,'#ffd166');for(let i=0;i<2;i++)lamp(W*0.5-100+i*44,438,m.outs>i,'#ff5a4a');
+ const t=m.bat(),d=m.def();const b=pa?pa.b:t.lineup[t.batIdx].p;const p=pa?pa.p:d.pitcher;g.textAlign='left';g.fillStyle='#e6e2d8';g.font='30px sans-serif';g.fillText(`打者 ${t.batIdx+1}番 ${b.name}`,W*0.5+60,350);g.fillText(`投手 ${p.name}`,W*0.5+60,394);
+ const now=new Date();g.fillStyle='#9fb3c8';g.font=`32px ${fn}`;g.fillText(`${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`,W*0.5+60,438);
  R3.boardTex.needsUpdate=true;}
 /* 地面テクスチャ（真上から見たグラウンド） */
 function r3GroundTex(night){const N=2048;const c=document.createElement('canvas');c.width=c.height=N;const g=c.getContext('2d');const s=N/260;const T=(X,Y)=>[(X+130)*s,(220-Y)*s];
- const grass1=night?'#245a30':'#3a8a46',grass2=night?'#29653a':'#419550',dirt=night?'#4e3c2f':'#6e5544',dirt2=night?'#5e4a3a':'#86684f',chalk=night?'#e4e0d2':'#f6f2e4';
+ const grass1=night?'#245a30':'#3f8d4b',grass2=night?'#2a6a3c':'#4a9c57',dirt=night?'#3d342d':'#564840',dirt2=night?'#4a3f36':'#665549',chalk=night?'#e4e0d2':'#f6f2e4';
  g.fillStyle=grass1;g.fillRect(0,0,N,N);
- /* 芝目（同心円） */g.strokeStyle=grass2;g.lineWidth=9*s;const h0=T(0,0);for(let r=9;r<200;r+=18){g.beginPath();g.arc(h0[0],h0[1],r*s,0,Math.PI*2);g.stroke();}
- /* ウォーニングトラック */g.strokeStyle=dirt2;g.lineWidth=4*s;g.beginPath();for(let a=-60;a<=60;a+=2){const r=FENCE(Math.min(45,Math.abs(a)))-2+(Math.abs(a)>45?(Math.abs(a)-45)*1.4:0);const p=T(r*Math.sin(a*Math.PI/180),r*Math.cos(a*Math.PI/180));if(a===-60)g.moveTo(p[0],p[1]);else g.lineTo(p[0],p[1]);}g.stroke();
- /* 内野の土（甲子園風の黒土・全面） */g.fillStyle=dirt;const mc=T(0,18.4);g.beginPath();g.arc(mc[0],mc[1],29*s,0,Math.PI*2);g.fill();g.beginPath();g.arc(h0[0],h0[1]+1*s,18*s,0,Math.PI*2);g.fill();
+ const h0=T(0,0);
+ /* 芝目：放射状のウェッジ＋同心円のバンド（刈り込みのチェック模様） */
+ g.save();g.translate(h0[0],h0[1]);for(let a=-70;a<70;a+=7){g.fillStyle=((a/7)|0)%2?grass2:grass1;g.beginPath();g.moveTo(0,0);g.arc(0,0,210*s,(a-90)*Math.PI/180,(a+7-90)*Math.PI/180);g.closePath();g.fill();}
+ g.globalAlpha=0.35;for(let r=12;r<200;r+=16){g.fillStyle=((r/16)|0)%2?'rgba(255,255,255,.10)':'rgba(0,0,0,.08)';g.beginPath();g.arc(0,0,(r+16)*s,0,Math.PI*2);g.arc(0,0,r*s,0,Math.PI*2,true);g.fill();}g.globalAlpha=1;g.restore();
+ /* 芝の質感（細かな斑） */{let sd=9;const rnd=()=>{sd=(sd*1103515245+12345)&0x7fffffff;return sd/0x7fffffff;};for(let i=0;i<26000;i++){const x=rnd()*N,y=rnd()*N;g.fillStyle=rnd()<0.5?'rgba(0,0,0,.06)':'rgba(255,255,200,.05)';g.fillRect(x,y,1+rnd()*2,1+rnd()*2);}}
+ /* ウォーニングトラック */g.strokeStyle=dirt2;g.lineWidth=4.5*s;g.beginPath();for(let a=-60;a<=60;a+=2){const r=FENCE(Math.min(45,Math.abs(a)))-2.2+(Math.abs(a)>45?(Math.abs(a)-45)*1.4:0);const p=T(r*Math.sin(a*Math.PI/180),r*Math.cos(a*Math.PI/180));if(a===-60)g.moveTo(p[0],p[1]);else g.lineTo(p[0],p[1]);}g.stroke();
+ /* 内野の黒土（全面） */g.fillStyle=dirt;const mc=T(0,18.4);g.beginPath();g.arc(mc[0],mc[1],29*s,0,Math.PI*2);g.fill();g.beginPath();g.arc(h0[0],h0[1]+1*s,18*s,0,Math.PI*2);g.fill();
  /* ファウルゾーンの土（ベンチ前） */g.fillStyle=dirt;for(const sg of [-1,1]){g.beginPath();const p1=T(sg*4,-3),p2=T(sg*40,33),p3=T(sg*44,29),p4=T(sg*7,-7);g.moveTo(p1[0],p1[1]);g.lineTo(p2[0],p2[1]);g.lineTo(p3[0],p3[1]);g.lineTo(p4[0],p4[1]);g.closePath();g.fill();}
+ /* 土の質感（粒・トンボの筋） */{let sd=3;const rnd=()=>{sd=(sd*1103515245+12345)&0x7fffffff;return sd/0x7fffffff;};g.save();g.beginPath();g.arc(mc[0],mc[1],29*s,0,Math.PI*2);g.arc(h0[0],h0[1]+1*s,18*s,0,Math.PI*2);g.clip();
+  for(let i=0;i<14000;i++){const x=rnd()*N,y=rnd()*N;g.fillStyle=rnd()<0.5?'rgba(0,0,0,.08)':'rgba(255,235,210,.07)';g.fillRect(x,y,1+rnd()*2,1+rnd()*2);}
+  g.strokeStyle='rgba(255,255,255,.035)';g.lineWidth=1;for(let r=2;r<30;r+=0.6){g.beginPath();g.arc(mc[0],mc[1],r*s,0,Math.PI*2);g.stroke();}g.restore();}
  /* マウンド */g.fillStyle=dirt2;g.beginPath();g.arc(mc[0],mc[1],3*s,0,Math.PI*2);g.fill();
  /* ファウルライン */g.strokeStyle=chalk;g.lineWidth=Math.max(2,0.3*s);for(const sg of [-1,1]){const e=T(sg*120,120);g.beginPath();g.moveTo(h0[0],h0[1]);g.lineTo(e[0],e[1]);g.stroke();}
  /* バッターボックス・キャッチャーボックス */g.lineWidth=Math.max(1.5,0.12*s);for(const sg of [-1,1]){const a=T(sg*0.37,0.9),b=T(sg*1.59,-0.9);g.strokeRect(Math.min(a[0],b[0]),Math.min(a[1],b[1]),Math.abs(b[0]-a[0]),Math.abs(b[1]-a[1]));}
@@ -3801,7 +3821,7 @@ function r3GroundTex(night){const N=2048;const c=document.createElement('canvas'
  const tex=new THREE.CanvasTexture(c);tex.colorSpace=THREE.SRGBColorSpace;tex.anisotropy=R3.renderer?R3.renderer.capabilities.getMaxAnisotropy():4;tex.wrapS=tex.wrapT=THREE.ClampToEdgeWrapping;return tex;}
 const R3_HOME={W:14,CY:2.5};
 function r3HomeTex(night){const N=1024;const c=document.createElement('canvas');c.width=c.height=N;const g=c.getContext('2d');const s=N/R3_HOME.W;const T=(X,Y)=>[(X+R3_HOME.W/2)*s,(R3_HOME.CY+R3_HOME.W/2-Y)*s];
- const dirt=night?'#4e3c2f':'#6e5544',chalk=night?'#d8d2c2':'#e9e3d3';g.fillStyle=dirt;g.fillRect(0,0,N,N);
+ const dirt=night?'#3d342d':'#564840',chalk=night?'#d8d2c2':'#e9e3d3';g.fillStyle=dirt;g.fillRect(0,0,N,N);
  /* 土の質感（粒・掃き目） */let sd=7;const rnd=()=>{sd=(sd*1103515245+12345)&0x7fffffff;return sd/0x7fffffff;};for(let i=0;i<9000;i++){const x=rnd()*N,y=rnd()*N;const k=rnd();g.fillStyle=k<0.5?'rgba(0,0,0,.07)':'rgba(255,240,220,.06)';g.fillRect(x,y,1+rnd()*2.5,1+rnd()*2.5);}
  g.strokeStyle='rgba(255,255,255,.035)';g.lineWidth=1;for(let r=1;r<9;r+=0.45){const p=T(0,0);g.beginPath();g.arc(p[0],p[1],r*s,0,Math.PI*2);g.stroke();}
  /* 白線：打席（1.22×1.83m）・捕手ボックス・ファウルライン */g.strokeStyle=chalk;g.lineWidth=0.1*s;g.lineCap='butt';
@@ -3810,14 +3830,17 @@ function r3HomeTex(night){const N=1024;const c=document.createElement('canvas');
  for(const sg of [-1,1]){const a=T(sg*0.23,-0.05),b=T(sg*8,7.72);g.beginPath();g.moveTo(a[0],a[1]);g.lineTo(b[0],b[1]);g.stroke();}
  const tex=new THREE.CanvasTexture(c);tex.colorSpace=THREE.SRGBColorSpace;tex.anisotropy=R3.renderer?R3.renderer.capabilities.getMaxAnisotropy():4;tex.wrapS=tex.wrapT=THREE.ClampToEdgeWrapping;return tex;}
 function r3SetNight(night,force){if(R3.night===night&&!force)return;R3.night=night;
- const g=R3.skyCv.getContext('2d');const gr=g.createLinearGradient(0,0,0,256);if(night){gr.addColorStop(0,'#050b14');gr.addColorStop(0.55,'#0f1d31');gr.addColorStop(1,'#223a56');}else{gr.addColorStop(0,'#3d8ad8');gr.addColorStop(0.55,'#8fc3ee');gr.addColorStop(1,'#d9ecfa');}g.fillStyle=gr;g.fillRect(0,0,4,256);R3.skyTex.needsUpdate=true;
+ const g=R3.skyCv.getContext('2d');const gr=g.createLinearGradient(0,0,0,256);if(night){gr.addColorStop(0,'#050b14');gr.addColorStop(0.55,'#0f1d31');gr.addColorStop(1,'#223a56');}else{gr.addColorStop(0,'#2f7fd0');gr.addColorStop(0.5,'#86bdeb');gr.addColorStop(1,'#dcecf8');}g.fillStyle=gr;g.fillRect(0,0,1024,256);
+ if(!night){/* 夏の雲 */let sd=19;const rnd=()=>{sd=(sd*1103515245+12345)&0x7fffffff;return sd/0x7fffffff;};for(let i=0;i<34;i++){const x=rnd()*1024,y=95+rnd()*70,w=30+rnd()*90,h=8+rnd()*18;for(let k=0;k<6;k++){const gx=x+(rnd()-0.5)*w,gy=y+(rnd()-0.5)*h;const rr=8+rnd()*22;const rg=g.createRadialGradient(gx,gy,0,gx,gy,rr);rg.addColorStop(0,'rgba(255,255,255,.85)');rg.addColorStop(0.6,'rgba(255,255,255,.35)');rg.addColorStop(1,'rgba(255,255,255,0)');g.fillStyle=rg;g.beginPath();g.ellipse(gx,gy,rr*1.6,rr*0.8,0,0,Math.PI*2);g.fill();}}}
+ else{for(let i=0;i<120;i++){g.fillStyle='rgba(255,255,255,'+(0.3+Math.random()*0.6)+')';g.fillRect(Math.random()*1024,Math.random()*120,1.2,1.2);}}
+ R3.skyTex.needsUpdate=true;
  R3.fog.color.set(night?0x0e1620:0xc9dcea);R3.hemi.intensity=night?0.22:0.78;R3.hemi.color.set(night?0x8fa8cf:0xcfe3ff);R3.hemi.groundColor.set(night?0x1a2a1a:0x4a6b3a);
  R3.sun.intensity=night?0.95:1.25;R3.sun.color.set(night?0xdbe6ff:0xfff1dc);R3.sun.position.set(night?40:-70,night?120:120,night?-70:-30);
  for(const l of R3.lamps){l.material.emissive.set(night?0xfff3c4:0x000000);l.material.emissiveIntensity=night?1.2:0;l.material.color.set(night?0xfff3c4:0x8a8f99);}
- for(const s of R3.stands)s.material.color.set(night?0x4b525b:(s.material.color.getHex()===0x6f757e||s.material.color.getHex()===0x3d434b?0x6f757e:0x8d939c));
+ for(const d of (R3S.dim||[]))d.m.material.color.set(night?d.night:d.day);
  if(R3.groundTex){const t=r3GroundTex(night);R3.ground.material.map=t;R3.ground.material.needsUpdate=true;R3.groundTex.dispose();R3.groundTex=t;}
  if(R3.home){const t=r3HomeTex(night);R3.home.material.map=t;R3.home.material.needsUpdate=true;if(R3.homeTex)R3.homeTex.dispose();R3.homeTex=t;}
- R3.mound.material=r3Mat(night?'#5a4535':'#6e5544');R3.renderer.setClearColor(night?0x0a1220:0x9fcbea);}
+ R3.mound.material=r3Mat(night?'#463a31':'#5c4d43');R3.renderer.setClearColor(night?0x0a1220:0x9fcbea);}
 /* ---- 投影ヘルパー（HUD用） ---- */
 function r3Project(v){const p=v.clone().project(R3.cam);return [(p.x+1)/2*R3.W,(1-p.y)/2*R3.H,p.z];}
 function r3WorldToScreen(X,Y,Z){return r3Project(r3V(X,Y,Z||0)).slice(0,2);}
@@ -3837,6 +3860,8 @@ function r3BatCam(cut){const S=actionSettings();const m=AR.m;const pa=m.pa;const
  const wide=S.cam3d==='wide';const pos=wide?new THREE.Vector3(sg*1.4,3.8,6.4):new THREE.Vector3(0,1.5,1.8);const look=wide?new THREE.Vector3(0,0.1,-6):new THREE.Vector3(0,-0.87,-7.5);r3SetCam(pos,look,wide?44:R3C.FOV_BAT,cut);}
 function r3PitCam(cut){const S=actionSettings();const m=AR.m;const pa=m.pa;const hs=pa?(pa.p.throws==='左'?-1:1):1;const zoom=S.cam3d==='zoom';
  /* センターカメラ：投手の全身とゾーンが収まる高さ・距離 */const pos=new THREE.Vector3(hs*0.9,zoom?2.6:4.3,zoom?-23.6:-29.5);const look=new THREE.Vector3(-hs*0.1,zoom?0.8:0.55,zoom?0.3:-9);r3SetCam(pos,look,zoom?13:23,cut);}
+/* リアクションカメラ：三振後に打者の顔へ寄る */
+function r3ReactCam(rig,cut){rig.g.updateMatrixWorld(true);const hp=new THREE.Vector3();rig.j.head.getWorldPosition(hp);hp.y+=(rig.dim&&rig.dim.headCy||0.13);const sg=rig.g.scale.x<0?-1:1;const pos=new THREE.Vector3(hp.x+sg*1.25,hp.y+0.12,hp.z+0.75);r3SetCam(pos,hp,30,cut,0.12);}
 function r3OrbitCam(now){const a=now/30000;const cx=0,cz=-35;const pos=new THREE.Vector3(cx+Math.sin(a)*62,17+Math.sin(a*0.7)*3,cz+Math.cos(a)*62);const look=new THREE.Vector3(0,3,-40);r3SetCam(pos,look,44,false,0.04);}
 function r3FieldCam(sc,t,cut,now){const pts=[];const b=fwAt(sc.ball,t);const rp=sc.kind==='inplay';
  if(rp){const hrRun=sc.res==='HR'&&t>(sc.Tpick||0);if(hrRun){for(const r of sc.runners){const p=fwAt(r.path,t);if(p.moving)pts.push([p.x,p.y,0]);}pts.push([0,0,0]);}
@@ -3878,7 +3903,7 @@ function r3Frame(now){if(!r3on())return;const m=AR.m;if(!m)return;try{
  if(ph==='half'||ph==='sim'||ph==='idle'){r3IdleScene(now);r3OrbitCam(now);}
  else if(fieldPh&&AR.field){const sc=AR.field;let t;if(ph==='replay'&&AR.replay){const rp=AR.replay;t=Math.min(rp.until,rp.from+(now-rp.t0)*rp.rate);}else t=Math.min(sc.T,fwTime(sc,now));
   r3FieldScene(sc,t,now);if(ph==='replay')r3ReplayCam(sc,t,cut);else r3FieldCam(sc,t,cut,now);}
- else{r3PitchScene(now);if(AR.side==='bat')r3BatCam(cut);else r3PitCam(cut);}
+ else{r3PitchScene(now);const ev=AR.ev;const react=ph==='after'&&ev&&(ev.kind==='kSwing'||ev.kind==='kLook'||ev.kind==='kBunt')&&AR.resultAt&&now-AR.resultAt>350;if(react)r3ReactCam(R3.batter,R3.lastReact!==ev);R3.lastReact=react?ev:null;if(!react){if(AR.side==='bat')r3BatCam(cut||!!R3.lastPhaseReact);else r3PitCam(cut||!!R3.lastPhaseReact);}R3.lastPhaseReact=react;}
  R3.lastPhase=ph;
  /* 影の中心を注視点付近へ */if(R3.camLook){R3.sun.target.position.set(R3.camLook.x,0,R3.camLook.z);R3.sun.position.set(R3.camLook.x+(R3.night?40:-70),120,R3.camLook.z+(R3.night?-70:-30));}
  /* ボールの光とトレイル */{const b=R3.ball;R3.glow.visible=b.visible;if(b.visible){R3.glow.position.copy(b.position);const d=R3.cam.position.distanceTo(b.position);R3.glow.scale.setScalar(Math.max(0.16,d*0.02));const last=R3.trailP[0];if(!last||last.distanceTo(b.position)>0.08){R3.trailP.unshift(b.position.clone());if(R3.trailP.length>7)R3.trailP.length=7;}}else R3.trailP.length=0;
@@ -3888,15 +3913,23 @@ function r3Frame(now){if(!r3on())return;const m=AR.m;if(!m)return;try{
  }catch(e){console.warn('3D frame error',e);r3Fail();}}
 /* 全員を定位置へ（ベンチ中の俯瞰など） */
 function r3IdleScene(now){const m=AR.m;const d=m.def(),t=m.bat();const cd=arTeamColors(d),cb=arTeamColors(t);const DP=fwDefPos(d);
- for(const k in R3.fielders){const r=R3.fielders[k];r.g.visible=true;r.setColors(cd,false);r.glove.visible=true;const p=DP[k];r.at(p[0],0,-p[1]);r.face(-p[0],p[1]);r.apply(k==='捕'?RP.crouch:RP.stand);}
+ for(const k in R3.fielders){const r=R3.fielders[k];r.g.visible=true;r.setColors(cd,false);r.setGear(k==='捕'?'catcher':null);r.glove.visible=k!=='捕';r3Dress(r,r3PlayerOf(d,k));r.setExpression(null);const p=DP[k];r.at(p[0],0,-p[1]);r.face(-p[0],p[1]);r.apply(k==='捕'?RP.crouch:RP.stand);}
  R3.batter.g.visible=false;for(const r of R3.runners)r.g.visible=false;r3PlaceUmps(true);R3.ball.visible=false;R3.mitt.visible=false;}
 function r3PlaceUmps(showPlate){const U=[[0.3,-2.4],[25.5,16.5],[-25.5,16.5]];U.forEach((u,i)=>{const r=R3.umps[i];r.g.visible=i>0||showPlate;r.at(u[0],0,-u[1]);if(i===0){r.face(0,-1);r.apply(RP.umpire);}else{r.face(-u[0],u[1]-18.4);r.apply(RP.ready);}});}
+/* 選手ごとの個性・汚れ・表情 */
+function r3Seed(p){if(!p)return 0;const s=String(p.id||p.name||'');let h=7;for(const ch of s)h=(h*31+ch.charCodeAt(0))>>>0;return h;}
+function r3Dirt(p){if(!p)return 0;AR.dirt=AR.dirt||{};const k=p.id||p.name;if(AR.dirt[k]==null){AR.dirt[k]=0.08+(r3Seed(p)%100)/100*0.22;}return AR.dirt[k];}
+function r3AddDirt(pid,amt){AR.dirt=AR.dirt||{};AR.dirt[pid]=Math.min(1,(AR.dirt[pid]==null?0.15:AR.dirt[pid])+amt);}
+function r3Dress(r,p,gear){r.setPerson(r3Seed(p));r.setDirt(r3Dirt(p));}
+function r3PlayerOf(team,k){const sl=team.lineup.find(x=>x.pos===k);return sl?sl.p:null;}
 /* 投球／打撃のシーン */
 function r3PitchScene(now){const m=AR.m;const d=m.def(),t=m.bat();const cd=arTeamColors(d),cb=arTeamColors(t);const pa=m.pa;const P=AR.cur;const ph=AR.phase;const S=actionSettings();
  const hand=pa&&(AR.mode!=='card'||ph!=='pre')?pa.bHand:(AR.preHand||'右');const sg=hand==='左'?-1:1;const hs=pa?(pa.p.throws==='左'?-1:1):(P?P.hs:1);
  const DP=fwDefPos(d);
  /* 野手 */const numOf=(team,k)=>{const sl=team.lineup.find(x=>x.pos===k);return sl?(sl.p.number!=null?sl.p.number:POS_NUM[k]):POS_NUM[k];};const pidNum=(team,pid)=>{const pl=team.lineup.map(x=>x.p).concat(team.bench||[]).find(x=>x.id===pid);return pl?(pl.number!=null?pl.number:null):null;};
- for(const k in R3.fielders){const r=R3.fielders[k];r.setColors(cd,false);r.setNumber(numOf(d,k),cd.trim);r.glove.visible=true;const p=DP[k];
+ const ev0=AR.ev;const kOut=ph==='after'&&ev0&&(ev0.kind==='kSwing'||ev0.kind==='kLook'||ev0.kind==='kBunt');
+ for(const k in R3.fielders){const r=R3.fielders[k];r.setColors(cd,false);r.setNumber(numOf(d,k),cd.trim);r.setGear(k==='捕'?'catcher':null);r.glove.visible=k!=='捕';const p=DP[k];r3Dress(r,k==='投'?(pa?pa.p:d.pitcher):r3PlayerOf(d,k));
+  r.setExpression(k==='投'?(kOut?((r3Seed(pa?pa.p:d.pitcher)%2)?'smile':'grit'):(ph==='wind'||ph==='flight'||ph==='gauge')?'focus':null):(k==='捕'&&(ph==='wind'||ph==='flight'))?'focus':null);
   if(k==='投'){r.at(0,0,-R3C.RUBBER+0.15);r.g.scale.x=hs<0?-1:1;r.face(0,1);r.g.visible=true;
    const windDur=arWindDur();let pose;const form=r3PitForm(pa?pa.p:d.pitcher);const stretch=m.bases.some(Boolean);
    if(ph==='wind'&&AR.windT0){const u=(now-AR.windT0)/windDur;pose=r3ClipPose((stretch?'stretch_':'windup_')+form,u);}
@@ -3904,12 +3937,13 @@ function r3PitchScene(now){const m=AR.m;const d=m.def(),t=m.bat();const cd=arTea
    else{const w=Math.sin(now/1100);const base=stretch?RP.pset2:RP.pset;pose=Object.assign({},base);pose.dy=w*0.012;pose.head=[(base.head?base.head[0]:0.05)+w*0.04,base.head?base.head[1]:0,0];pose.torso=[w*0.02,0,0];}r.apply(pose);continue;}
   if(k==='捕'){r.at(0,0,1.6);r.g.scale.x=1;r.face(0,-1);r.g.visible=!(AR.side==='bat'&&S.cam3d!=='wide');const cp=Object.assign({},RP.crouch);cp.dy=RP.crouch.dy+Math.sin(now/900)*0.02;r.apply(cp);r.glove.visible=false;continue;}
   r.g.scale.x=1;r.g.visible=true;r.at(p[0],0,-p[1]);r.face(-p[0],p[1]);const rp=Object.assign({},RP.ready);rp.dy=RP.ready.dy+Math.sin(now/700+k.charCodeAt(0))*0.02;r.apply(rp);}
- /* 打者 */{const b=R3.batter;b.g.visible=true;b.setColors(cb,true);b.setNumber(pa?(pa.b.number!=null?pa.b.number:null):null,cb.trim);b.bat.visible=true;b.g.scale.x=sg<0?-1:1;b.at(-sg*0.86,0,0.1);b.face(sg,0);
+ /* 打者 */{const b=R3.batter;b.g.visible=true;b.setColors(cb,true);b.setNumber(pa?(pa.b.number!=null?pa.b.number:null):null,cb.trim);if(pa)r3Dress(b,pa.b);b.setGear(null);
+  b.setExpression(kOut?'sad':(ph==='after'&&ev0&&ev0.kind==='inplay'&&ev0.bb&&['1B','2B','3B','HR'].includes(ev0.bb.res))?'shout':(ph==='wind'||ph==='flight')?'focus':null);b.bat.visible=true;b.g.scale.x=sg<0?-1:1;b.at(-sg*0.86,0,0.1);b.face(sg,0);
   const bunt=pa&&(pa.buntMode||(pa.bm&&pa.bm.bunt)||pa.cmd==='squeeze')||(AR.side==='bat'&&AR.mode!=='card'&&AR.swingType==='bunt');
   let pose;const ev=AR.ev;const kO=ph==='after'&&ev&&(ev.kind==='kSwing'||ev.kind==='kLook'||ev.kind==='kBunt')&&now-AR.resultAt>500;
   if(kO)pose=RP.kDown;else if(AR.swung&&AR.swingT&&(ph==='flight'||ph==='after')){const isBunt=AR.swing&&AR.swing.type==='bunt';if(isBunt)pose=RP.bunt;else{const u=(now-AR.swingT+111*AR.speed)/(300*AR.speed);pose=r3ClipPose('swing',u);}}
   else if(bunt&&(ph==='flight'||ph==='wind'))pose=RP.bunt;else{/* 構え：バットを揺らす・膝でリズム */const w=Math.sin(now/420),w2=Math.sin(now/650);pose=Object.assign({},RP.stance);pose.batDir=[-0.55+w*0.08,0.8,-0.3+w*0.12];pose.dy=RP.stance.dy+w2*0.015;pose.head=[0.05+w2*0.03,1.0,0];}b.apply(pose);}
- /* 走者 */{const B=m.bases;let n=0;for(let i=0;i<3;i++){if(!B[i])continue;const r=R3.runners[n++];r.g.visible=true;r.setColors(cb,true);r.setNumber(B[i].number!=null?B[i].number:null,cb.trim);r.bat.visible=false;r.glove.visible=false;r.g.scale.x=1;const A=FW_BASE[i+1],Nx=FW_BASE[i+2];const lead=3.2;const L=Math.hypot(Nx[0]-A[0],Nx[1]-A[1]);const x=A[0]+(Nx[0]-A[0])/L*lead,y=A[1]+(Nx[1]-A[1])/L*lead;r.at(x,0,-y);r.face(-x,y-18.4);r.apply(RP.ready);}
+ /* 走者 */{const B=m.bases;let n=0;for(let i=0;i<3;i++){if(!B[i])continue;const r=R3.runners[n++];r.g.visible=true;r.setColors(cb,true);r.setGear(null);r.setNumber(B[i].number!=null?B[i].number:null,cb.trim);r3Dress(r,B[i]);r.setExpression(null);r.bat.visible=false;r.glove.visible=false;r.g.scale.x=1;const A=FW_BASE[i+1],Nx=FW_BASE[i+2];const lead=3.2;const L=Math.hypot(Nx[0]-A[0],Nx[1]-A[1]);const x=A[0]+(Nx[0]-A[0])/L*lead,y=A[1]+(Nx[1]-A[1])/L*lead;r.at(x,0,-y);r.face(-x,y-18.4);r.apply(RP.ready);}
   for(let i=n;i<4;i++)R3.runners[i].g.visible=false;}
  r3PlaceUmps(AR.side!=='bat');
  /* ミットの目標 */let mittT;if(AR.side==='pit'&&ph==='pre'&&AR.target)mittT=r3ZoneW(AR.target.x,AR.target.y);else if(AR.sign&&AR.side==='pit')mittT=r3ZoneW(AR.sign.tx,AR.sign.ty);else mittT=r3ZoneW(0,0.3);
@@ -3924,7 +3958,7 @@ function r3PitchScene(now){const m=AR.m;const d=m.def(),t=m.bat();const cd=arTea
 /* フィールドプレーのシーン */
 function r3FieldScene(sc,t,now){const m=AR.m;const cd=sc.colDef||arTeamColors(m.def()),cb=sc.colBat||arTeamColors(m.bat());const b=fwAt(sc.ball,t);const dT=sc.defTeam||m.def(),bT=sc.batTeam||m.bat();
  const numOf=(team,k)=>{const sl=team.lineup.find(x=>x.pos===k);return sl?(sl.p.number!=null?sl.p.number:POS_NUM[k]):POS_NUM[k];};const pidNum=(team,pid)=>{const pl=team.lineup.map(x=>x.p).concat(team.bench||[]).find(x=>x.id===pid);return pl&&pl.number!=null?pl.number:null;};
- for(const k in R3.fielders){const r=R3.fielders[k];const f=sc.fielders[k];r.setColors(cd,false);r.setNumber(numOf(dT,k),cd.trim);r.glove.visible=true;r.g.scale.x=1;r.bat.visible=false;if(!f){r.g.visible=false;continue;}r.g.visible=true;
+ for(const k in R3.fielders){const r=R3.fielders[k];const f=sc.fielders[k];r.setColors(cd,false);r.setNumber(numOf(dT,k),cd.trim);r.setGear(k==='捕'?'catcher':null);r.glove.visible=k!=='捕';r.g.scale.x=1;r.bat.visible=false;if(!f){r.g.visible=false;continue;}r.g.visible=true;r3Dress(r,r3PlayerOf(dT,k));r.setExpression(null);
   const p=fwAt(f.path,t);const prev=fwAt(f.path,t-80);r.at(p.x,0,-p.y);
   let pose=fwPoseAt(f,t);const moving=p.moving&&(Math.abs(p.x-prev.x)>0.02||Math.abs(p.y-prev.y)>0.02);
   if(moving){r.face(p.x-prev.x,-(p.y-prev.y));}else if(b){r.face(b.x-p.x,-(b.y-p.y));}
@@ -3934,148 +3968,260 @@ function r3FieldScene(sc,t,now){const m=AR.m;const cd=sc.colDef||arTeamColors(m.
   else if(pose==='lookUp')r.apply(RP.lookUp);else if(pose==='dive')r.apply(RP.catchLow);
   else r.apply(t<(sc.Tpick||0)?RP.ready:RP.stand);}
  /* 走者 */let n=0;for(const rr of sc.runners){const p=fwAt(rr.path,t);const prev=fwAt(rr.path,t-80);const outT=rr.outAt?rr.outAt.t:null;const isOut=outT!=null&&t>=outT;const last=rr.path[rr.path.length-1];const sliding=rr.slide&&t>last.t-320&&t<last.t+800;const done=!p.moving&&t>last.t+50;
-  if(rr.scored&&done&&!rr.trot&&t>last.t+300)continue;if(isOut&&t>outT+1400)continue;if(n>=4)break;const r=R3.runners[n++];r.g.visible=true;r.setColors(cb,true);r.setNumber(pidNum(bT,rr.pid),cb.trim);r.bat.visible=false;r.glove.visible=false;r.g.scale.x=1;
+  if(rr.scored&&done&&!rr.trot&&t>last.t+300)continue;if(isOut&&t>outT+1400)continue;if(n>=4)break;const r=R3.runners[n++];r.g.visible=true;r.setColors(cb,true);r.setNumber(pidNum(bT,rr.pid),cb.trim);r.setGear(null);{const pl=bT.lineup.map(x=>x.p).concat(bT.bench||[]).find(x=>x.id===rr.pid);if(pl)r3Dress(r,pl);}r.setExpression(rr.scored&&done?'shout':(sliding?'grit':null));r.bat.visible=false;r.glove.visible=false;r.g.scale.x=1;
   const moving=p.moving&&(Math.abs(p.x-prev.x)>0.02||Math.abs(p.y-prev.y)>0.02);if(moving)r.face(p.x-prev.x,-(p.y-prev.y));
-  r.at(p.x,0,-p.y);if(sliding){r.apply(RP.slide);}else if(moving)r.apply(r3RunPose(now/(rr.trot?110:70),rr.trot?0.7:1));else if(rr.scored&&done)r.apply(RP.celebrate);else r.apply(RP.stand);}
+  r.at(p.x,0,-p.y);if(sliding){r.apply(RP.slide);if(!rr._dirt){rr._dirt=true;r3AddDirt(rr.pid,0.25);}}else if(moving)r.apply(r3RunPose(now/(rr.trot?110:70),rr.trot?0.7:1));else if(rr.scored&&done)r.apply(RP.celebrate);else r.apply(RP.stand);}
  for(let i=n;i<4;i++)R3.runners[i].g.visible=false;
  R3.batter.g.visible=false;r3PlaceUmps(true);R3.mitt.visible=false;
  /* 審判のジェスチャーと観客の歓声 */for(const cl of sc.callouts){const dt=t-cl.t;if(dt<0||dt>1000)continue;if(cl.kind==='out'||cl.kind==='safe'){const ui=cl.y<6&&Math.abs(cl.x)<6?0:(cl.x>=0?1:2);const u=R3.umps[ui];u.face(cl.x-u.g.position.x,-cl.y-u.g.position.z);u.apply(cl.kind==='out'?RP.outCall:RP.safeCall);}
   if(cl.kind==='hr'||cl.kind==='score')R3.cheerUntil=Math.max(R3.cheerUntil||0,now+2200);}
  if(b&&t<=sc.T){R3.ball.visible=true;R3.ball.position.set(b.x,Math.max(0.06,b.z),-b.y);}else R3.ball.visible=false;}
 /* ================= リアル体型の選手モデル（スキンメッシュ：関節で滑らかに曲がる） =================
- R3Rig（パワプロ風2頭身）と同じインターフェース（j, apply, at, face, setColors, setHelmet, setNumber, handPos, bat, glove）。
- 骨格：hips → torso → chest → head / rSh→rEl→rHand / lSh→lEl→lHand、hips → rHip→rKnee / lHip→lKnee。
- ポーズ表（RP）は共通。torso の回転は腰（torso）と胸（chest）に分けて適用し、背骨が曲線的に曲がるようにする。 */
+ R3Rig（パワプロ風2頭身）と同じインターフェース（j, apply, at, face, setColors, setHelmet, setNumber, handPos, bat, glove）に
+ setGear（捕手装備・審判マスク）を追加。ユニフォームはチームごとに生成するテクスチャ（アトラス）で描く：
+ ピンストライプ／前立て／袖ライン／ラグラン／胸バンド、胸文字、背番号、帽子マーク。
+ 骨格：hips → torso → chest → head / rSh→rEl→rHand / lSh→lEl→lHand、hips → rHip→rKnee / lHip→lKnee。 */
 const RR={HIPS:0.93,TH:0.44,SH:0.42,UA:0.30,FA:0.27,HAND:0.17,TORSO:0.02,CHEST:0.22,NECK:0.30,SHX:0.19,SHY:0.25,HIPX:0.10,HIPY:-0.04};
-const RR_SKIN=['#f0c7a3','#e9b98f','#e2b088','#d7a47c','#cc986f'];
+const RR_SKIN=['#efc29b','#e8b78d','#e0ad84','#d6a079','#cb9570','#f1c7a4'];
 const RR_BONES=['hips','torso','chest','head','rSh','rEl','rHand','lSh','lEl','lHand','rHip','rKnee','lHip','lKnee'];
-const RR_MAT={jersey:0,pants:1,skin:2,under:3,belt:4,hands:5,trim:6,sock:7};
-let RR_GEO=null,RR_FACE=null;
-function r3MatP(c,opt){const k='P'+String(c)+(opt?JSON.stringify(opt):'');if(!R3_MATS[k]){const o=Object.assign({color:new THREE.Color(c),roughness:0.85,metalness:0},opt||{});R3_MATS[k]=new THREE.MeshStandardMaterial(o);}return R3_MATS[k];}
-/* 体の筒を積み上げて1つのジオメトリにする。ring={y,x,z,rx,rz,w:[[boneIdx,weight],...],m:materialSlot} */
-function rrBuildBody(){if(RR_GEO)return RR_GEO;const B=i=>RR_BONES.indexOf(i);
- const pos=[],skinI=[],skinW=[],byMat={};let nv=0;
- const tube=(rings,segs)=>{const base=nv;rings.forEach(r=>{const ws=r.w.slice(0,4);while(ws.length<4)ws.push([0,0]);const sum=ws.reduce((a,b)=>a+b[1],0)||1;
-   for(let i=0;i<segs;i++){const a=i/segs*Math.PI*2;pos.push((r.x||0)+Math.cos(a)*r.rx,r.y,(r.z||0)+Math.sin(a)*r.rz);for(const w of ws){skinI.push(w[0]);skinW.push(w[1]/sum);}nv++;}});
-  for(let k=0;k<rings.length-1;k++){const m=rings[k].m;const arr=byMat[m]||(byMat[m]=[]);const a0=base+k*segs,b0=a0+segs;for(let i=0;i<segs;i++){const i2=(i+1)%segs;arr.push(a0+i,b0+i,a0+i2, a0+i2,b0+i,b0+i2);}}};
+const RR_MAT={uni:0,skin:1,belt:2,hands:3,sock:4};
+/* アトラスの行割り（0=上）：胸〜裾 0〜0.40、袖 0.42〜0.50、ズボン 0.52〜1.0 */
+const RR_UV={J0:0.0,J1:0.40,S0:0.42,S1:0.50,P0:0.52,P1:1.0};
+let RR_GEO=null,RR_FACE=null,RR_BUMP=null;const RR_ATLAS={},RR_MARK={};
+function r3MatP(c,opt){const k='P'+String(c)+(opt?JSON.stringify(opt):'');if(!R3_MATS[k]){const o=Object.assign({color:new THREE.Color(c),roughness:0.85,metalness:0},opt||{});if(R3.env){o.envMap=R3.env;o.envMapIntensity=o.envMapIntensity||0.35;}R3_MATS[k]=new THREE.MeshStandardMaterial(o);}return R3_MATS[k];}
+/* 体の筒を積み上げて1つのジオメトリにする。
+ ring={y,x,z,rx,rz,w:[[boneIdx,weight],...],m:materialSlot,row:アトラス行(0..1),useam:継ぎ目の角度,udir:向き} */
+function rrBuildBody(){if(RR_GEO)return RR_GEO;const B=i=>RR_BONES.indexOf(i);const NB=RR_BONES.length;
+ const pos=[],uv=[],col=[],skinI=[],skinW=[],byMat={};let nv=0;const seamPairs=[];
+ /* 制御リングを Catmull-Rom で細かく補間してから筒を作る（輪郭と関節の曲がりが滑らかになる）。shape=超楕円の指数（2=楕円、大きいほど角が丸い四角） */
+ const cr=(p0,p1,p2,p3,t)=>{const t2=t*t,t3=t2*t;return 0.5*((2*p1)+(-p0+p2)*t+(2*p0-5*p1+4*p2-p3)*t2+(-p0+3*p1-3*p2+p3)*t3);};
+ const dense=(rings)=>{const out=[];const n=rings.length;const W=rings.map(r=>{const w=new Array(NB).fill(0);for(const [bi,wv] of r.w)w[bi]+=wv;const sm=w.reduce((a,b)=>a+b,0)||1;return w.map(v=>v/sm);});
+  for(let i=0;i<n-1;i++){const r0=rings[Math.max(0,i-1)],r1=rings[i],r2=rings[i+1],r3=rings[Math.min(n-1,i+2)];const steps=Math.max(1,Math.round(Math.abs(r2.y-r1.y)/0.018));
+   for(let k=0;k<steps;k++){const t=k/steps;const q={};for(const key of ['y','x','z','rx','rz','row'])q[key]=cr(r0[key]||0,r1[key]||0,r2[key]||0,r3[key]||0,t);
+    const w=[];for(let bI=0;bI<NB;bI++){const v=cr(W[Math.max(0,i-1)][bI],W[i][bI],W[i+1][bI],W[Math.min(n-1,i+2)][bI],t);if(v>0.001)w.push([bI,v]);}w.sort((a,b)=>b[1]-a[1]);q.w=w.slice(0,4);
+    q.m=r1.m;q.useam=r1.useam||0;q.shape=r1.shape||rings[0].shape||2;q.ao=rings[0].ao;q.rx=Math.max(0.002,q.rx);q.rz=Math.max(0.002,q.rz);out.push(q);}}
+  const l=rings[n-1];out.push(Object.assign({},l,{w:W[n-1].map((v,bI)=>[bI,v]).filter(x=>x[1]>0.001).sort((a,b)=>b[1]-a[1]).slice(0,4),useam:l.useam||0,shape:l.shape||rings[0].shape||2,ao:rings[0].ao}));return out;};
+ const tube=(rings,segs)=>{rings=dense(rings);const base=nv;rings.forEach(r=>{const ws=r.w.slice(0,4);while(ws.length<4)ws.push([0,0]);const sum=ws.reduce((a,b)=>a+b[1],0)||1;const ex=2/(r.shape||2);
+   for(let i=0;i<=segs;i++){const ii=i%segs;const a=(r.useam||0)+ii/segs*Math.PI*2;const c=Math.cos(a),sn=Math.sin(a);const cx=Math.sign(c)*Math.pow(Math.abs(c),ex),cz=Math.sign(sn)*Math.pow(Math.abs(sn),ex);
+    const px=(r.x||0)+cx*r.rx,pz=(r.z||0)+cz*r.rz;pos.push(px,r.y,pz);const u=i===segs?1:ii/segs;uv.push(u,1-(r.row==null?0.5:r.row));for(const w of ws){skinI.push(w[0]);skinW.push(w[1]/sum);}
+    /* 簡易アンビエントオクルージョン：脇の下・股・首の下・体の内側を少し暗く */let ao=1;const inner=Math.abs(px)<Math.abs(r.x||0)*0.999;
+    if(r.ao==='leg'){const k=Math.max(0,(r.y-0.72)/0.2);ao-=k*(inner?0.42:0.14);}else if(r.ao==='arm'){const k=Math.max(0,(r.y-1.32)/0.14);ao-=k*(inner?0.45:0.1);if(r.y<1.36&&r.y>1.0&&inner)ao-=0.08;}
+    else if(r.ao==='torso'){if(r.y>1.47)ao-=0.3*Math.min(1,(1.56-r.y)/0.09);else if(r.y>1.3&&Math.abs(px)>0.14)ao-=0.3*Math.min(1,(Math.abs(px)-0.14)/0.05);if(r.y<0.9)ao-=0.25*Math.min(1,(0.9-r.y)/0.1);}
+    ao=Math.max(0.5,ao);col.push(ao,ao,ao);if(i===segs)seamPairs.push([nv-segs,nv]);nv++;}});
+  const n1=segs+1;for(let k=0;k<rings.length-1;k++){const m=rings[k].m;const arr=byMat[m]||(byMat[m]=[]);const a0=base+k*n1,b0=a0+n1;for(let i=0;i<segs;i++){const i2=i+1;arr.push(a0+i,b0+i,a0+i2, a0+i2,b0+i,b0+i2);}}};
  const H=B('hips'),T=B('torso'),C=B('chest'),HD=B('head');
- /* 胴体（骨盤→腰→胸→肩→首） */
+ const jrow=y=>RR_UV.J0+(1.462-y)/(1.462-1.03)*(RR_UV.J1-RR_UV.J0);const prow=y=>RR_UV.P0+(0.985-y)/(0.985-0.03)*(RR_UV.P1-RR_UV.P0);
+ const SEAM=0;/* 胴の継ぎ目は左脇（+x）：正面(+z)がu=0.25、右脇がu=0.5、背中がu=0.75 */
+ /* 胴体（骨盤→腰→胸→肩→首）：断面は角の丸い四角（背中は平ら、胸は丸い） */
  tube([
-  {y:0.80,rx:0.03,rz:0.02,w:[[H,1]],m:RR_MAT.pants},
-  {y:0.83,rx:0.135,rz:0.09,w:[[H,1]],m:RR_MAT.pants},
-  {y:0.87,rx:0.158,rz:0.102,w:[[H,1]],m:RR_MAT.pants},
-  {y:0.93,rx:0.165,rz:0.108,w:[[H,1]],m:RR_MAT.pants},
-  {y:0.985,rx:0.158,rz:0.104,w:[[H,0.55],[T,0.45]],m:RR_MAT.belt},
-  {y:1.03,rx:0.152,rz:0.10,w:[[T,1]],m:RR_MAT.jersey},
-  {y:1.12,rx:0.15,rz:0.10,w:[[T,0.5],[C,0.5]],m:RR_MAT.jersey},
-  {y:1.22,rx:0.16,rz:0.106,w:[[C,1]],m:RR_MAT.jersey},
-  {y:1.32,rx:0.176,rz:0.115,w:[[C,1]],m:RR_MAT.jersey},
-  {y:1.39,rx:0.19,rz:0.116,w:[[C,1]],m:RR_MAT.jersey},
-  {y:1.43,rx:0.186,rz:0.106,w:[[C,1]],m:RR_MAT.trim},
-  {y:1.462,rx:0.088,rz:0.072,w:[[C,1]],m:RR_MAT.skin},
-  {y:1.49,rx:0.058,rz:0.056,w:[[C,0.5],[HD,0.5]],m:RR_MAT.skin},
-  {y:1.56,rx:0.06,rz:0.06,w:[[HD,1]],m:RR_MAT.skin},
- ],16);
- /* 脚 */
- for(const s of ['r','l']){const sg=s==='r'?-1:1;const TH=B(s+'Hip'),SHN=B(s+'Knee');const x=sg*RR.HIPX;
+  {y:0.79,rx:0.02,rz:0.015,w:[[H,1]],m:RR_MAT.uni,row:prow(0.80),useam:SEAM,shape:2.4,ao:'torso'},
+  {y:0.82,rx:0.12,rz:0.085,w:[[H,1]],m:RR_MAT.uni,row:prow(0.82),useam:SEAM,shape:2.4},
+  {y:0.87,rx:0.158,rz:0.104,w:[[H,1]],m:RR_MAT.uni,row:prow(0.87),useam:SEAM,shape:2.4},
+  {y:0.93,rx:0.166,rz:0.11,w:[[H,1]],m:RR_MAT.uni,row:prow(0.93),useam:SEAM,shape:2.4},
+  {y:0.985,rx:0.158,rz:0.104,w:[[H,0.55],[T,0.45]],m:RR_MAT.belt,row:prow(0.985),useam:SEAM,shape:2.4},
+  {y:1.03,rx:0.15,rz:0.1,w:[[T,1]],m:RR_MAT.uni,row:jrow(1.03),useam:SEAM,shape:2.4},
+  {y:1.12,rx:0.146,rz:0.098,w:[[T,0.5],[C,0.5]],m:RR_MAT.uni,row:jrow(1.12),useam:SEAM,shape:2.4},
+  {y:1.22,rx:0.16,rz:0.108,w:[[C,1]],m:RR_MAT.uni,row:jrow(1.22),useam:SEAM,shape:2.5},
+  {y:1.32,rx:0.182,rz:0.122,w:[[C,1]],m:RR_MAT.uni,row:jrow(1.32),useam:SEAM,shape:2.6},
+  {y:1.39,rx:0.198,rz:0.12,w:[[C,1]],m:RR_MAT.uni,row:jrow(1.39),useam:SEAM,shape:2.6},
+  {y:1.43,rx:0.192,rz:0.108,w:[[C,1]],m:RR_MAT.uni,row:jrow(1.43),useam:SEAM,shape:2.4},
+  {y:1.455,rx:0.13,rz:0.088,w:[[C,1]],m:RR_MAT.uni,row:jrow(1.455),useam:SEAM,shape:2.2},
+  {y:1.465,rx:0.085,rz:0.072,w:[[C,1]],m:RR_MAT.skin,row:jrow(1.462),useam:SEAM,shape:2},
+  {y:1.49,rx:0.06,rz:0.058,w:[[C,0.5],[HD,0.5]],m:RR_MAT.skin,row:0.5,useam:SEAM,shape:2},
+  {y:1.56,rx:0.062,rz:0.062,w:[[HD,1]],m:RR_MAT.skin,row:0.5,useam:SEAM,shape:2},
+ ],32);
+ /* 脚：腰から足首まで1本の筒。外側がu=0.5（サイドライン） */
+ for(const s of ['r','l']){const sg=s==='r'?-1:1;const TH=B(s+'Hip'),SHN=B(s+'Knee');const x=sg*RR.HIPX;const seam=sg<0?0:Math.PI;
   tube([
-   {y:0.90,x,rx:0.094,rz:0.102,w:[[H,0.55],[TH,0.45]],m:RR_MAT.pants},
-   {y:0.85,x,rx:0.091,rz:0.098,w:[[TH,1]],m:RR_MAT.pants},
-   {y:0.72,x,rx:0.085,rz:0.09,w:[[TH,1]],m:RR_MAT.pants},
-   {y:0.57,x,rx:0.073,rz:0.077,w:[[TH,1]],m:RR_MAT.pants},
-   {y:0.48,x,rx:0.065,rz:0.068,w:[[TH,0.7],[SHN,0.3]],m:RR_MAT.pants},
-   {y:0.45,x,rx:0.063,rz:0.066,w:[[TH,0.5],[SHN,0.5]],m:RR_MAT.pants},
-   {y:0.42,x,rx:0.063,rz:0.067,w:[[SHN,1]],m:RR_MAT.pants},
-   {y:0.35,x,rx:0.067,rz:0.072,w:[[SHN,1]],m:RR_MAT.pants},
-   {y:0.25,x,rx:0.059,rz:0.062,w:[[SHN,1]],m:RR_MAT.pants},
-   {y:0.14,x,rx:0.048,rz:0.05,w:[[SHN,1]],m:RR_MAT.pants},
-   {y:0.085,x,rx:0.044,rz:0.046,w:[[SHN,1]],m:RR_MAT.sock},
-   {y:0.05,x,rx:0.04,rz:0.042,w:[[SHN,1]],m:RR_MAT.sock},
-   {y:0.03,x,rx:0.02,rz:0.02,w:[[SHN,1]],m:RR_MAT.sock},
-  ],12);}
- /* 腕 */
- for(const s of ['r','l']){const sg=s==='r'?-1:1;const UA=B(s+'Sh'),FA=B(s+'El'),HA=B(s+'Hand');const x=sg*RR.SHX;
+   {y:0.96,x:x*0.6,rx:0.06,rz:0.07,w:[[H,1]],m:RR_MAT.uni,row:prow(0.96),useam:seam,shape:2.2,ao:'leg'},
+   {y:0.92,x:x*0.85,rx:0.09,rz:0.1,w:[[H,0.8],[TH,0.2]],m:RR_MAT.uni,row:prow(0.92),useam:seam,shape:2.2},
+   {y:0.87,x,rx:0.094,rz:0.102,w:[[H,0.45],[TH,0.55]],m:RR_MAT.uni,row:prow(0.87),useam:seam,shape:2.2},
+   {y:0.80,x,rx:0.091,rz:0.098,w:[[TH,1]],m:RR_MAT.uni,row:prow(0.80),useam:seam,shape:2.2},
+   {y:0.68,x,rx:0.083,rz:0.088,w:[[TH,1]],m:RR_MAT.uni,row:prow(0.68),useam:seam,shape:2.2},
+   {y:0.56,x,rx:0.072,rz:0.076,w:[[TH,1]],m:RR_MAT.uni,row:prow(0.56),useam:seam,shape:2.2},
+   {y:0.49,x,rx:0.066,rz:0.069,w:[[TH,0.72],[SHN,0.28]],m:RR_MAT.uni,row:prow(0.49),useam:seam,shape:2.1},
+   {y:0.45,x,rx:0.064,rz:0.068,w:[[TH,0.5],[SHN,0.5]],m:RR_MAT.uni,row:prow(0.45),useam:seam,shape:2.1},
+   {y:0.41,x,rx:0.064,rz:0.069,w:[[TH,0.25],[SHN,0.75]],m:RR_MAT.uni,row:prow(0.41),useam:seam,shape:2.1},
+   {y:0.35,x,rx:0.067,rz:0.073,w:[[SHN,1]],m:RR_MAT.uni,row:prow(0.35),useam:seam,shape:2.1},
+   {y:0.25,x,rx:0.06,rz:0.064,w:[[SHN,1]],m:RR_MAT.uni,row:prow(0.25),useam:seam,shape:2.1},
+   {y:0.14,x,rx:0.049,rz:0.051,w:[[SHN,1]],m:RR_MAT.uni,row:prow(0.14),useam:seam,shape:2.1},
+   {y:0.09,x,rx:0.045,rz:0.047,w:[[SHN,1]],m:RR_MAT.sock,row:0.5,useam:seam,shape:2.1},
+   {y:0.05,x,rx:0.041,rz:0.043,w:[[SHN,1]],m:RR_MAT.sock,row:0.5,useam:seam,shape:2.1},
+   {y:0.03,x,rx:0.02,rz:0.02,w:[[SHN,1]],m:RR_MAT.sock,row:0.5,useam:seam,shape:2},
+  ],22);}
+ /* 腕：肩（三角筋）→上腕→前腕→手 を1本の筒で */
+ for(const s of ['r','l']){const sg=s==='r'?-1:1;const UA=B(s+'Sh'),FA=B(s+'El'),HA=B(s+'Hand');const x=sg*RR.SHX;const srow=y=>RR_UV.S0+(1.465-y)/(1.465-1.265)*(RR_UV.S1-RR_UV.S0);
   tube([
-   {y:1.465,x:x-sg*0.02,rx:0.072,rz:0.066,w:[[C,1]],m:RR_MAT.jersey},
-   {y:1.42,x,rx:0.07,rz:0.066,w:[[C,0.5],[UA,0.5]],m:RR_MAT.jersey},
-   {y:1.36,x,rx:0.063,rz:0.06,w:[[UA,1]],m:RR_MAT.jersey},
-   {y:1.29,x,rx:0.056,rz:0.054,w:[[UA,1]],m:RR_MAT.trim},
-   {y:1.265,x,rx:0.052,rz:0.05,w:[[UA,1]],m:RR_MAT.skin},
-   {y:1.16,x,rx:0.047,rz:0.046,w:[[UA,0.75],[FA,0.25]],m:RR_MAT.skin},
-   {y:1.12,x,rx:0.045,rz:0.044,w:[[UA,0.5],[FA,0.5]],m:RR_MAT.skin},
-   {y:1.085,x,rx:0.045,rz:0.043,w:[[FA,1]],m:RR_MAT.skin},
-   {y:1.00,x,rx:0.046,rz:0.044,w:[[FA,1]],m:RR_MAT.skin},
-   {y:0.90,x,rx:0.036,rz:0.034,w:[[FA,1]],m:RR_MAT.skin},
-   {y:0.87,x,rx:0.033,rz:0.029,w:[[FA,0.6],[HA,0.4]],m:RR_MAT.hands},
-   {y:0.85,x,rx:0.032,rz:0.026,w:[[FA,0.5],[HA,0.5]],m:RR_MAT.hands},
-   {y:0.825,x,rx:0.036,rz:0.024,w:[[HA,1]],m:RR_MAT.hands},
-   {y:0.78,x,rx:0.046,rz:0.021,w:[[HA,1]],m:RR_MAT.hands},
-   {y:0.72,x,rx:0.041,rz:0.019,w:[[HA,1]],m:RR_MAT.hands},
-   {y:0.685,x,rx:0.026,rz:0.013,w:[[HA,1]],m:RR_MAT.hands},
-   {y:0.675,x,rx:0.006,rz:0.004,w:[[HA,1]],m:RR_MAT.hands},
-  ],10);}
- const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));
+   {y:1.458,x:x-sg*0.04,rx:0.02,rz:0.02,w:[[C,1]],m:RR_MAT.uni,row:srow(1.465),shape:2,ao:'arm'},
+   {y:1.452,x:x-sg*0.022,rx:0.052,rz:0.05,w:[[C,1]],m:RR_MAT.uni,row:srow(1.465),shape:2},
+   {y:1.44,x:x-sg*0.008,rx:0.072,rz:0.068,w:[[C,1]],m:RR_MAT.uni,row:srow(1.455),shape:2},
+   {y:1.425,x,rx:0.074,rz:0.07,w:[[C,0.6],[UA,0.4]],m:RR_MAT.uni,row:srow(1.43),shape:2},
+   {y:1.39,x,rx:0.068,rz:0.065,w:[[C,0.2],[UA,0.8]],m:RR_MAT.uni,row:srow(1.39),shape:2},
+   {y:1.34,x,rx:0.062,rz:0.06,w:[[UA,1]],m:RR_MAT.uni,row:srow(1.34),shape:2},
+   {y:1.29,x,rx:0.057,rz:0.055,w:[[UA,1]],m:RR_MAT.uni,row:srow(1.29),shape:2},
+   {y:1.265,x,rx:0.054,rz:0.052,w:[[UA,1]],m:RR_MAT.skin,row:srow(1.265),shape:2},
+   {y:1.19,x,rx:0.05,rz:0.049,w:[[UA,1]],m:RR_MAT.skin,row:0.5,shape:2},
+   {y:1.15,x,rx:0.047,rz:0.046,w:[[UA,0.7],[FA,0.3]],m:RR_MAT.skin,row:0.5,shape:2},
+   {y:1.12,x,rx:0.046,rz:0.045,w:[[UA,0.5],[FA,0.5]],m:RR_MAT.skin,row:0.5,shape:2},
+   {y:1.09,x,rx:0.046,rz:0.044,w:[[UA,0.25],[FA,0.75]],m:RR_MAT.skin,row:0.5,shape:2},
+   {y:1.02,x,rx:0.048,rz:0.046,w:[[FA,1]],m:RR_MAT.skin,row:0.5,shape:2},
+   {y:0.93,x,rx:0.039,rz:0.037,w:[[FA,1]],m:RR_MAT.skin,row:0.5,shape:2},
+   {y:0.88,x,rx:0.034,rz:0.03,w:[[FA,0.7],[HA,0.3]],m:RR_MAT.hands,row:0.5,shape:2},
+   {y:0.85,x,rx:0.033,rz:0.027,w:[[FA,0.5],[HA,0.5]],m:RR_MAT.hands,row:0.5,shape:2.2},
+   {y:0.82,x,rx:0.038,rz:0.025,w:[[HA,1]],m:RR_MAT.hands,row:0.5,shape:2.4},
+   {y:0.78,x,rx:0.047,rz:0.022,w:[[HA,1]],m:RR_MAT.hands,row:0.5,shape:2.6},
+   {y:0.73,x,rx:0.043,rz:0.02,w:[[HA,1]],m:RR_MAT.hands,row:0.5,shape:2.6},
+   {y:0.69,x,rx:0.03,rz:0.015,w:[[HA,1]],m:RR_MAT.hands,row:0.5,shape:2.2},
+   {y:0.675,x,rx:0.008,rz:0.005,w:[[HA,1]],m:RR_MAT.hands,row:0.5,shape:2},
+  ],16);}
+ const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));g.setAttribute('uv',new THREE.Float32BufferAttribute(uv,2));g.setAttribute('color',new THREE.Float32BufferAttribute(col,3));
  g.setAttribute('skinIndex',new THREE.Uint16BufferAttribute(skinI,4));g.setAttribute('skinWeight',new THREE.Float32BufferAttribute(skinW,4));
  const idx=[];let start=0;const mats=Object.keys(byMat).map(Number).sort((a,b)=>a-b);for(const m of mats){const arr=byMat[m];idx.push(...arr);g.addGroup(start,arr.length,m);start+=arr.length;}
- g.setIndex(idx);g.computeVertexNormals();g.computeBoundingSphere();RR_GEO=g;return g;}
-/* 顔のテクスチャ（肌色＋目・眉・口）。球の正面は u=0.25 */
-function rrFaceTex(skin){const k=skin;if(RR_FACE&&RR_FACE[k])return RR_FACE[k];RR_FACE=RR_FACE||{};const cv=document.createElement('canvas');cv.width=256;cv.height=128;const g=cv.getContext('2d');
- g.fillStyle=skin;g.fillRect(0,0,256,128);
- /* 坊主頭の生え際（上部をやや暗く） */const dark=new THREE.Color(skin).multiplyScalar(0.72).getStyle();g.fillStyle=dark;g.globalAlpha=0.55;g.fillRect(0,0,256,34);g.globalAlpha=1;
- const ex=64,ey=64;for(const sg of [-1,1]){const x=ex+sg*14;
-  g.fillStyle='#f7f1ea';g.beginPath();g.ellipse(x,ey,6.5,3.6,0,0,Math.PI*2);g.fill();
-  g.fillStyle='#2a1d16';g.beginPath();g.arc(x+sg*0.5,ey+0.4,2.6,0,Math.PI*2);g.fill();
-  g.fillStyle='#000';g.beginPath();g.arc(x+sg*0.5,ey+0.4,1.2,0,Math.PI*2);g.fill();
-  g.strokeStyle='#2b1d14';g.lineWidth=2.2;g.lineCap='round';g.beginPath();g.moveTo(x-sg*7,ey-9);g.quadraticCurveTo(x,ey-12,x+sg*7,ey-9.5);g.stroke();}
- /* 鼻・口・頬の影 */g.strokeStyle='rgba(90,50,30,.35)';g.lineWidth=2;g.beginPath();g.moveTo(ex,ey+3);g.lineTo(ex-1.5,ey+15);g.lineTo(ex+3,ey+16);g.stroke();
- g.strokeStyle='#7a3b30';g.lineWidth=2.4;g.beginPath();g.moveTo(ex-7,ey+26);g.quadraticCurveTo(ex,ey+29,ex+7,ey+26);g.stroke();
- g.fillStyle='rgba(120,60,40,.08)';g.beginPath();g.ellipse(ex-20,ey+16,8,6,0,0,Math.PI*2);g.fill();g.beginPath();g.ellipse(ex+20,ey+16,8,6,0,0,Math.PI*2);g.fill();
- const t=new THREE.CanvasTexture(cv);t.colorSpace=THREE.SRGBColorSpace;t.anisotropy=4;RR_FACE[k]=t;return t;}
+ g.setIndex(idx);g.computeVertexNormals();
+ /* 継ぎ目（UVのために複製した頂点）の法線を揃えて折れ目を消す */{const nr=g.attributes.normal;for(const [a,b] of seamPairs){const nx=(nr.getX(a)+nr.getX(b))/2,ny=(nr.getY(a)+nr.getY(b))/2,nz=(nr.getZ(a)+nr.getZ(b))/2;const l=Math.hypot(nx,ny,nz)||1;nr.setXYZ(a,nx/l,ny/l,nz/l);nr.setXYZ(b,nx/l,ny/l,nz/l);}nr.needsUpdate=true;}
+ g.computeBoundingSphere();RR_GEO=g;return g;}
+/* ---- 布の凹凸（共通バンプマップ） ---- */
+function rrBump(){if(RR_BUMP)return RR_BUMP;const N=512;const c=document.createElement('canvas');c.width=c.height=N;const g=c.getContext('2d');g.fillStyle='#808080';g.fillRect(0,0,N,N);
+ let sd=11;const rnd=()=>{sd=(sd*1103515245+12345)&0x7fffffff;return sd/0x7fffffff;};
+ for(let i=0;i<260;i++){const x=rnd()*N,y=rnd()*N,r=12+rnd()*60;const gr=g.createRadialGradient(x,y,0,x,y,r);const v=rnd()<0.5?110:150;gr.addColorStop(0,`rgba(${v},${v},${v},0.5)`);gr.addColorStop(1,'rgba(128,128,128,0)');g.fillStyle=gr;g.beginPath();g.arc(x,y,r,0,Math.PI*2);g.fill();}
+ for(let i=0;i<4000;i++){const v=118+Math.floor(rnd()*20);g.fillStyle=`rgb(${v},${v},${v})`;g.fillRect(rnd()*N,rnd()*N,1.5,1.5);}
+ const t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.repeat.set(2,2);RR_BUMP=t;return t;}
+/* ---- チームのユニフォーム定義を正規化 ---- */
+function rrUniform(c){c=c||{};return {base:c.base||'#f4f4f4',trim:c.trim||'#223',cap:c.cap||c.trim||'#223',capBrim:c.capBrim||c.cap||c.trim||'#223',pants:c.pants||'#f4f4f4',style:c.style||'plain',text:c.text||'',textFont:c.textFont||'graduate',textColor:c.textColor||c.trim||'#223',textOutline:c.textOutline||c.base||'#fff',numFont:c.numFont||'oswald',numColor:c.numColor||c.trim||'#223',numOutline:c.numOutline||c.base||'#fff',mark:c.mark||(c.text?[...c.text][0]:''),emblem:c.emblem||null};}
+function rrFont(id){try{return fontCss(id);}catch(e){return 'sans-serif';}}
+/* ユニフォームのアトラス（チームごとにキャッシュ） */
+function rrAtlas(u){const key=[u.base,u.trim,u.pants,u.style].join('|');if(RR_ATLAS[key])return RR_ATLAS[key];
+ const N=1024;const c=document.createElement('canvas');c.width=c.height=N;const g=c.getContext('2d');
+ const J0=RR_UV.J0*N,J1=RR_UV.J1*N,S0=RR_UV.S0*N,S1=RR_UV.S1*N,P0=RR_UV.P0*N,P1=RR_UV.P1*N;
+ let sd=5;const rnd=()=>{sd=(sd*1103515245+12345)&0x7fffffff;return sd/0x7fffffff;};
+ const weave=(y0,y1)=>{g.fillStyle='rgba(0,0,0,.045)';for(let y=y0;y<y1;y+=3)g.fillRect(0,y,N,1);g.fillStyle='rgba(255,255,255,.05)';for(let i=0;i<2500;i++)g.fillRect(rnd()*N,y0+rnd()*(y1-y0),1.5,1.5);};
+ /* ジャージ本体 */g.fillStyle=u.base;g.fillRect(0,J0,N,J1-J0);
+ if(u.style==='pin'){g.fillStyle=u.trim;for(let x=8;x<N;x+=26)g.fillRect(x,J0,2.2,J1-J0);}
+ if(u.style==='band'){g.fillStyle=u.trim;g.fillRect(0,J0+(J1-J0)*0.30,N*0.5,(J1-J0)*0.22);}
+ if(u.style==='raglan'){g.fillStyle=u.trim;for(const cx of [0,N*0.5,N]){g.beginPath();g.moveTo(cx-150,J0);g.lineTo(cx+150,J0);g.lineTo(cx,J0+95);g.closePath();g.fill();}}
+ /* 前立て（正面 u=0.25 → x=256） */{const x=N*0.25;if(u.style==='placket'){g.fillStyle=u.trim;g.fillRect(x-9,J0,18,J1-J0);g.fillStyle=u.base;g.fillRect(x-5,J0,10,J1-J0);}
+  g.strokeStyle='rgba(0,0,0,.22)';g.lineWidth=1.5;g.beginPath();g.moveTo(x,J0+10);g.lineTo(x,J1);g.stroke();
+  for(let k=0;k<5;k++){const y=J0+48+k*68;g.fillStyle='#f3f1ea';g.beginPath();g.arc(x,y,5,0,Math.PI*2);g.fill();g.strokeStyle='rgba(0,0,0,.45)';g.lineWidth=1;g.stroke();}}
+ /* 襟（上端の縁取り） */g.fillStyle=u.trim;g.fillRect(0,J0,N,13);g.fillStyle='rgba(0,0,0,.12)';g.fillRect(0,J0+13,N,3);
+ weave(J0,J1);
+ /* 袖 */g.fillStyle=u.style==='raglan'?u.trim:u.base;g.fillRect(0,S0,N,S1-S0);
+ if(u.style==='sleeve'){g.fillStyle=u.trim;g.fillRect(0,S1-26,N,26);g.fillStyle=u.base;g.fillRect(0,S1-16,N,4);}
+ else if(u.style==='pin'){g.fillStyle=u.trim;for(let x=8;x<N;x+=26)g.fillRect(x,S0,2.2,S1-S0);g.fillRect(0,S1-8,N,8);}
+ else if(u.style!=='plain'&&u.style!=='raglan'){g.fillStyle=u.trim;g.fillRect(0,S1-9,N,9);}
+ weave(S0,S1);
+ /* ズボン：サイドライン（u=0.5 → x=512）とベルト通し */g.fillStyle=u.pants;g.fillRect(0,P0,N,P1-P0);
+ if(u.style!=='plain'){g.fillStyle=u.trim;g.fillRect(N*0.5-7,P0+30,14,P1-P0-30);if(u.style==='pin'||u.style==='placket'){g.fillStyle=u.pants;g.fillRect(N*0.5-2,P0+30,4,P1-P0-30);}}
+ g.fillStyle='rgba(0,0,0,.25)';for(const x of [N*0.12,N*0.37,N*0.62,N*0.87])g.fillRect(x-6,P0,12,22);
+ weave(P0,P1);
+ const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;t.anisotropy=R3.renderer?Math.min(8,R3.renderer.capabilities.getMaxAnisotropy()):4;t.wrapS=THREE.RepeatWrapping;
+ const mat=new THREE.MeshStandardMaterial({map:t,bumpMap:rrBump(),bumpScale:0.004,roughness:0.9,metalness:0,envMap:R3.env||null,envMapIntensity:0.2,vertexColors:true});RR_ATLAS[key]={tex:t,mat};return RR_ATLAS[key];}
+/* 帽子マーク（チーム名の頭文字） */
+function rrMark(u){const key=[u.mark,u.cap,u.trim,u.base].join('|');if(RR_MARK[key])return RR_MARK[key];const c=document.createElement('canvas');c.width=c.height=128;const g=c.getContext('2d');
+ const col=u.cap===u.base?u.trim:u.base;if(u.mark){g.font='700 86px "Dela Gothic One","Noto Sans JP",sans-serif';g.textAlign='center';g.textBaseline='middle';g.lineWidth=10;g.strokeStyle=u.trim===u.cap?'rgba(255,255,255,.9)':u.trim;g.strokeText(u.mark,64,70);g.fillStyle=col;g.fillText(u.mark,64,70);}
+ const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;RR_MARK[key]=t;return t;}
+/* 顔のテクスチャ（肌色＋目・眉・鼻・口・頬）。球の正面は u=0.25、目は赤道 */
+function rrFaceTex(skin){if(RR_FACE&&RR_FACE[skin])return RR_FACE[skin];RR_FACE=RR_FACE||{};const cv=document.createElement('canvas');cv.width=512;cv.height=256;const g=cv.getContext('2d');
+ const base=new THREE.Color(skin);g.fillStyle=skin;g.fillRect(0,0,512,256);
+ const shade=(k)=>'#'+base.clone().multiplyScalar(k).getHexString();
+ /* 坊主頭：頭頂〜後頭部をやや暗く（髪の青み） */{const gr=g.createLinearGradient(0,0,0,110);gr.addColorStop(0,'rgba(60,45,40,.55)');gr.addColorStop(0.6,'rgba(60,45,40,.35)');gr.addColorStop(1,'rgba(60,45,40,0)');g.fillStyle=gr;g.fillRect(0,0,512,110);
+  g.fillStyle='rgba(60,45,40,.28)';g.fillRect(256,0,256,150);/* 後頭部 */g.fillRect(0,0,70,150);g.fillRect(442,0,70,150);}
+ const ex=128,ey=128;
+ /* 眉 */for(const sg of [-1,1]){const x=ex+sg*28;g.strokeStyle='#2a1c14';g.lineWidth=4.5;g.lineCap='round';g.beginPath();g.moveTo(x-sg*16,ey-20);g.quadraticCurveTo(x,ey-26,x+sg*14,ey-21);g.stroke();}
+ /* 目 */for(const sg of [-1,1]){const x=ex+sg*27;
+  g.fillStyle='rgba(120,70,50,.25)';g.beginPath();g.ellipse(x,ey+2,16,9,0,0,Math.PI*2);g.fill();
+  g.fillStyle='#f8f3ee';g.beginPath();g.ellipse(x,ey,13,6.5,0,0,Math.PI*2);g.fill();
+  g.fillStyle='#3b2416';g.beginPath();g.arc(x+sg*1,ey+0.5,5.2,0,Math.PI*2);g.fill();g.fillStyle='#120a06';g.beginPath();g.arc(x+sg*1,ey+0.5,2.6,0,Math.PI*2);g.fill();
+  g.fillStyle='rgba(255,255,255,.8)';g.beginPath();g.arc(x+sg*1-1.5,ey-1.5,1.3,0,Math.PI*2);g.fill();
+  g.strokeStyle='#2a1a12';g.lineWidth=2.2;g.beginPath();g.ellipse(x,ey-1,13.5,7,0,Math.PI,Math.PI*2);g.stroke();}
+ /* 鼻 */{g.fillStyle='rgba(90,50,30,.22)';g.beginPath();g.moveTo(ex-3,ey+6);g.quadraticCurveTo(ex-9,ey+30,ex-10,ey+34);g.quadraticCurveTo(ex,ey+40,ex+10,ey+34);g.quadraticCurveTo(ex+5,ey+28,ex+3,ey+6);g.closePath();g.fill();
+  g.fillStyle='rgba(60,30,20,.45)';g.beginPath();g.ellipse(ex-6,ey+34,3.5,2,0,0,Math.PI*2);g.fill();g.beginPath();g.ellipse(ex+6,ey+34,3.5,2,0,0,Math.PI*2);g.fill();}
+ /* 口 */{g.strokeStyle='#8a4a3c';g.lineWidth=3;g.lineCap='round';g.beginPath();g.moveTo(ex-13,ey+56);g.quadraticCurveTo(ex,ey+61,ex+13,ey+56);g.stroke();g.fillStyle='rgba(200,120,110,.35)';g.beginPath();g.moveTo(ex-13,ey+56);g.quadraticCurveTo(ex,ey+66,ex+13,ey+56);g.quadraticCurveTo(ex,ey+60,ex-13,ey+56);g.fill();}
+ /* 頬・顎の影 */g.fillStyle='rgba(200,90,70,.10)';g.beginPath();g.ellipse(ex-40,ey+28,18,12,0,0,Math.PI*2);g.fill();g.beginPath();g.ellipse(ex+40,ey+28,18,12,0,0,Math.PI*2);g.fill();
+ g.fillStyle='rgba(60,35,25,.14)';g.fillRect(0,ey+80,512,60);
+ const t=new THREE.CanvasTexture(cv);t.colorSpace=THREE.SRGBColorSpace;t.anisotropy=4;RR_FACE[skin]=t;return t;}
 let RR_N=0;
 class R3RigReal{
- constructor(){this.g=new THREE.Group();this.j={};this.col=null;this.pose=null;this.helmet=false;this.skin=RR_SKIN[(RR_N++)%RR_SKIN.length];this.build();}
- build(){const G=this.g,j=this.j;const bone=(p,x,y,z)=>{const b=new THREE.Bone();b.position.set(x,y,z);p.add(b);return b;};
+ constructor(){this.g=new THREE.Group();this.j={};this.col=null;this.uni=null;this.pose=null;this.helmet=false;this.gear=null;this.skin=RR_SKIN[(RR_N++)%RR_SKIN.length];this.mirrored=false;this.build();}
+ build(){this.buildBody();this.buildGear();}
+ /* 手続き生成の体（スキンメッシュ）。GLB版（R3RigGL）はここを置き換える */
+ buildBody(){const G=this.g,j=this.j;const bone=(p,x,y,z)=>{const b=new THREE.Bone();b.position.set(x,y,z);p.add(b);return b;};
   j.hips=bone(G,0,RR.HIPS,0);j.torso=bone(j.hips,0,RR.TORSO,0);j.chest=bone(j.torso,0,RR.CHEST,0);j.head=bone(j.chest,0,RR.NECK,0);
   for(const s of ['r','l']){const sg=s==='r'?-1:1;j[s+'Sh']=bone(j.chest,sg*RR.SHX,RR.SHY,0);j[s+'El']=bone(j[s+'Sh'],0,-RR.UA,0);j[s+'Hand']=bone(j[s+'El'],0,-RR.FA,0);
    j[s+'Hip']=bone(j.hips,sg*RR.HIPX,RR.HIPY,0);j[s+'Knee']=bone(j[s+'Hip'],0,-RR.TH,0);}
   G.updateMatrixWorld(true);
   const bones=RR_BONES.map(k=>j[k]);const skel=new THREE.Skeleton(bones);
-  const mats=[];for(let i=0;i<8;i++)mats.push(r3MatP('#ffffff'));
-  const body=this.body=new THREE.SkinnedMesh(rrBuildBody(),mats);body.castShadow=true;body.receiveShadow=false;body.frustumCulled=false;G.add(body);body.bind(skel,new THREE.Matrix4());
-  const mesh=(p,geo,mat)=>{const m=new THREE.Mesh(geo,mat);m.castShadow=true;p.add(m);return m;};
+  const mats=[];for(let i=0;i<5;i++)mats.push(r3MatP('#ffffff'));
+  const body=this.body=new THREE.SkinnedMesh(rrBuildBody(),mats);body.castShadow=true;body.receiveShadow=true;body.frustumCulled=false;G.add(body);body.bind(skel,new THREE.Matrix4());
+  /* 装備の取り付け寸法：頭の中心・半径、胸の半径、すね長、手首→拳 */
+  this.dim={hipsY:RR.HIPS,headCy:0.13,headCz:0,headR:0.105,chestR:0.123,chestY:0.12,textY:0.13,shin:RR.SH,palm:0.12,fist:0.075,L1:RR.UA,L2:RR.FA,hasHead:false,hasFeet:false,hasHands:false};
+  const mesh=(p,geo,mat)=>{const m=new THREE.Mesh(geo,mat);m.castShadow=true;m.receiveShadow=true;p.add(m);return m;};
   /* 頭（楕円体＋顔テクスチャ）・耳 */
-  this.headM=mesh(j.head,r3Geo('rhead',()=>{const g=new THREE.SphereGeometry(0.1,28,20);g.scale(0.95,1.15,1.03);return g;}),new THREE.MeshStandardMaterial({map:rrFaceTex(this.skin),roughness:0.6,metalness:0}));this.headM.position.y=0.13;
-  for(const sg of [-1,1]){const e=mesh(j.head,r3Geo('rear',()=>{const g=new THREE.SphereGeometry(0.022,10,8);g.scale(0.5,1,0.8);return g;}),r3MatP(this.skin,{roughness:0.6}));e.position.set(sg*0.096,0.125,-0.005);}
-  /* 帽子（クラウン＋つば）・ヘルメット（耳当て付き） */
-  this.capM=mesh(j.head,r3Geo('rcap',()=>{const g=new THREE.SphereGeometry(0.112,28,14,0,Math.PI*2,0,Math.PI*0.56);g.scale(1,0.82,1.06);return g;}),r3MatP('#333'));this.capM.position.set(0,0.178,0.0);this.capM.rotation.x=0.1;
-  this.brimM=mesh(j.head,r3Geo('rbrim',()=>{const g=new THREE.CylinderGeometry(0.118,0.118,0.009,24,1,false,-Math.PI*0.42,Math.PI*0.84);g.scale(1,1,1.7);return g;}),r3MatP('#333'));this.brimM.position.set(0,0.188,0.03);this.brimM.rotation.x=0.26;
-  this.btnM=mesh(j.head,r3Sph(0.012),r3MatP('#333'));this.btnM.position.set(0,0.268,-0.005);
-  this.helmetM=mesh(j.head,r3Geo('rhelm',()=>{const a=new THREE.SphereGeometry(0.118,28,16,0,Math.PI*2,0,Math.PI*0.53);a.scale(1,0.95,1.08);const b=new THREE.SphereGeometry(0.118,28,16,Math.PI*0.9,Math.PI*1.2,Math.PI*0.5,Math.PI*0.24);b.scale(1,0.95,1.08);
-   /* 前半分は眉の上まで、後ろ半分は後頭部まで覆う */const pa=a.attributes.position.array,pb=b.attributes.position.array;const pos=new Float32Array(pa.length+pb.length);pos.set(pa);pos.set(pb,pa.length);const ia=a.index.array,ib=b.index.array;const na=pa.length/3;const idx=new Uint16Array(ia.length+ib.length);idx.set(ia);for(let i=0;i<ib.length;i++)idx[ia.length+i]=ib[i]+na;const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(pos,3));g.setIndex(new THREE.BufferAttribute(idx,1));g.computeVertexNormals();return g;}),r3MatP('#333',{roughness:0.35}));this.helmetM.position.set(0,0.172,0.0);this.helmetM.visible=false;
-  this.hbrimM=mesh(j.head,r3Geo('rhbrim',()=>{const g=new THREE.CylinderGeometry(0.118,0.118,0.012,24,1,false,-Math.PI*0.4,Math.PI*0.8);g.scale(1,1,1.3);return g;}),r3MatP('#333',{roughness:0.35}));this.hbrimM.position.set(0,0.185,0.035);this.hbrimM.rotation.x=0.18;this.hbrimM.visible=false;
-  this.flapM=mesh(j.head,r3Geo('rflap',()=>{const g=new THREE.SphereGeometry(0.045,12,10);g.scale(0.45,1.25,1.1);return g;}),r3MatP('#333',{roughness:0.35}));this.flapM.position.set(0.108,0.115,0.012);this.flapM.visible=false;
-  /* 靴 */
-  for(const s of ['r','l']){const sh=mesh(j[s+'Knee'],r3Geo('rshoe',()=>{const g=new THREE.CapsuleGeometry(0.043,0.16,4,10);g.rotateX(Math.PI/2);g.scale(1.05,0.72,1);g.translate(0,0,0.045);return g;}),r3MatP('#1c1c1e',{roughness:0.5}));sh.position.set(0,-RR.SH+0.004,0.0);this[s+'FootM']=sh;}
-  /* グラブ（左手） */
-  this.glove=mesh(j.lHand,r3Geo('rglove',()=>{const g=new THREE.SphereGeometry(0.11,14,12);g.scale(1,1.25,0.42);return g;}),r3MatP('#8b5e34',{roughness:0.7}));this.glove.position.set(0.0,-0.085,0.03);this.glove.visible=false;
-  /* 手のひら位置（ボールを握る位置） */this.palm={};for(const s of ['r','l']){const o=new THREE.Object3D();o.position.set(0,-0.12,0.02);j[s+'Hand'].add(o);this.palm[s]=o;}
+  this.headM=mesh(j.head,r3Geo('rhead',()=>{const g=new THREE.SphereGeometry(0.1,32,24);g.scale(0.95,1.15,1.03);return g;}),new THREE.MeshStandardMaterial({map:rrFaceTex(this.skin),roughness:0.55,metalness:0,envMap:R3.env||null,envMapIntensity:0.3}));this.headM.position.y=0.13;
+  for(const sg of [-1,1]){const e=mesh(j.head,r3Geo('rear',()=>{const g=new THREE.SphereGeometry(0.023,10,8);g.scale(0.5,1,0.8);return g;}),r3MatP(this.skin,{roughness:0.62}));e.position.set(sg*0.096,0.125,-0.005);}}
+ /* 装備・小物：帽子・ヘルメット・マスク・プロテクター・靴・グラブ・バット・背番号。dim に合わせて拡縮する */
+ buildGear(){const G=this.g,j=this.j;const D=this.dim;const mesh=(p,geo,mat)=>{const m=new THREE.Mesh(geo,mat);m.castShadow=true;m.receiveShadow=true;p.add(m);return m;};
+  const hs=D.headR/0.105;const HG=this.headG=new THREE.Group();HG.position.set(0,D.headCy,D.headCz||0);HG.scale.setScalar(hs);j.head.add(HG);const hy=y=>y-0.13;
+  /* 帽子（クラウン＋つば＋マーク）・ヘルメット（耳当て付き） */
+  this.capM=mesh(HG,r3Geo('rcap',()=>{const g=new THREE.SphereGeometry(0.112,28,14,0,Math.PI*2,0,Math.PI*0.56);g.scale(1,0.82,1.06);return g;}),r3MatP('#333'));this.capM.position.set(0,hy(0.178),0.0);this.capM.rotation.x=0.1;
+  this.brimM=mesh(HG,r3Geo('rbrim',()=>{const g=new THREE.CylinderGeometry(0.118,0.118,0.009,24,1,false,-Math.PI*0.42,Math.PI*0.84);g.scale(1,1,1.7);return g;}),r3MatP('#333'));this.brimM.position.set(0,hy(0.188),0.03);this.brimM.rotation.x=0.26;
+  this.btnM=mesh(HG,r3Sph(0.012),r3MatP('#333'));this.btnM.position.set(0,hy(0.268),-0.005);
+  this.markM=new THREE.Mesh(r3Geo('rmark',()=>new THREE.PlaneGeometry(0.06,0.06)),new THREE.MeshBasicMaterial({transparent:true,depthWrite:false,toneMapped:false}));this.markM.position.set(0,hy(0.205),0.106);this.markM.rotation.x=-0.35;this.markM.castShadow=false;HG.add(this.markM);
+  this.helmetM=mesh(HG,r3Geo('rhelm',()=>{const a=new THREE.SphereGeometry(0.118,28,16,0,Math.PI*2,0,Math.PI*0.53);a.scale(1,0.95,1.08);const b=new THREE.SphereGeometry(0.118,28,16,Math.PI*0.9,Math.PI*1.2,Math.PI*0.5,Math.PI*0.24);b.scale(1,0.95,1.08);
+   const pa=a.attributes.position.array,pb=b.attributes.position.array;const pos=new Float32Array(pa.length+pb.length);pos.set(pa);pos.set(pb,pa.length);const ia=a.index.array,ib=b.index.array;const na=pa.length/3;const idx=new Uint16Array(ia.length+ib.length);idx.set(ia);for(let i=0;i<ib.length;i++)idx[ia.length+i]=ib[i]+na;const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(pos,3));g.setIndex(new THREE.BufferAttribute(idx,1));g.computeVertexNormals();return g;}),r3MatP('#333',{roughness:0.3}));this.helmetM.position.set(0,hy(0.172),0.0);this.helmetM.visible=false;
+  this.hbrimM=mesh(HG,r3Geo('rhbrim',()=>{const g=new THREE.CylinderGeometry(0.118,0.118,0.012,24,1,false,-Math.PI*0.4,Math.PI*0.8);g.scale(1,1,1.3);return g;}),r3MatP('#333',{roughness:0.3}));this.hbrimM.position.set(0,hy(0.185),0.035);this.hbrimM.rotation.x=0.18;this.hbrimM.visible=false;
+  this.flapM=mesh(HG,r3Geo('rflap',()=>{const g=new THREE.SphereGeometry(0.045,12,10);g.scale(0.45,1.25,1.1);return g;}),r3MatP('#333',{roughness:0.3}));this.flapM.position.set(0.108,hy(0.115),0.012);this.flapM.visible=false;
+  /* 捕手・審判のマスク（金属バー＋パッド） */
+  this.maskG=new THREE.Group();HG.add(this.maskG);this.maskG.position.set(0,0,0.0);this.maskG.visible=false;
+  {const bar=r3MatP('#2a2d33',{roughness:0.4,metalness:0.6});const pad=r3MatP('#1c1c1e',{roughness:0.9});
+   for(const y of [-0.055,-0.02,0.015,0.05]){const t=new THREE.Mesh(r3Geo('rmbar',()=>new THREE.TorusGeometry(0.105,0.004,6,20,Math.PI)),bar);t.position.set(0,y,0.02);t.rotation.set(0,0,Math.PI);t.rotation.y=Math.PI/2;t.rotation.x=0;t.castShadow=false;this.maskG.add(t);}
+   for(const x of [-0.03,0.03]){const v=new THREE.Mesh(r3Geo('rmv',()=>new THREE.CylinderGeometry(0.0035,0.0035,0.15,6)),bar);v.position.set(x,0,0.118);v.castShadow=false;this.maskG.add(v);}
+   const chin=new THREE.Mesh(r3Geo('rmchin',()=>{const g=new THREE.TorusGeometry(0.1,0.02,8,24,Math.PI*0.9);g.rotateZ(Math.PI*1.05);return g;}),pad);chin.position.set(0,-0.03,0.035);this.maskG.add(chin);
+   const fore=new THREE.Mesh(r3Geo('rmfore',()=>{const g=new THREE.TorusGeometry(0.105,0.018,8,24,Math.PI*0.8);g.rotateZ(Math.PI*0.1);return g;}),pad);fore.position.set(0,0.07,0.03);this.maskG.add(fore);}
+  /* 捕手のプロテクター・レガース（胸・すねの寸法に合わせる） */
+  const cs=D.chestR/0.123;const CG=this.chestG=new THREE.Group();CG.scale.setScalar(cs);j.chest.add(CG);
+  this.protM=mesh(CG,r3Geo('rprot',()=>{const g=new THREE.SphereGeometry(0.2,20,14,0,Math.PI,0.2,Math.PI*0.62);g.scale(0.95,1.05,0.55);return g;}),r3MatP('#1f2a44',{roughness:0.8}));this.protM.position.set(0,0.09,0.05);this.protM.rotation.y=-Math.PI/2;this.protM.visible=false;if(D.hasHead){this.protM.scale.set(1.25,1.15,1.6);}
+  this.throatM=mesh(CG,r3Geo('rthroat',()=>{const g=new THREE.CylinderGeometry(0.075,0.075,0.05,14,1,true,-Math.PI*0.45,Math.PI*0.9);return g;}),r3MatP('#1f2a44',{roughness:0.8,side:THREE.DoubleSide}));this.throatM.position.set(0,0.30,0.06);this.throatM.visible=false;
+  const ks=D.shin/RR.SH;
+  for(const s of ['r','l']){const KG=new THREE.Group();KG.scale.setScalar(ks);j[s+'Knee'].add(KG);const lg=mesh(KG,r3Geo('rleg',()=>{const g=new THREE.CylinderGeometry(0.075,0.062,0.36,14,1,true,-Math.PI*0.5,Math.PI);g.translate(0,-0.19,0);return g;}),r3MatP('#1f2a44',{roughness:0.8,side:THREE.DoubleSide}));lg.position.set(0,0.0,0.01);lg.rotation.y=-Math.PI/2;lg.visible=false;this[s+'LegM']=lg;
+   const kn=mesh(KG,r3Geo('rknee',()=>{const g=new THREE.SphereGeometry(0.075,14,10,0,Math.PI,0,Math.PI*0.7);return g;}),r3MatP('#1f2a44',{roughness:0.8}));kn.position.set(0,0.0,0.012);kn.rotation.y=-Math.PI/2;kn.visible=false;this[s+'KneeM']=kn;
+   /* 靴（アッパー＋白い靴底）：足のあるモデルでは不要 */
+   if(!D.hasFeet){const sh=mesh(KG,r3Geo('rshoe',()=>{const g=new THREE.CapsuleGeometry(0.043,0.16,4,10);g.rotateX(Math.PI/2);g.scale(1.05,0.72,1);g.translate(0,0,0.045);return g;}),r3MatP('#1c1c1e',{roughness:0.5}));sh.position.set(0,-RR.SH+0.004,0.0);this[s+'FootM']=sh;
+    const sole=mesh(KG,r3Geo('rsole',()=>{const g=new THREE.BoxGeometry(0.088,0.012,0.26);g.translate(0,0,0.045);return g;}),r3MatP('#e9e7e0',{roughness:0.7}));sole.position.set(0,-RR.SH-0.02,0.0);sole.castShadow=false;}}
+  /* グラブ（左手）：本体＋ウェブ＋親指 */
+  this.glove=new THREE.Group();j.lHand.add(this.glove);this.glove.position.set(0,-D.palm+0.035,0.03);this.glove.visible=false;
+  {const gm=r3MatP('#8b5e34',{roughness:0.7}),gm2=r3MatP('#a8773f',{roughness:0.75});mesh(this.glove,r3Geo('rglove',()=>{const g=new THREE.SphereGeometry(0.11,16,12);g.scale(1,1.25,0.42);return g;}),gm);
+   const web=mesh(this.glove,r3Geo('rgweb',()=>{const g=new THREE.BoxGeometry(0.07,0.09,0.012);return g;}),gm2);web.position.set(0.055,0.09,0.0);web.rotation.z=0.5;
+   const th=mesh(this.glove,r3Geo('rgthumb',()=>{const g=new THREE.CapsuleGeometry(0.022,0.07,4,8);return g;}),gm);th.position.set(0.085,0.02,0.0);th.rotation.z=0.75;}
+  /* 手のひら位置（ボールを握る位置） */this.palm={};for(const s of ['r','l']){const o=new THREE.Object3D();o.position.set(0,-D.palm,0.02);j[s+'Hand'].add(o);this.palm[s]=o;}
   /* バット */
-  this.bat=new THREE.Group();G.add(this.bat);mesh(this.bat,r3Geo('bat',()=>{const g=new THREE.CylinderGeometry(0.04,0.018,0.82,10);g.translate(0,0.31,0);return g;}),r3MatP('#d2a670',{roughness:0.45}));const knob=mesh(this.bat,r3Geo('knob',()=>new THREE.CylinderGeometry(0.035,0.035,0.02,8)),r3MatP('#222'));knob.position.y=-0.1;
-  const grip=mesh(this.bat,r3Geo('rgrip',()=>{const g=new THREE.CylinderGeometry(0.02,0.019,0.25,10);g.translate(0,0.03,0);return g;}),r3MatP('#2a2a2a',{roughness:0.9}));this.bat.visible=false;
-  /* 背番号 */
-  this.numCv=document.createElement('canvas');this.numCv.width=this.numCv.height=96;this.numTex=new THREE.CanvasTexture(this.numCv);this.numTex.colorSpace=THREE.SRGBColorSpace;
-  this.numM=new THREE.Mesh(r3Geo('rnumpl',()=>new THREE.PlaneGeometry(0.19,0.21)),new THREE.MeshBasicMaterial({map:this.numTex,transparent:true,depthWrite:false,toneMapped:false}));this.numM.position.set(0,0.12,-0.122);this.numM.rotation.y=Math.PI;this.numM.castShadow=false;j.chest.add(this.numM);this.numVal=null;this.numCol=null;}
- setNumber(n,col){if(n==null){this.numM.visible=false;return;}this.numM.visible=true;if(this.numVal===n&&this.numCol===col)return;this.numVal=n;this.numCol=col;const g=this.numCv.getContext('2d');g.clearRect(0,0,96,96);g.font='700 70px Oswald,Arial,sans-serif';g.textAlign='center';g.textBaseline='middle';g.lineWidth=6;g.strokeStyle='rgba(255,255,255,.8)';g.strokeText(String(n),48,52);g.fillStyle=col||'#222';g.fillText(String(n),48,52);this.numTex.needsUpdate=true;}
- setColors(c,helmet){this.col=c;const m=this.body.material;const under=c.trim||'#333';
-  m[RR_MAT.jersey]=r3MatP(c.base);m[RR_MAT.pants]=r3MatP(c.pants||'#f4f4f4');m[RR_MAT.skin]=r3MatP(this.skin,{roughness:0.6});m[RR_MAT.under]=r3MatP(under);m[RR_MAT.belt]=r3MatP(c.cap||'#222');m[RR_MAT.trim]=r3MatP(c.trim||c.base);m[RR_MAT.sock]=r3MatP(c.cap&&c.cap!==c.base?c.cap:'#f4f4f4');
-  const capM=r3MatP(c.cap||'#333'),helmM=r3MatP(c.cap||'#333',{roughness:0.35});this.capM.material=capM;this.brimM.material=capM;this.btnM.material=capM;this.helmetM.material=helmM;this.hbrimM.material=helmM;this.flapM.material=helmM;
+  this.bat=new THREE.Group();G.add(this.bat);mesh(this.bat,r3Geo('batR',()=>{const g=new THREE.CylinderGeometry(0.034,0.014,0.84,18);g.translate(0,0.32,0);return g;}),r3MatP('#d6ab74',{roughness:0.4}));const knob=mesh(this.bat,r3Geo('knob',()=>new THREE.CylinderGeometry(0.035,0.035,0.02,8)),r3MatP('#222'));knob.position.y=-0.1;
+  mesh(this.bat,r3Geo('rgrip',()=>{const g=new THREE.CylinderGeometry(0.02,0.019,0.25,10);g.translate(0,0.03,0);return g;}),r3MatP('#2a2a2a',{roughness:0.9}));this.bat.visible=false;
+  /* 背番号・胸文字（リグごとのキャンバス。左利きで鏡像になるときは反転して描く）：胴の曲面に沿った帯（楕円柱の一部）に描く */
+  this.numCv=document.createElement('canvas');this.numCv.width=this.numCv.height=128;this.numTex=new THREE.CanvasTexture(this.numCv);this.numTex.colorSpace=THREE.SRGBColorSpace;
+  this.numM=new THREE.Mesh(r3Geo('rnumcyl',()=>{const g=new THREE.CylinderGeometry(0.123,0.123,0.2,14,1,true,Math.PI-0.62,1.24);g.scale(1.5,1,1);return g;}),new THREE.MeshBasicMaterial({map:this.numTex,transparent:true,depthWrite:false,toneMapped:false,polygonOffset:true,polygonOffsetFactor:-2}));this.numM.position.set(0,D.chestY/cs,0.0);this.numM.castShadow=false;CG.add(this.numM);this.numVal=null;this.numKey=null;
+  this.txtCv=document.createElement('canvas');this.txtCv.width=256;this.txtCv.height=96;this.txtTex=new THREE.CanvasTexture(this.txtCv);this.txtTex.colorSpace=THREE.SRGBColorSpace;
+  this.txtM=new THREE.Mesh(r3Geo('rtxtcyl',()=>{const g=new THREE.CylinderGeometry(0.121,0.121,0.09,14,1,true,-0.72,1.44);g.scale(1.5,1,1);return g;}),new THREE.MeshBasicMaterial({map:this.txtTex,transparent:true,depthWrite:false,toneMapped:false,polygonOffset:true,polygonOffsetFactor:-2}));this.txtM.position.set(0,D.textY/cs,0.0);this.txtM.castShadow=false;CG.add(this.txtM);this.txtKey=null;}
+ _drawNum(){const u=this.uni;const n=this.numVal;const key=[n,u&&u.numFont,u&&u.numColor,u&&u.numOutline,this.mirrored].join('|');if(key===this.numKey)return;this.numKey=key;const g=this.numCv.getContext('2d');g.setTransform(1,0,0,1,0,0);g.clearRect(0,0,128,128);if(n==null)return;
+  if(this.mirrored){g.translate(128,0);g.scale(-1,1);}g.font=`700 92px ${u?rrFont(u.numFont):'Oswald,sans-serif'}`;g.textAlign='center';g.textBaseline='middle';g.lineWidth=8;g.strokeStyle=u?u.numOutline:'#fff';g.strokeText(String(n),64,70);g.fillStyle=u?u.numColor:'#222';g.fillText(String(n),64,70);this.numTex.needsUpdate=true;}
+ _drawText(){const u=this.uni;const key=[u&&u.text,u&&u.textFont,u&&u.textColor,u&&u.textOutline,u&&u.style,this.mirrored].join('|');if(key===this.txtKey)return;this.txtKey=key;const g=this.txtCv.getContext('2d');g.setTransform(1,0,0,1,0,0);g.clearRect(0,0,256,96);if(!u||!u.text){this.txtTex.needsUpdate=true;return;}
+  if(this.mirrored){g.translate(256,0);g.scale(-1,1);}const len=[...u.text].length;const fs=Math.min(64,Math.max(26,Math.round(250/Math.max(1,len))));g.font=`700 ${fs}px ${rrFont(u.textFont)}`;g.textAlign='center';g.textBaseline='middle';g.lineWidth=6;g.strokeStyle=u.textOutline;g.strokeText(u.text,128,50);g.fillStyle=u.textColor;g.fillText(u.text,128,50);this.txtTex.needsUpdate=true;}
+ setNumber(n,col){this.numVal=n;this.numM.visible=n!=null;this._drawNum();}
+ setColors(c,helmet){if(this.col!==c){this.col=c;const u=this.uni=rrUniform(c);const m=this.body.material;
+   m[RR_MAT.uni]=rrAtlas(u).mat;m[RR_MAT.skin]=r3MatP(this.skin,{roughness:0.6,vertexColors:true});m[RR_MAT.belt]=r3MatP(u.cap&&u.cap!==u.pants?u.cap:'#222',{roughness:0.7,vertexColors:true});m[RR_MAT.sock]=r3MatP(u.cap&&u.cap!==u.base?u.cap:'#f4f4f4',{vertexColors:true});
+   const capM=r3MatP(u.cap),brimM=r3MatP(u.capBrim),helmM=r3MatP(u.cap,{roughness:0.3});this.capM.material=capM;this.brimM.material=brimM;this.btnM.material=capM;this.helmetM.material=helmM;this.hbrimM.material=helmM;this.flapM.material=helmM;
+   this.markM.material.map=rrMark(u);this.markM.material.needsUpdate=true;this.markM.visible=!!u.mark;
+   const prot=r3MatP(u.cap&&u.cap!=='#f4f4f4'?u.cap:'#1f2a44',{roughness:0.8}),prot2=r3MatP(u.cap&&u.cap!=='#f4f4f4'?u.cap:'#1f2a44',{roughness:0.8,side:THREE.DoubleSide});this.protM.material=prot;this.throatM.material=prot2;this.rLegM.material=prot2;this.lLegM.material=prot2;this.rKneeM.material=prot;this.lKneeM.material=prot;
+   this.txtM.visible=!!u.text;this._drawText();this._drawNum();}
   this.setHelmet(helmet);}
- setHelmet(on){this.helmet=!!on;this.helmetM.visible=!!on;this.hbrimM.visible=!!on;this.flapM.visible=!!on;this.capM.visible=!on;this.brimM.visible=!on;this.btnM.visible=!on;
-  /* 打者・走者はバッティンググローブ */if(this.col)this.body.material[RR_MAT.hands]=on?r3MatP(this.col.cap||'#222',{roughness:0.6}):r3MatP(this.skin,{roughness:0.6});}
+ setHelmet(on){on=!!on||this.gear==='catcher';if(this.helmet===on&&this._helmetInit)return;this._helmetInit=true;this.helmet=on;this.helmetM.visible=on;this.hbrimM.visible=on;this.flapM.visible=on&&this.gear!=='catcher';this.capM.visible=!on;this.brimM.visible=!on;this.btnM.visible=!on;this.markM.visible=!on&&!!(this.uni&&this.uni.mark);
+  /* 打者・走者はバッティンググローブ */if(this.uni)this.body.material[RR_MAT.hands]=on?r3MatP(this.uni.cap||'#222',{roughness:0.6,vertexColors:true}):r3MatP(this.skin,{roughness:0.6,vertexColors:true});}
+ /* 装備：null／'catcher'（マスク・プロテクター・レガース・ヘルメット）／'umpire'（マスク） */
+ setGear(kind){kind=kind||null;if(this.gear===kind)return;this.gear=kind;const c=kind==='catcher';this.maskG.visible=!!kind;this.protM.visible=c;this.throatM.visible=c;this.rLegM.visible=c;this.lLegM.visible=c;this.rKneeM.visible=c;this.lKneeM.visible=c;
+  if(c){this._helmetInit=false;this.setHelmet(true);this.flapM.visible=false;this.glove.visible=false;}}
  /* リグ座標系（g のスケール・位置を除く）でのノードの行列 */
  _localM(node){const M=new THREE.Matrix4();const chain=[];let n=node;while(n&&n!==this.g){chain.unshift(n);n=n.parent;}for(const c of chain){c.updateMatrix();M.multiply(c.matrix);}return M;}
  /* 2関節IK：side の手首を target（リグ座標）へ。pole は肘を向けたい方向のヒント */
- ikArm(side,target,pole){const j=this.j;const sh=j[side+'Sh'],el=j[side+'El'];const L1=RR.UA,L2=RR.FA;
+ ikArm(side,target,pole){const j=this.j;const sh=j[side+'Sh'],el=j[side+'El'];const L1=this.dim.L1,L2=this.dim.L2;
   const Mp=this._localM(sh.parent);const S=sh.position.clone().applyMatrix4(Mp);const Rp=new THREE.Quaternion().setFromRotationMatrix(Mp);const Rpi=Rp.clone().invert();
   const d=target.clone().sub(S).applyQuaternion(Rpi);let dist=clamp(d.length(),0.08,L1+L2-0.01);
   const cosT=(L1*L1+L2*L2-dist*dist)/(2*L1*L2);const theta=Math.acos(clamp(cosT,-1,1));const f=Math.PI-theta;el.rotation.set(-f,0,0);
@@ -4084,20 +4230,213 @@ class R3RigReal{
   const ep=E0.clone().addScaledVector(dn,-E0.dot(dn)),pp=pl.clone().addScaledVector(dn,-pl.dot(dn));
   if(ep.lengthSq()>1e-6&&pp.lengthSq()>1e-6){ep.normalize();pp.normalize();const ang=Math.atan2(ep.clone().cross(pp).dot(dn),ep.dot(pp));q.premultiply(new THREE.Quaternion().setFromAxisAngle(dn,ang));}
   sh.quaternion.copy(q);}
- apply(p){const j=this.j;for(const k in j)j[k].rotation.set(0,0,0);j.hips.position.set(0,RR.HIPS+(p.dy||0),p.dz||0);
+ apply(p){const j=this.j;for(const k in j)j[k].rotation.set(0,0,0);const hp=this.dim.hipsPos||[0,RR.HIPS,0];j.hips.position.set(hp[0],hp[1]+(p.dy||0),hp[2]+(p.dz||0));
+  const mir=this.g.scale.x<0;if(mir!==this.mirrored){this.mirrored=mir;this._drawNum();this._drawText();}
   for(const k in p){const r=p[k];if(!Array.isArray(r))continue;if(k==='torso'){j.torso.rotation.set(r[0]*0.45,r[1]*0.4,r[2]*0.45);j.chest.rotation.set(r[0]*0.55,r[1]*0.6,r[2]*0.55);continue;}const jo=j[k];if(jo)jo.rotation.set(r[0]||0,r[1]||0,r[2]||0);}
   if(this.bat.visible){/* バット：右手（上の手）の拳の位置に握り、左手は2関節IKでグリップ下端へ */
-   const Mh=this._localM(j.rHand);const wrist=new THREE.Vector3().setFromMatrixPosition(Mh);const hd=new THREE.Vector3(0,-1,0).transformDirection(Mh);const fist=wrist.clone().addScaledVector(hd,0.075);
+   const Mh=this._localM(j.rHand);const wrist=new THREE.Vector3().setFromMatrixPosition(Mh);const hd=new THREE.Vector3(0,-1,0).transformDirection(Mh);const fist=wrist.clone().addScaledVector(hd,this.dim.fist);
    const d=p.batDir||[0,1,0];const v=new THREE.Vector3(d[0],d[1],d[2]).normalize();this.bat.position.copy(fist).addScaledVector(v,-0.07);this.bat.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),v);
-   if(p.ik!==false){/* 左手：グリップ下端を握る。手首→拳のぶん（前腕方向に約7cm）ずらして2回解く */const grip=this.bat.position.clone().addScaledVector(v,0.0);const pole=new THREE.Vector3(0.25,-1,-0.35);this.ikArm('l',grip,pole);
+   if(p.ik!==false){const grip=this.bat.position.clone();const pole=new THREE.Vector3(0.25,-1,-0.35);this.ikArm('l',grip,pole);
     const Me=this._localM(j.lEl);const fd=new THREE.Vector3(0,-1,0).transformDirection(Me);this.ikArm('l',grip.clone().addScaledVector(fd,-0.07),pole);}}
   this.pose=p;}
  face(dx,dz){this.g.rotation.y=Math.atan2(dx,dz);}
  at(x,y,z){this.g.position.set(x,y,z);}
  handPos(side){const v=new THREE.Vector3();this.palm[side||'r'].getWorldPosition(v);return v;}
 }
-/* 設定に応じたリグ生成 */
-function r3NewRig(){const S=actionSettings();return S.model3d==='chibi'?new R3Rig():new R3RigReal();}
+/* 2頭身リグにも同じメソッドを用意（装備なし） */
+R3Rig.prototype.setGear=function(){};
+/* ================= 球場（甲子園風）：段々のスタンド・アルプス・銀傘・バックスクリーン・スコアボード・観客 =================
+ 極座標：a=本塁から見た角度（0=センター、+が一塁側、±180が本塁後方）、r=本塁からの距離。r3Rin(a) がスタンド最前列の半径。 */
+const R3S={zones:[],seats:[],dim:[]};
+function r3ZoneOf(a){const A=Math.abs(a);return A<=49?'of':A<117.4?'alps':'in';}
+/* 段々のスタンド：a0..a1 の範囲に rows 段。tread=座席面, riser=蹴上げ。座席位置も記録する */
+function r3Steps(S,a0,a1,rows,o){const step=o.step||2;const pos=[],col=[],idx=[];let n=0;const tc=new THREE.Color(o.tread),rc=new THREE.Color(o.riser);const dark=o.dark==null?0.78:o.dark;
+ const push=(r,h,c)=>{pos.push(r.x,h,r.z);col.push(c.r,c.g,c.b);return n++;};
+ const ring=(d,h,c,k)=>{const ids=[];for(let a=a0;a<=a1+1e-6;a+=step){const ri=r3Rin(a)+d;const s=Math.sin(a*Math.PI/180),cs=Math.cos(a*Math.PI/180);ids.push(push({x:ri*s,z:-ri*cs},h,c));}return ids;};
+ const quad=(A,B)=>{for(let i=0;i<A.length-1;i++){idx.push(A[i],B[i],A[i+1],A[i+1],B[i],B[i+1]);}};
+ const seats=[];const tcDark=tc.clone().multiplyScalar(dark);
+ for(let k=0;k<rows;k++){const h=o.h0+k*o.rise;const d0=o.d0+k*o.depth,d1=d0+o.depth;
+  const A=ring(d0,h,k%2?tc:tcDark),B=ring(d1,h,k%2?tc:tcDark);quad(A,B);/* 座席面 */
+  const C=ring(d1,h+o.rise,rc);quad(B,C);/* 蹴上げ */
+  if(o.seats!==false){const dm=d0+o.depth*0.55;for(let a=a0+1;a<a1;a+=o.seatStep||((0.62/((r3Rin(a)+dm)*Math.PI/180))))seats.push({a,d:dm,h:h+0.02,zone:o.zone});}}
+ const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));g.setAttribute('color',new THREE.Float32BufferAttribute(col,3));g.setIndex(idx);g.computeVertexNormals();
+ const m=new THREE.Mesh(g,new THREE.MeshLambertMaterial({vertexColors:true,side:THREE.DoubleSide}));m.receiveShadow=true;S.add(m);R3S.dim.push({m,day:0xffffff,night:0x6b7178});R3S.seats.push(...seats);return m;}
+function r3Surf(S,a0,a1,step,f0,f1,col,opt){/* 2つの (d,h) プロファイル間の面 */const pos=[],idx=[];let n=0;for(let a=a0;a<=a1+1e-6;a+=step){const s=Math.sin(a*Math.PI/180),cs=Math.cos(a*Math.PI/180);const ri=r3Rin(a);const p0=f0(a),p1=f1(a);pos.push((ri+p0[0])*s,p0[1],-(ri+p0[0])*cs,(ri+p1[0])*s,p1[1],-(ri+p1[0])*cs);if(n>0){const b=(n-1)*2;idx.push(b,b+1,b+2,b+1,b+3,b+2);}n++;}
+ const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));g.setIndex(idx);g.computeVertexNormals();const m=new THREE.Mesh(g,new THREE.MeshLambertMaterial(Object.assign({color:new THREE.Color(col),side:THREE.DoubleSide},opt||{})));m.receiveShadow=true;m.castShadow=!!(opt&&opt.cast);S.add(m);return m;}
+function r3BuildStadium(S){R3S.seats=[];R3S.dim=[];
+ /* 外野フェンス（緑のラバー＋黄色いライン＋下段の暗い帯） */
+ R3.fence=r3Ribbon(S,a=>FENCE(Math.min(45,Math.abs(a))),-49,49,2,0,3.2,'#1d4a2a');r3Ribbon(S,a=>FENCE(Math.min(45,Math.abs(a)))-0.02,-49,49,2,3.02,3.3,'#f2c53d');r3Ribbon(S,a=>FENCE(Math.min(45,Math.abs(a)))-0.01,-49,49,2,0,0.35,'#15371f');
+ /* フェンスのパッドの継ぎ目 */for(let a=-48;a<=48;a+=3){const r=FENCE(Math.min(45,Math.abs(a)))-0.03;const x=r*Math.sin(a*Math.PI/180),y=r*Math.cos(a*Math.PI/180);const p=new THREE.Mesh(r3Box(0.08,3.0,0.06,1.5),r3Mat('#163b21'));p.position.set(x,0,-y);p.rotation.y=-a*Math.PI/180;S.add(p);}
+ /* サイドの低い壁（ベンチ前〜ポール） */for(const sg of [-1,1]){const W1=[sg*13.5,-7],W2=[sg*75.5,65.6];r3WallSeg(S,W1,W2,2.4,'#2f4a38');r3WallSeg(S,[W1[0],W1[1]+0.02],[W2[0],W2[1]+0.02],0.3,'#1d3324');}
+ /* バックネット：低い壁＋ネット */r3Ribbon(S,a=>18,117.4,242.6,4,0,2.6,'#2f4a38');
+ {const net=r3Ribbon(S,a=>18.2,117.4,242.6,3,2.6,12,'#000000');net.material=new THREE.MeshBasicMaterial({color:0x000000,transparent:true,opacity:0.3,side:THREE.DoubleSide,depthWrite:false});
+  for(let a=120;a<=240;a+=15){const r=18.25;const x=r*Math.sin(a*Math.PI/180),y=r*Math.cos(a*Math.PI/180);const p=new THREE.Mesh(new THREE.CylinderGeometry(0.08,0.08,12,6),r3Mat('#3a3f45'));p.position.set(x,6,-y);S.add(p);}}
+ /* バックスクリーン（濃緑の壁）とスコアボード */
+ {const bs=r3Surf(S,-4.8,4.8,1.2,a=>[0.5,0],a=>[0.5,9.5],'#173a22');bs.receiveShadow=true;R3S.dim.push({m:bs,day:0xffffff,night:0x55606a});
+  const top=r3Surf(S,-4.8,4.8,1.2,a=>[0.5,9.5],a=>[8,9.6],'#2a3b30');R3S.dim.push({m:top,day:0xffffff,night:0x55606a});}
+ r3BuildBoard(S);
+ /* 段々のスタンド：外野席／アルプス／内野席（2層＋銀傘） */
+ R3.stands=[];
+ R3.stands.push(r3Steps(S,-49,49,26,{h0:3.6,rise:0.42,depth:0.8,d0:0.3,tread:'#5f8f63',riser:'#8d9299',zone:'of'}));
+ for(const sg of [-1,1]){const a0=sg<0?-117.4:49.2,a1=sg<0?-49.2:117.4;R3.stands.push(r3Steps(S,a0,a1,40,{h0:2.6,rise:0.36,depth:0.82,d0:0.4,tread:'#a3ad98',riser:'#868d85',zone:'alps',dark:0.9}));}
+ R3.stands.push(r3Steps(S,117.4,242.6,13,{h0:2.1,rise:0.42,depth:0.8,d0:0.3,tread:'#356f3e',riser:'#8d9299',zone:'in'}));
+ R3.stands.push(r3Steps(S,117.4,242.6,20,{h0:8.4,rise:0.5,depth:0.8,d0:12.6,tread:'#4d7f58',riser:'#8d9299',zone:'in'}));
+ /* 階段通路（放射状の明るい帯） */for(const z of [[-49,49,0.3,3.6,26,0.42,0.8],[-117.4,-49.2,0.4,2.6,40,0.36,0.82],[49.2,117.4,0.4,2.6,40,0.36,0.82],[117.4,242.6,0.3,2.1,13,0.42,0.8],[117.4,242.6,12.6,8.4,20,0.5,0.8]]){const [a0,a1,d0,h0,rows,rise,depth]=z;for(let a=a0+4.5;a<a1;a+=9){const w=0.8;const st=r3Surf(S,a-w/2,a+w/2,w/2,q=>[d0,h0+0.03],q=>[d0+rows*depth,h0+rows*rise+0.03],'#b9bec4');R3S.dim.push({m:st,day:0xffffff,night:0x6b7178});}}
+ /* 通路（中段の平らな部分）と前面の壁 */r3Surf(S,117.4,242.6,2,a=>[10.7,7.56],a=>[12.6,7.6],'#8d9299');
+ r3Surf(S,117.4,242.6,2,a=>[12.6,7.6],a=>[12.6,8.4],'#6f757e');
+ for(const z of [[-49,49,0.3,0,3.6],[-117.4,-49.2,0.4,0,2.6],[49.2,117.4,0.4,0,2.6],[117.4,242.6,0.3,0,2.1]]){r3Surf(S,z[0],z[1],2,a=>[z[2],z[3]],a=>[z[2],z[4]],'#6f757e');}
+ /* 銀傘：内野席上層を覆う屋根（手前の庇＋緩やかに上がる面）と後方の支柱 */
+ {const roof=r3Surf(S,117.4,242.6,2,a=>[9.5,21.6],a=>[31,25.2],'#8e949c',{cast:true});roof.material=new THREE.MeshStandardMaterial({color:new THREE.Color('#9a9fa6'),roughness:0.55,metalness:0.45,side:THREE.DoubleSide});R3S.dim.push({m:roof,day:0xffffff,night:0x59606a});
+  /* 屋根のリブ（骨組み） */for(let a=118;a<=242;a+=3){const r0=r3Rin(a)+9.5,r1=r3Rin(a)+31;const s0=Math.sin(a*Math.PI/180),c0=Math.cos(a*Math.PI/180);const p0=new THREE.Vector3(r0*s0,21.75,-r0*c0),p1=new THREE.Vector3(r1*s0,25.35,-r1*c0);const len=p0.distanceTo(p1);const rib=new THREE.Mesh(new THREE.BoxGeometry(0.25,0.3,len),r3Mat('#6f757e'));rib.position.copy(p0).lerp(p1,0.5);rib.lookAt(p1);S.add(rib);}
+  const under=r3Surf(S,117.4,242.6,2,a=>[9.6,21.5],a=>[30.9,25.1],'#6a7079');under.position.y=-0.08;R3S.dim.push({m:under,day:0xffffff,night:0x3d434b});
+  const fascia=r3Surf(S,117.4,242.6,2,a=>[9.5,20.3],a=>[9.5,21.6],'#d7dadd');R3S.dim.push({m:fascia,day:0xffffff,night:0x7a7f86});
+  const edge=r3Surf(S,117.4,242.6,2,a=>[9.5,20.3],a=>[10.6,20.3],'#c3c7cc');R3S.dim.push({m:edge,day:0xffffff,night:0x6a6f76});
+  for(let a=120;a<=240;a+=10){const r=r3Rin(a)+30.5;const x=r*Math.sin(a*Math.PI/180),y=r*Math.cos(a*Math.PI/180);const p=new THREE.Mesh(new THREE.CylinderGeometry(0.45,0.55,25.5,8),r3Mat('#8a9098'));p.position.set(x,12.75,-y);p.castShadow=true;S.add(p);}
+  /* 屋根の上のフラッグ */for(let a=130;a<=230;a+=12.5){const r=r3Rin(a)+9.8;const x=r*Math.sin(a*Math.PI/180),y=r*Math.cos(a*Math.PI/180);r3Flag(S,x,21.6,-y,a,['#d7263d','#ffffff','#1f4e9a','#f2c53d'][Math.round(a/12.5)%4]);}}
+ /* 外野席上の旗（大会旗・国旗風） */for(let a=-44;a<=44;a+=8){const r=r3Rin(a)+21.3;const x=r*Math.sin(a*Math.PI/180),y=r*Math.cos(a*Math.PI/180);r3Flag(S,x,3.6+26*0.42,-y,a,['#ffffff','#d7263d','#1f4e9a','#2d8f4e'][Math.abs(Math.round(a/8))%4]);}
+ /* ベンチ（ダッグアウト）：屋根付きの低い構造物 */
+ for(const sg of [-1,1]){const g=new THREE.Group();/* サイドの壁（(13.5,-7)→(75.5,65.6)）の外側、本塁寄り */const t=0.3;const wx=13.5+62*t,wy=-7+72.6*t;const nx=0.76,ny=-0.65;const X=sg*(wx+nx*2.7),Y=wy+ny*2.7;g.position.set(X,0,-Y);g.rotation.y=sg*-2.28;
+  const back=new THREE.Mesh(r3Box(10,2.4,0.3,1.2),r3Mat('#20262c'));back.position.set(0,0,-2.6);g.add(back);
+  const roof=new THREE.Mesh(r3Box(10.6,0.28,3.2,0),r3Mat('#6f757e'));roof.position.set(0,2.45,-1.1);roof.castShadow=true;g.add(roof);
+  for(const x of [-5,0,5]){const p=new THREE.Mesh(new THREE.CylinderGeometry(0.1,0.1,2.4,6),r3Mat('#3a3f45'));p.position.set(x,1.2,0.3);g.add(p);}
+  const bench=new THREE.Mesh(r3Box(9.5,0.45,0.5,0.22),r3Mat('#4a5560'));bench.position.set(0,0,-1.8);g.add(bench);
+  const inner=new THREE.Mesh(r3Box(10,2.2,2.6,1.1),new THREE.MeshLambertMaterial({color:0x101418}));inner.position.set(0,0,-1.3);g.add(inner);
+  S.add(g);}
+ /* 照明塔（6基）：鉄塔＋ランプ盤 */
+ R3.lamps=[];for(const a of [-30,30,-78,78,-128,128]){const r=r3Rin(a)+(Math.abs(a)<50?24:Math.abs(a)<118?36:32);const x=r*Math.sin(a*Math.PI/180),y=r*Math.cos(a*Math.PI/180);
+  const tw=new THREE.Mesh(new THREE.CylinderGeometry(0.5,1.3,46,6),r3Mat('#7d848c'));tw.position.set(x,23,-y);tw.castShadow=true;S.add(tw);
+  for(const dx of [-1.2,1.2]){const leg=new THREE.Mesh(new THREE.CylinderGeometry(0.18,0.3,42,5),r3Mat('#7d848c'));leg.position.set(x+dx*Math.cos(a*Math.PI/180),21,-y+dx*Math.sin(a*Math.PI/180));S.add(leg);}
+  const lamp=new THREE.Mesh(r3Box(13,5.5,0.8,0),new THREE.MeshLambertMaterial({color:0x8a8f99,emissive:0x000000}));lamp.position.set(x,47,-y);lamp.lookAt(0,0,-40);S.add(lamp);R3.lamps.push(lamp);
+  const grid=new THREE.Mesh(r3Box(13.4,6,0.3,0),r3Mat('#3b4047'));grid.position.set(x,47,-y);grid.lookAt(0,0,-40);grid.translateZ(-0.6);S.add(grid);}
+ /* ファウルポール */for(const sg of [-1,1]){const p=[sg*FENCE(45)*Math.SQRT1_2,FENCE(45)*Math.SQRT1_2];const pole=new THREE.Mesh(new THREE.CylinderGeometry(0.16,0.2,18,8),r3Mat('#ffd84a'));pole.position.set(p[0],9,-p[1]);S.add(pole);const net=new THREE.Mesh(r3Box(0.05,14,1.6,7),new THREE.MeshLambertMaterial({color:0xffd84a,transparent:true,opacity:0.55,side:THREE.DoubleSide}));net.position.set(p[0]-sg*0.8,2,-p[1]-0.8);net.rotation.y=-sg*Math.PI/4;S.add(net);}
+ /* 観客 */r3BuildCrowd(S);}
+function r3Flag(S,x,y,z,a,col){const g=new THREE.Group();g.position.set(x,y,z);const pole=new THREE.Mesh(new THREE.CylinderGeometry(0.05,0.07,4.2,6),r3Mat('#dfe3e8'));pole.position.y=2.1;g.add(pole);
+ const f=new THREE.Mesh(r3Geo('flag',()=>new THREE.PlaneGeometry(1.6,1.0)),new THREE.MeshLambertMaterial({color:new THREE.Color(col),side:THREE.DoubleSide}));f.position.set(0.8,3.6,0);g.add(f);g.rotation.y=-a*Math.PI/180+Math.PI/2+0.4;S.add(g);R3S.flags=R3S.flags||[];R3S.flags.push(f);}
+/* 観客（インスタンス：胴＋頭）。座席位置 R3S.seats から配置。アルプスは応援団の色に寄せる */
+function r3BuildCrowd(S){const seats=R3S.seats;const N0=Math.min(seats.length,(typeof window!=="undefined"&&window.__crowdN)||14000);
+ let s=4242;const rnd=()=>{s=(s*1103515245+12345)&0x7fffffff;return s/0x7fffffff;};
+ /* ゾーンごとに配分（本塁後方を密に） */const byZone={in:[],alps:[],of:[]};for(const q of seats)(byZone[q.zone]||byZone.of).push(q);const want={in:Math.round(N0*0.42),alps:Math.round(N0*0.33),of:N0-Math.round(N0*0.42)-Math.round(N0*0.33)};
+ const pick=[];for(const z in byZone){const arr=byZone[z];const k=Math.min(arr.length,want[z]);const stride=arr.length/Math.max(1,k);for(let i=0;i<k;i++)pick.push(arr[Math.floor(i*stride)]);}
+ const N=pick.length;/* インスタンス数は実際に置く人数に合わせる（余りが原点に出ないように） */
+ const geo=new THREE.CapsuleGeometry(0.21,0.34,2,6);geo.translate(0,0.36,0);const im=new THREE.InstancedMesh(geo,new THREE.MeshLambertMaterial({color:0xffffff}),N);im.castShadow=false;im.receiveShadow=false;S.add(im);R3.crowd=im;
+ const hg=new THREE.SphereGeometry(0.16,6,5);hg.translate(0,0.78,0);const hm=new THREE.InstancedMesh(hg,new THREE.MeshLambertMaterial({color:0xe9bf9b}),N);hm.castShadow=false;S.add(hm);R3.crowdH=hm;
+ R3.crowdSeed=[];const tmp=new THREE.Object3D();const colr=new THREE.Color();const cols=[0xf4f4f4,0xffffff,0xe8e4da,0xf0ede4,0xd9534f,0x3b6fb6,0xf0c75e,0x8aa5c8,0xc9b7a0,0xf4f4f4,0x6aa84f,0x2b2f36,0xff8fab,0x1e3a5f,0xffffff,0xff7a1a,0x7bd1e8,0x9b59b6,0x222222,0x9aa0a6,0xf7f3ea,0xdfe6ee];
+ pick.forEach((q,i)=>{const ri=r3Rin(q.a)+q.d;const sn=Math.sin(q.a*Math.PI/180),cs=Math.cos(q.a*Math.PI/180);const x=ri*sn+(rnd()-0.5)*0.2,z=-ri*cs+(rnd()-0.5)*0.2;const rot=Math.atan2(-x,-z-40)+(rnd()-0.5)*0.5;
+  R3.crowdSeed.push({x,y:q.h,z,rot,p:rnd(),sc:0.86+rnd()*0.28,zone:q.zone,side:q.a>=0?1:-1});tmp.position.set(x,q.h,z);tmp.rotation.set(0,rot,0);tmp.scale.setScalar(0.86+rnd()*0.28);tmp.updateMatrix();im.setMatrixAt(i,tmp.matrix);hm.setMatrixAt(i,tmp.matrix);colr.setHex(cols[Math.floor(rnd()*cols.length)]);im.setColorAt(i,colr);});
+ im.instanceMatrix.needsUpdate=true;hm.instanceMatrix.needsUpdate=true;if(im.instanceColor)im.instanceColor.needsUpdate=true;}
+/* 応援団：アルプスを両チームの色に染める（colA=一塁側、colB=三塁側） */
+function r3DressCrowd(colA,colB){const im=R3.crowd;if(!im||!R3.crowdSeed)return;const c=new THREE.Color();let s=777;const rnd=()=>{s=(s*1103515245+12345)&0x7fffffff;return s/0x7fffffff;};
+ const pal=u=>u?[u.base,u.trim,u.cap,'#ffffff',u.trim,u.base]:['#f4f4f4','#2b2f36','#1e3a5f','#ffffff'];const pa=pal(colA),pb=pal(colB);
+ R3.crowdSeed.forEach((q,i)=>{if(q.zone!=='alps')return;const p=q.side>0?pa:pb;c.set(p[Math.floor(rnd()*p.length)]);im.setColorAt(i,c);});if(im.instanceColor)im.instanceColor.needsUpdate=true;}
+/* ================= GLB 選手モデル（MakeHuman ベース・CC0）の読み込みとリグ =================
+ assets/player.glb（tools/build_player.py で生成）を読み、R3RigReal と同じインターフェースで動かす。
+ ・骨は hips/torso/chest/head/rSh/rEl/rHand/lSh/lEl/lHand/rHip/rKnee/rFoot/lHip/lKnee/lFoot（基本姿勢で軸はワールド一致）
+ ・body（肌）・uniform（服のシェル）・eyes の3メッシュが1つのスケルトンを共有
+ ・表情はモーフターゲット（focus/shout/smile/sad/grit/blink）、顔のバリエーション（face0..2）
+ ・ユニフォームはチームごとに Canvas で合成したテクスチャ（マスク・デザインレイヤー・陰影・しわ法線・汚れ） */
+const GL={data:null,loading:null,failed:false,tex:{},atlas:{}};
+function glAssetBase(){const s=(typeof R3_ASSET_BASE!=='undefined'&&R3_ASSET_BASE)||'assets/';return s;}
+function glParse(buf,url){const dv=new DataView(buf);if(dv.getUint32(0,true)!==0x46546C67)throw new Error('not glb');const len=dv.getUint32(8,true);let off=12,json=null,bin=null;
+ while(off<len){const clen=dv.getUint32(off,true),ctype=dv.getUint32(off+4,true);off+=8;if(ctype===0x4E4F534A)json=JSON.parse(new TextDecoder().decode(new Uint8Array(buf,off,clen)));else if(ctype===0x004E4942)bin=buf.slice(off,off+clen);off+=clen;}
+ const acc=i=>{const a=json.accessors[i];const bv=json.bufferViews[a.bufferView];const C={5120:Int8Array,5121:Uint8Array,5122:Int16Array,5123:Uint16Array,5125:Uint32Array,5126:Float32Array}[a.componentType];const size={SCALAR:1,VEC2:2,VEC3:3,VEC4:4,MAT4:16}[a.type];return {arr:new C(bin,(bv.byteOffset||0)+(a.byteOffset||0),a.count*size),size};};
+ return {json,bin,acc,base:url.replace(/[^\/]*$/,'')};}
+/* 読み込み（一度だけ）。成功したら R3.glReady=true にしてリグを作り直す */
+function glLoad(){if(GL.data||GL.loading||GL.failed)return GL.loading;const base=glAssetBase();
+ const img=(name)=>new Promise((res,rej)=>{const im=new Image();if(/^https?:/.test(base))im.crossOrigin='anonymous';im.onload=()=>res(im);im.onerror=()=>rej(new Error('image '+name));im.src=base+name;});
+ GL.loading=fetch(base+'player.glb').then(r=>{if(!r.ok)throw new Error('glb '+r.status);return r.arrayBuffer();}).then(buf=>{GL.data=glParse(buf,base+'player.glb');
+  return Promise.all(['skin.jpg','eye.jpg','uni_mask.png','uni_shade.jpg','uni_normal.jpg','uni_dirt.jpg','uni_layers.png','uni_zones.png','hand_mask.png'].map(n=>img(n).then(im=>{GL.tex[n]=im;},e=>{console.warn('texture missing',n);})));})
+ .then(()=>{GL.ready=true;try{if(typeof r3RebuildRigs==='function'&&R3.scene){R3.rigModel=null;r3RebuildRigs();}}catch(e){console.warn(e);}})
+ .catch(e=>{console.warn('player.glb load failed → 手続き生成モデルを使用',e);GL.failed=true;});
+ return GL.loading;}
+function glTexture(name,srgb){if(GL.tex['_'+name])return GL.tex['_'+name];const im=GL.tex[name];if(!im)return null;const t=new THREE.Texture(im);t.needsUpdate=true;if(srgb)t.colorSpace=THREE.SRGBColorSpace;t.wrapS=t.wrapT=THREE.RepeatWrapping;t.anisotropy=R3.renderer?Math.min(8,R3.renderer.capabilities.getMaxAnisotropy()):4;t.flipY=false;GL.tex['_'+name]=t;return t;}
+/* ---- ユニフォーム・テクスチャの合成（チームごとにキャッシュ） ----
+ uni_mask.png: R=ジャージ G=ズボン B=ベルト A=肌（服なし）
+ uni_layers.png: R=襟・袖口・ズボンのライン（全デザイン共通の縁取り） G=前立て・ボタン B=ピンストライプ A=ラグラン／胸バンド（上位ビットで区別） */
+function glAtlas(u){const key=[u.base,u.trim,u.pants,u.cap,u.style].join('|');if(GL.atlas[key])return GL.atlas[key];
+ const mask=GL.tex['uni_mask.png'],lay=GL.tex['uni_layers.png'],zon=GL.tex['uni_zones.png'],shade=GL.tex['uni_shade.jpg'];const N=mask?mask.width:1024;
+ const cv=document.createElement('canvas');cv.width=cv.height=N;const g=cv.getContext('2d');
+ if(!mask){g.fillStyle=u.base;g.fillRect(0,0,N,N);}
+ else{const tmp=document.createElement('canvas');tmp.width=tmp.height=N;const tg=tmp.getContext('2d');tg.drawImage(mask,0,0,N,N);const M=tg.getImageData(0,0,N,N).data;
+  let L=null;if(lay){tg.clearRect(0,0,N,N);tg.drawImage(lay,0,0,N,N);L=tg.getImageData(0,0,N,N).data;}
+  let Z=null;if(zon){tg.clearRect(0,0,N,N);tg.drawImage(zon,0,0,N,N);Z=tg.getImageData(0,0,N,N).data;}
+  let S=null;if(shade){tg.clearRect(0,0,N,N);tg.drawImage(shade,0,0,N,N);S=tg.getImageData(0,0,N,N).data;}
+  const out=g.createImageData(N,N);const o=out.data;const C=h=>{const c=new THREE.Color(h);return [c.r*255,c.g*255,c.b*255];};
+  const base=C(u.base),trim=C(u.trim),pants=C(u.pants||'#f4f4f4'),belt=C(u.cap&&u.cap!==u.pants?u.cap:'#222');
+  const st=u.style||'plain';const pin=st==='pin',placket=st==='placket',sleeve=st==='sleeve',raglan=st==='raglan',band=st==='band';
+  for(let i=0;i<N*N;i++){const k=i*4;const mj=M[k]/255,mp=M[k+1]/255,mb=M[k+2]/255;let r,gg,b;
+   if(mb>0.5){r=belt[0];gg=belt[1];b=belt[2];}else if(mp>0.5){r=pants[0];gg=pants[1];b=pants[2];}else{r=base[0];gg=base[1];b=base[2];}
+   if(L){const edge=L[k]/255,plk=L[k+1]/255,pst=L[k+2]/255;const zr=Z?Z[k]/255:0,zg=Z?Z[k+1]/255:0,zb=Z?Z[k+2]/255:0;/* zones: R=ラグラン G=胸バンド B=袖口帯(0.5)・ズボンのサイドライン(1.0) */
+    let a=0;if(edge>0)a=Math.max(a,edge);if(placket&&plk>0)a=Math.max(a,Math.min(1,plk*1.2));if(pin&&pst>0&&mp<0.5)a=Math.max(a,pst);
+    if(raglan&&zr>0.5)a=1;if(band&&zg>0.5)a=1;if((sleeve||band)&&zb>0.4&&zb<0.6)a=1;if(st!=='plain'&&zb>0.9&&mp>0.5)a=1;
+    if(a>0){r=r+(trim[0]-r)*a;gg=gg+(trim[1]-gg)*a;b=b+(trim[2]-b)*a;}
+    if(placket&&plk>0.98){/* ボタン */r=245;gg=243;b=238;}}
+   if(S){const s=S[k]/255;const f=0.55+0.5*s;r*=f;gg*=f;b*=f;}
+   o[k]=r;o[k+1]=gg;o[k+2]=b;o[k+3]=255;}
+  g.putImageData(out,0,0);}
+ const t=new THREE.CanvasTexture(cv);t.colorSpace=THREE.SRGBColorSpace;t.flipY=false;t.wrapS=t.wrapT=THREE.RepeatWrapping;t.anisotropy=R3.renderer?Math.min(8,R3.renderer.capabilities.getMaxAnisotropy()):4;
+ const mat=new THREE.MeshStandardMaterial({map:t,roughness:0.9,metalness:0,envMap:R3.env||null,envMapIntensity:0.18,normalMap:glTexture('uni_normal.jpg',false),normalScale:new THREE.Vector2(0.8,0.8)});
+ GL.atlas[key]={tex:t,mat};return GL.atlas[key];}
+/* 汚れ・バッティンググローブをシェーダーに差し込む（材質はリグごとに複製して uniform を持つ） */
+function glDirtMaterial(src,dirtTex){const m=src.clone();m.userData.u={uDirt:{value:0}};m.onBeforeCompile=sh=>{sh.uniforms.uDirt=m.userData.u.uDirt;sh.uniforms.uDirtMap={value:dirtTex};
+  sh.fragmentShader=sh.fragmentShader.replace('#include <map_fragment>','#include <map_fragment>\n#ifdef USE_MAP\n{vec4 dd=texture2D(uDirtMap,vMapUv);float k=clamp(dd.r*uDirt,0.0,0.85);diffuseColor.rgb=mix(diffuseColor.rgb,vec3(0.36,0.27,0.19),k);}\n#endif').replace('uniform vec3 diffuse;','uniform vec3 diffuse;uniform float uDirt;uniform sampler2D uDirtMap;');};
+ m.customProgramCacheKey=()=>'dirt';return m;}
+function glSkinMaterial(skinTex,handTex,tint){const m=new THREE.MeshStandardMaterial({map:skinTex,roughness:0.55,metalness:0,envMap:R3.env||null,envMapIntensity:0.25,color:new THREE.Color(tint||'#ffffff')});m.userData.u={uGlove:{value:0},uGloveCol:{value:new THREE.Color('#222')}};
+ m.onBeforeCompile=sh=>{sh.uniforms.uGlove=m.userData.u.uGlove;sh.uniforms.uGloveCol=m.userData.u.uGloveCol;sh.uniforms.uHandMap={value:handTex};
+  sh.fragmentShader=sh.fragmentShader.replace('#include <map_fragment>','#include <map_fragment>\n#ifdef USE_MAP\n{float h=texture2D(uHandMap,vMapUv).r*uGlove;diffuseColor.rgb=mix(diffuseColor.rgb,uGloveCol,clamp(h,0.0,1.0));}\n#endif').replace('uniform vec3 diffuse;','uniform vec3 diffuse;uniform float uGlove;uniform vec3 uGloveCol;uniform sampler2D uHandMap;');};
+ m.customProgramCacheKey=()=>'skinglove';return m;}
+/* ---- リグ ---- */
+class R3RigGL extends R3RigReal{
+ buildBody(){const G=this.g,j=this.j;const D=GL.data;const js=D.json;const ex=js.extras;const P=ex.jointPos;
+  /* 骨：ノードの階層をそのまま */const names=ex.joints;const nodeIdx=js.skins[0].joints;const bones=[];
+  names.forEach((n,i)=>{const nd=js.nodes[nodeIdx[i]];const b=new THREE.Bone();b.name=n;const t=nd.translation||[0,0,0];b.position.set(t[0],t[1],t[2]);j[n]=b;bones.push(b);});
+  names.forEach((n,i)=>{const nd=js.nodes[nodeIdx[i]];(nd.children||[]).forEach(c=>{const cn=js.nodes[c].name;if(j[cn])j[n].add(j[cn]);});});
+  G.add(j.hips);G.updateMatrixWorld(true);
+  const ibm=D.acc(js.skins[0].inverseBindMatrices).arr;const inv=[];for(let i=0;i<names.length;i++){const m=new THREE.Matrix4();m.fromArray(ibm,i*16);inv.push(m);}
+  const skel=this.skel=new THREE.Skeleton(bones,inv);
+  this.dim={hipsPos:P.hips,L1:0,L2:0,hasHead:true,hasFeet:true,hasHands:true};
+  const dist=(a,b)=>Math.hypot(a[0]-b[0],a[1]-b[1],a[2]-b[2]);this.dim.L1=dist(P.rSh,P.rEl);this.dim.L2=dist(P.rEl,P.rHand);
+  const pts=ex.points;const eyeY=(pts.lEye[1]+pts.rEye[1])/2,eyeZ=(pts.lEye[2]+pts.rEye[2])/2;const headTop=pts.headTop[1];
+  const cy=eyeY+0.035-P.head[1];const cz=eyeZ-0.085-P.head[2];this.dim.headCy=cy;this.dim.headCz=cz;this.dim.headR=Math.max(0.09,(headTop-(P.head[1]+cy))*1.02);
+  this.dim.chestR=0.125;this.dim.chestY=0.11;this.dim.textY=0.125;this.dim.shin=dist(P.rKnee,P.rFoot);this.dim.palm=dist(P.rHand,pts.rFingerTip)*0.55;this.dim.fist=dist(P.rHand,pts.rFingerTip)*0.42;
+  /* メッシュ */const mk=(meshIdx)=>{const mesh=js.meshes[meshIdx];const prim=mesh.primitives[0];const g=new THREE.BufferGeometry();const A=prim.attributes;
+   const set=(name,accIdx)=>{const a=D.acc(accIdx);g.setAttribute(name,new THREE.BufferAttribute(a.arr,a.size));};
+   set('position',A.POSITION);set('normal',A.NORMAL);set('uv',A.TEXCOORD_0);set('skinIndex',A.JOINTS_0);set('skinWeight',A.WEIGHTS_0);
+   const idx=D.acc(prim.indices);g.setIndex(new THREE.BufferAttribute(idx.arr,1));
+   if(prim.targets){g.morphAttributes.position=prim.targets.map(t=>{const a=D.acc(t.POSITION);return new THREE.BufferAttribute(a.arr,a.size);});g.morphTargetsRelative=true;}
+   return {geo:g,mesh};};
+  const findMesh=n=>js.meshes.findIndex(m=>m.name===n);
+  const skinTex=glTexture('skin.jpg',true),handTex=glTexture('hand_mask.png',false)||skinTex,eyeTex=glTexture('eye.jpg',true);
+  const body=mk(findMesh('body'));this.skinMat=glSkinMaterial(skinTex,handTex);this.body=new THREE.SkinnedMesh(body.geo,this.skinMat);this.body.castShadow=true;this.body.receiveShadow=true;this.body.frustumCulled=false;G.add(this.body);this.body.bind(skel,new THREE.Matrix4());
+  this.morphNames=(body.mesh.extras&&body.mesh.extras.targetNames)||ex.morphs||[];this.body.morphTargetInfluences=this.morphNames.map(()=>0);this.expr={};this.exprTarget={};
+  const cloth=mk(findMesh('uniform'));this.cloth=new THREE.SkinnedMesh(cloth.geo,r3MatP('#eeeeee'));this.cloth.castShadow=true;this.cloth.receiveShadow=true;this.cloth.frustumCulled=false;G.add(this.cloth);this.cloth.bind(skel,new THREE.Matrix4());
+  const eyes=mk(findMesh('eyes'));this.eyes=new THREE.SkinnedMesh(eyes.geo,new THREE.MeshStandardMaterial({map:eyeTex,roughness:0.25,metalness:0,envMap:R3.env||null,envMapIntensity:0.6}));this.eyes.castShadow=false;this.eyes.frustumCulled=false;G.add(this.eyes);this.eyes.bind(skel,new THREE.Matrix4());
+  this.headM=null;}
+ /* 人物ごとの個性：顔のバリエーションと肌の色（seed から決める） */
+ setPerson(seed){seed=(seed==null?0:seed)|0;if(this.person===seed)return;this.person=seed;let s=(seed*2654435761)>>>0;const rnd=()=>{s=(s*1103515245+12345)&0x7fffffff;return s/0x7fffffff;};
+  const inf=this.body.morphTargetInfluences;this.morphNames.forEach((n,i)=>{if(/^face\d/.test(n))inf[i]=rnd()*1.2-0.3;});
+  const tints=['#ffffff','#f6ebe0','#eadbcb','#f8f0e8','#e6d2bf','#f2e3d4'];this.skinMat.color.set(tints[Math.floor(rnd()*tints.length)]);}
+ /* 表情：name と強さ。apply() で滑らかに追従する */
+ setExpression(name,w){this.exprTarget={};if(name)this.exprTarget[name]=w==null?1:w;}
+ _updateExpr(){const inf=this.body.morphTargetInfluences;const k=0.12;const now=performance.now();
+  /* まばたき：3〜7秒ごとに約140ms */if(!this.nextBlink)this.nextBlink=now+1500+Math.random()*4000;let bl=0;if(now>this.nextBlink){const d=now-this.nextBlink;if(d<140)bl=d<70?d/70:1-(d-70)/70;else this.nextBlink=now+2500+Math.random()*4500;}
+  this.morphNames.forEach((n,i)=>{if(/^face\d/.test(n))return;if(n==='blink'){inf[i]=Math.max(this.exprTarget.blink||0,bl);return;}const t=this.exprTarget[n]||0;inf[i]+=(t-inf[i])*k;});}
+ setColors(c,helmet){if(this.col!==c){this.col=c;const u=this.uni=rrUniform(c);
+   const at=glAtlas(u);if(!this.clothMat||this.clothMat.userData.src!==at.mat){this.clothMat=glDirtMaterial(at.mat,glTexture('uni_dirt.jpg',false)||at.tex);this.clothMat.userData.src=at.mat;this.cloth.material=this.clothMat;}
+   const capM=r3MatP(u.cap),brimM=r3MatP(u.capBrim),helmM=r3MatP(u.cap,{roughness:0.3});this.capM.material=capM;this.brimM.material=brimM;this.btnM.material=capM;this.helmetM.material=helmM;this.hbrimM.material=helmM;this.flapM.material=helmM;
+   this.markM.material.map=rrMark(u);this.markM.material.needsUpdate=true;this.markM.visible=!!u.mark;
+   const prot=r3MatP(u.cap&&u.cap!=='#f4f4f4'?u.cap:'#1f2a44',{roughness:0.8}),prot2=r3MatP(u.cap&&u.cap!=='#f4f4f4'?u.cap:'#1f2a44',{roughness:0.8,side:THREE.DoubleSide});this.protM.material=prot;this.throatM.material=prot2;this.rLegM.material=prot2;this.lLegM.material=prot2;this.rKneeM.material=prot;this.lKneeM.material=prot;
+   this.skinMat.userData.u.uGloveCol.value.set(u.cap||'#222');this.txtM.visible=!!u.text;this._drawText();this._drawNum();}
+  this.setHelmet(helmet);}
+ setHelmet(on){on=!!on||this.gear==='catcher';if(this.helmet===on&&this._helmetInit)return;this._helmetInit=true;this.helmet=on;this.helmetM.visible=on;this.hbrimM.visible=on;this.flapM.visible=on&&this.gear!=='catcher';this.capM.visible=!on;this.brimM.visible=!on;this.btnM.visible=!on;this.markM.visible=!on&&!!(this.uni&&this.uni.mark);
+  /* 打者・走者はバッティンググローブ（シェーダーで手の領域を着色） */this.skinMat.userData.u.uGlove.value=on?1:0;}
+ setDirt(k){if(this.clothMat)this.clothMat.userData.u.uDirt.value=clamp(k||0,0,1);}
+ apply(p){super.apply(p);this._updateExpr();}
+}
+/* R3RigReal にも空の実装 */
+R3RigReal.prototype.setPerson=function(){};R3RigReal.prototype.setExpression=function(){};R3RigReal.prototype.setDirt=function(){};
+R3Rig.prototype.setPerson=function(){};R3Rig.prototype.setExpression=function(){};R3Rig.prototype.setDirt=function(){};
+/* リグ生成：GLB が読めていればそれを使う */
+function r3NewRig(){const S=actionSettings();if(S.model3d==='chibi')return new R3Rig();if(GL.ready)return new R3RigGL();if(!GL.loading&&!GL.failed)glLoad();return new R3RigReal();}
 /* ================= ユニフォーム編集 ================= */
 function colorField(label,k,val,scope){return `<label class="f">${label}<div class="row" style="justify-content:flex-start"><input type="color" value="${esc(val)}" data-inp="uni" data-scope="${scope}" data-k="${k}"><div class="swatches">${COLOR_PRESETS.map(c=>`<button type="button" style="background:${c}" data-act="uniSwatch" data-scope="${scope}" data-k="${k}" data-c="${c}" aria-label="${c}"></button>`).join('')}</div></div></label>`;}
 function uniformEditorHtml(u,e){const fontOpts=sel=>UNI_FONTS.map(f=>`<option value="${f.id}"${sel===f.id?' selected':''} style="font-family:${f.css}">${esc(f.name)}</option>`).join('');

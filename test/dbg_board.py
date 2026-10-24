@@ -1,0 +1,28 @@
+import os
+from playwright.sync_api import sync_playwright
+HTML=os.path.abspath(os.path.join(os.path.dirname(__file__),'../dist/高校野球シミュレーション.html'))
+with sync_playwright() as p:
+    b=p.chromium.launch(args=['--use-gl=angle','--use-angle=swiftshader','--ignore-gpu-blocklist','--enable-unsafe-swiftshader'])
+    pg=b.new_page(viewport={'width':390,'height':844})
+    pg.route("**/*",lambda r: r.abort() if 'googleapis' in r.request.url else r.continue_())
+    pg.on('pageerror',lambda e: print('PAGEERR',e))
+    pg.goto('file://'+HTML);pg.wait_for_timeout(200)
+    pg.check('input[name=suMode][value=custom]');pg.click('[data-act="startGame"]');pg.wait_for_timeout(100)
+    if pg.query_selector('[data-act="qShift"]'): pg.click('[data-act="qShift"]')
+    pg.evaluate("enqueue({type:'practice',opp:{name:'横浜学院',strength:60,pref:'神奈川'}});render();");pg.wait_for_timeout(100)
+    pg.select_option('#modeSel','action');pg.click('[data-act="lineupSave"]');pg.wait_for_timeout(400)
+    print('playball ov len',pg.evaluate("document.querySelector('#arov').innerHTML.length"))
+    pg.click('[data-act="arBannerNext"]');pg.wait_for_timeout(300)
+    print('after next ov len',pg.evaluate("document.querySelector('#arov').innerHTML.length"),pg.evaluate("AR.phase"))
+    pg.evaluate("arAbortPA();ACT.arAutoInn();");pg.wait_for_timeout(400)
+    print('autoinn phase',pg.evaluate("AR.phase"),'ov len',pg.evaluate("document.querySelector('#arov').innerHTML.length"),'bannerEl==banner',pg.evaluate("AR.bannerEl===AR.banner"),'banner',pg.evaluate("AR.banner?AR.banner.title:null"))
+    pg.wait_for_timeout(600)
+    print('later ov len',pg.evaluate("document.querySelector('#arov').innerHTML.length"))
+    print('raf alive?',pg.evaluate("(()=>{window.__c=0;const o=arDraw;window.arDrawOrig=o;return AR.raf;})()"))
+    try:
+        print('manual arDraw ->',pg.evaluate("(()=>{arDraw(performance.now());return [document.querySelector('#arov').innerHTML.length,AR.phase,r3on(),R3.broken];})()"))
+    except Exception as e:print('manual arDraw error',str(e)[:600])
+    pg.evaluate("window.__drawCount=0;const _ad=arDraw;")
+    print('loop check',pg.evaluate("(()=>new Promise(res=>{let n=0;const t0=performance.now();const h=()=>{n++;if(performance.now()-t0>500)res(n);else requestAnimationFrame(h);};requestAnimationFrame(h);}))()"))
+    pg.screenshot(path='dbg_board.png')
+    b.close()
