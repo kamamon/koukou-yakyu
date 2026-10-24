@@ -1,5 +1,5 @@
 /* オフライン用サービスワーカー：本体をキャッシュし、更新は裏で取得 */
-const VERSION='20261019232148';
+const VERSION='20261024120818';
 const CACHE='hsb-'+VERSION;
 const SHELL=['./','./index.html','./manifest.webmanifest','./icon-192.png','./icon-512.png','./apple-touch-icon.png'];
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(SHELL)).then(()=>self.skipWaiting()));});
