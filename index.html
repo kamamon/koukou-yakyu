@@ -1035,12 +1035,14 @@ function statv(m,s){return Math.round(clamp(gauss(m,s==null?9:s),12,96));}
 function veloFromQ(q){const base=q<=80?76+0.76*q:137+0.6*(q-80);return Math.round(clamp(base+gauss(0,2.5),85,156));}
 
 function veloCapFor(pot,velo){const base=118+pot*3.6+ri(0,3);return Math.round(clamp(Math.max(base,velo+2),velo+2,156));}
+/* 投球フォーム（3D表示用）：オーバー／スリークォーター／サイド／アンダー */
+function pickPitForm(){const r=R();return r<0.42?'over':r<0.78?'three':r<0.93?'side':'under';}
 function genPlayer(o){
  const q=o.q, grade=o.grade||1;
  const p={id:G.seq++,name:o.name||genName(),grade,height:Math.round(clamp(gauss(172,5.5),158,194)),weight:0,throws:R()<0.8?'右':'左',bats:'右',pos:o.pos||pickPos(),sub:[],
   bat:{},pit:{velo:0,stamina:0,hrR:0,hrL:0,hitR:0,hitL:0,kR:0,kL:0,pitches:[]},tough:0,abilities:[],unique:[],potential:0,growth:pick(['早熟','普通','普通','晩成']),academic:0,
   talentP:0,talentC:0,revealed:{P:false,C:false},fatigue:ri(0,20),injury:0,training:'bat',mentor:null,posChange:null,retired:false,caps:{},noise:{},number:null,
-  scouted:!!o.scouted,rank:o.rank||null,title:o.title||null,joinYear:G.year,hometown:o.hometown||G.school.pref,season:blankStats(),career:blankStats(),xp:0,u18:0,star:0,weeks:0,maxVelo:0,awakened:0,persona:pickPersona(),trust:0};
+  scouted:!!o.scouted,rank:o.rank||null,title:o.title||null,joinYear:G.year,hometown:o.hometown||G.school.pref,season:blankStats(),career:blankStats(),xp:0,u18:0,star:0,weeks:0,maxVelo:0,awakened:0,persona:pickPersona(),trust:0,pitForm:pickPitForm()};
  p.trust=clamp(Math.round(gauss(38,12)+(grade-1)*12),5,90);
  p.weight=Math.round(clamp(p.height-105+gauss(0,6),50,98));p.training=p.pos==='投'?'pitch':'bat';
  const r=R();p.bats=p.throws==='左'?(R()<0.85?'左':'両'):(r<0.62?'右':r<0.93?'左':'両');
@@ -2305,7 +2307,7 @@ function migrate(){G.settings=G.settings||{mode:'card'};if(G.settings.mode==='ac
  if(G.scout&&!SCOUT_SPECS.some(x=>x.id===G.scout.spec))G.scout.spec=pick(SCOUT_SPECS).id;
  (G.coachMarket||[]).forEach(c=>{if(!c.style)c.style=pick(COACH_STYLES).id;if(!c.career)c.career='';});
  (G.scoutMarket||[]).forEach(c=>{if(!SCOUT_SPECS.some(x=>x.id===c.spec))c.spec=pick(SCOUT_SPECS).id;if(!c.career)c.career='';});
- G.players.forEach(p=>{if(TRAIN[p.training]&&TRAIN[p.training].facReq)p.training='bat';if(p.maxVelo==null)p.maxVelo=0;if(!p.persona)p.persona=pickPersona();if(p.trust==null)p.trust=clamp(Math.round(gauss(38,12)+(p.grade-1)*12),5,90);if(p.noise&&p.noise.pot==null)p.noise.pot=gauss(0,1);p.abilities=(p.abilities||[]).filter(a=>ABIL[a]);p.unique=(p.unique||[]).filter(a=>ABIL[a]);});
+ G.players.forEach(p=>{if(TRAIN[p.training]&&TRAIN[p.training].facReq)p.training='bat';if(p.maxVelo==null)p.maxVelo=0;if(!p.persona)p.persona=pickPersona();if(!p.pitForm)p.pitForm=pickPitForm();if(p.trust==null)p.trust=clamp(Math.round(gauss(38,12)+(p.grade-1)*12),5,90);if(p.noise&&p.noise.pot==null)p.noise.pot=gauss(0,1);p.abilities=(p.abilities||[]).filter(a=>ABIL[a]);p.unique=(p.unique||[]).filter(a=>ABIL[a]);});
  G.records=G.records||{};G.candidatesAll=G.candidatesAll||G.candidates||[];
  for(const c of G.candidatesAll){if(!c.player){c.player=genPlayer({grade:1,q:c.q,pos:c.pos,scouted:true,rank:c.rank,title:c.title,hometown:c.pref,uniqProb:0});if(c.unique)c.player.unique=[c.unique];c.player.name=c.name;c.pid=c.player.id;c.potential=c.player.potential;c.growth=c.player.growth;}}
  G.graduates.forEach(g=>{if(!g.career)g.career=blankStats();});}
@@ -2830,6 +2832,8 @@ function arNextPA(){const m=AR.m;if(m.done){arFinish();return;}
  if(m.pa.cmd==='ibb'&&AR.side==='bat'){const ev=m.paIbb();AR.ev=ev;arShowResult(ev);return;}
  arSetPhase('pre');arRenderAll();arLowerThird();}
 function arSetPhase(ph){AR.phase=ph;AR.phaseT=performance.now();}
+/* 投球モーションの長さ（ms）。打席側はフォームを見せるため長め */
+function arWindDur(){return AR.side==='bat'?950:600;}
 /* 自分が操作しない半回はPA単位で一気に進める */
 function arSimHalf(){const m=AR.m;const inn=m.inn,top=m.top;const from=m.log.length;let g=0;while(!m.done&&g++<200){m.step();if(m.inn!==inn||m.top!==top)break;}
  const lines=m.log.slice(from).filter(l=>l.kind!=='inn').map(l=>l.text);
@@ -2945,7 +2949,7 @@ ACT.arDecide=d=>{const m=AR.m;if(AR.phase!=='decide')return;const old=AR.field;c
  const sc=fwBuildScene(ev.bb,ev.play,{resume:old?old.pauseAt:null,dec:old?old.decision:null});sc.c=ev.bb;sc.ev=ev;sc.t0=performance.now()-(old?old.pauseAt:0)/(sc.rate||1);sc.pauseAt=null;AR.field=sc;arSetPhase('field');arRenderAll();};
 /* ---- メインループ ---- */
 function arLoop(){AR.raf=requestAnimationFrame(arLoop);const now=performance.now();
- if(AR.phase==='wind'){const w=AR.side==='bat'?650:450;if(now-AR.windT0>=w){arSetPhase('flight');AR.t0=now;arSound('ui');}}
+ if(AR.phase==='wind'){const w=arWindDur();if(now-AR.windT0>=w){arSetPhase('flight');AR.t0=now;arSound('ui');}}
  if(AR.phase==='flight'){const P=AR.cur;const T=P.T*AR.speed;const u=(now-AR.t0)/T;
   if((AR.side==='pit'||AR.mode==='card')&&AR.cpuSwingAt!=null&&!AR.swung&&now-AR.t0>=AR.cpuSwingAt*AR.speed){AR.swung=true;AR.swingT=now;arSwingSound(AR.ev);}
   if(u>=1&&!AR.caughtSnd){AR.caughtSnd=true;const ev=AR.ev;const hit=ev&&AR.swung&&(ev.kind==='inplay'||ev.kind==='foul');if(!hit)arSound('mitt');}
@@ -3059,7 +3063,7 @@ function arDrawCatcherView(now){const g=AR.g,W=AR.W,H=AR.H;const m=AR.m;const z=
  const def=m.def(),bat=m.bat();const cd=arTeamColors(def),cb=arTeamColors(bat);const P=AR.cur;const pa=m.pa;const ph=AR.phase;const S=actionSettings();
  arDrawBgFielders(g,def,cd);
  /* マウンドと投手 */const feetY=z.cy-z.h*0.6;g.fillStyle=PL.dirt;g.beginPath();g.ellipse(W/2,feetY+z.h*0.02,z.w*0.5,z.h*0.075,0,0,Math.PI*2);g.fill();g.fillStyle=PL.chalk;g.fillRect(W/2-z.w*0.06,feetY-1,z.w*0.12,2);
- let arm=0,lift=false;if(ph==='wind'){const u=(now-AR.windT0)/650;if(u<0.45){lift=true;arm=-0.6-u;}else if(u<0.8){lift=false;arm=-1.6+(u-0.45)*2;}else{arm=-0.9+(u-0.8)*11;}}else if(ph==='flight'){const u=(now-AR.t0)/400;arm=u<1?1.3+u*0.7:2.0;}
+ let arm=0,lift=false;if(ph==='wind'){const u=(now-AR.windT0)/arWindDur();if(u<0.45){lift=true;arm=-0.6-u;}else if(u<0.8){lift=false;arm=-1.6+(u-0.45)*2;}else{arm=-0.9+(u-0.8)*11;}}else if(ph==='flight'){const u=(now-AR.t0)/400;arm=u<1?1.3+u*0.7:2.0;}
  const hs=P?P.hs:(pa&&pa.p.throws==='左'?-1:1);const px=W/2+(P?-P.hs*6:0),py=feetY;const ph_=z.h*0.78;arFigure(g,px,py,ph_,cd,{arm,legLift:lift,flip:hs<0});
  const relX=px-hs*ph_*0.24,relY=py-ph_*0.72;
  /* ホームベース周りの土・バッターボックス */arBatterBox(g,z,PL,-1);arBatterBox(g,z,PL,1);
@@ -3080,7 +3084,7 @@ function arDrawCatcherView(now){const g=AR.g,W=AR.W,H=AR.H;const m=AR.m;const z=
   if(st.hit){const [cx0,cy0,r0]=ballPos(st.uc);const a=(st.c&&st.c.a)||0;const la=(st.c&&st.c.la)||15;let vx,vy,gr;if(st.foul){vx=(a>0?1:-1)*(st.tip?120:720);vy=st.tip?260:(la>40?-500:380);gr=st.tip?-30:20;}else{vx=Math.sin(a*Math.PI/180)*520;vy=-(260+Math.max(0,la)*9);gr=-50;}
    const x=cx0+vx*st.ts,y=cy0+vy*st.ts+(st.foul?0:200*st.ts*st.ts);const r=clamp(r0+gr*st.ts,2,24);if(st.ts<0.6)arDrawBall(g,x,y,r,now/40);arContactFx(g,cx0,cy0,st.ts,st.foul);}
   else if(u<1){const [x,y,r]=ballPos(u);if(u>0.3){const [px,py,pr]=ballPos(Math.max(0,u-0.05));g.globalAlpha=0.25;arDrawBall(g,px,py,pr*0.85,0);g.globalAlpha=1;}arDrawBall(g,x,y,r,now/110);}}
- else if(P&&ph==='wind'){const u=(now-AR.windT0)/650;if(u>0.7)arDrawBall(g,relX,relY,4,0);}
+ else if(P&&ph==='wind'){const u=(now-AR.windT0)/arWindDur();if(u>0.7)arDrawBall(g,relX,relY,4,0);}
  /* ミートカーソル */if(pa&&AR.mode!=='card'&&(ph==='pre'||ph==='wind'||ph==='flight')){const be=pa.be||m.battingEff(pa.b,pa.p,pa.p.pit.pitches[0]||{name:'ストレート',velo:120,move:40,sharp:40,ctrl:40});let r=clamp(0.30+(be.meet-50)/330,0.12,0.5)*arEase().r;const t=AR.swingType;if(t==='power')r*=0.72;const rx=t==='bunt'?0.6:r*1.25,ry=t==='bunt'?0.42:r*0.85;const [cx,cy]=arZ2S(AR.cursor.x,AR.cursor.y);const sx=rx*z.w/2,sy=ry*z.h/2;
   g.save();g.strokeStyle=t==='power'?'#ff5a4a':t==='bunt'?'#ffd166':'#5ab0ff';g.fillStyle=t==='power'?'rgba(255,90,74,.2)':t==='bunt'?'rgba(255,209,102,.2)':'rgba(90,176,255,.2)';g.lineWidth=2;g.beginPath();g.ellipse(cx,cy,sx,sy,0,0,Math.PI*2);g.fill();g.stroke();g.beginPath();g.ellipse(cx,cy,sx*0.4,sy*0.4,0,0,Math.PI*2);g.stroke();g.restore();}
  /* スイングの風切り */if(AR.swung&&AR.swingT&&now>=AR.swingT&&now-AR.swingT<260&&AR.ev&&(AR.ev.kind==='miss'||AR.ev.kind==='kSwing')){const k=(now-AR.swingT)/260;arSwoosh(g,z.cx,z.cy+z.h*0.05,z.w*0.7,hand==='左'?-1:1,1-k);}
@@ -3115,7 +3119,7 @@ function arDrawPitcherView(now){const g=AR.g,W=AR.W,H=AR.H;const m=AR.m;const z=
   if(stp.hit){const [cx0,cy0,r0]=ballPos(stp.uc);const a=(stp.c&&stp.c.a)||0;const la=(stp.c&&stp.c.la)||15;let vx,vy,gr;if(stp.foul){vx=(a>0?-1:1)*(stp.tip?60:420);vy=stp.tip?-120:(la>40?-420:-200);gr=-8;}else{vx=-Math.sin(a*Math.PI/180)*700;vy=(la<8?520:la<25?260:-120)+40;gr=la<25?28:10;}
    const x=cx0+vx*stp.ts,y=cy0+vy*stp.ts+(stp.foul?0:(la>=25?500*stp.ts*stp.ts:0));const r=clamp(r0+gr*stp.ts,2,26);if(stp.ts<0.6)arDrawBall(g,x,y,r,now/40);arContactFx(g,cx0,cy0,stp.ts,stp.foul);}
   else if(u<1){const [x,y,r]=ballPos(u);arDrawBall(g,x,y,r,now/100);}}
- else if(ph==='wind'){const u=(now-AR.windT0)/450;arDrawBall(g,hx-hs*u*18,hy-u*26,13,0);}
+ else if(ph==='wind'){const u=(now-AR.windT0)/arWindDur();arDrawBall(g,hx-hs*u*18,hy-u*26,13,0);}
  else if(ph==='gauge'||ph==='pre')arDrawBall(g,hx,hy-4,13,0);
  if(AR.swung&&AR.swingT&&now>=AR.swingT&&now-AR.swingT<260&&AR.ev&&(AR.ev.kind==='miss'||AR.ev.kind==='kSwing')){const k=(now-AR.swingT)/260;arSwoosh(g,z.cx,z.cy+z.h*0.1,z.w*0.6,hand==='左'?1:-1,1-k);}
  if(ph==='pre'){g.font='12px sans-serif';g.textAlign='center';g.fillStyle='rgba(255,255,255,.9)';g.fillText(AR.mode==='card'?'下のカードで投球の指示を出す':'ドラッグで狙いを動かす → タップで開始 → もう一度タップでリリース',W/2,H-8);}}
@@ -3494,7 +3498,7 @@ function cdMenu(){const S=cardSettings();AR.panel=`<div class="ar-panel"><b clas
  2Dキャンバス（#arcv）はHUD専用になり、ゾーン・カーソル・吹き出しだけを投影して描く。 */
 const R3={on:false,broken:false,renderer:null,scene:null,cam:null,cv:null,W:1,H:1,night:null,lastPhase:null,camPos:null,camLook:null,camFov:40,
  fielders:{},batter:null,runners:[],umps:[],ball:null,glow:null,trailM:[],trailP:[],mitt:null,board:null,boardCv:null,boardTex:null,crowd:null,lamps:[],relPos:null,relAt:0,hit:null,fx:[],t0:0,fill:0.6,sky:null,skyTex:null,fog:null,stands:[],walls:[],sunT:null};
-const R3C={ZX:0.25,ZH0:0.8,ZH:0.3,PLATE_Z:-0.2,RUBBER:18.44,REL_H:1.45,FOV_BAT:46,FOV_PIT:20};
+const R3C={ZX:0.25,ZH0:0.8,ZH:0.3,PLATE_Z:-0.2,RUBBER:18.44,REL_H:1.45,FOV_BAT:50,FOV_PIT:20};
 const R3K={HIPS:0.48,DY:0.48/0.92};
 const R3_UMP={base:'#2b3340',trim:'#2b3340',cap:'#1b1f26',pants:'#3a4250'};
 function r3on(){return R3.on&&!!R3.renderer;}
@@ -3586,10 +3590,14 @@ const RP={
  bunt:{dy:-0.15,torso:[0.3,-0.8,0],head:[0.05,0.4,0],rHip:[-0.5,0,-0.3],lHip:[-0.5,0,0.3],rKnee:[0.8,0,0],lKnee:[0.8,0,0],rSh:[-1.25,0,-0.25],rEl:[-0.45,0,0],lSh:[-1.35,0,0.35],lEl:[-0.25,0,0],batDir:[0.1,0.05,1]},
  /* 投手（本塁方向=+z を向く。右投げ基準） */
  pset:{rSh:[-0.9,0,-0.25],lSh:[-0.95,0,0.3],rEl:[-1.55,0,0],lEl:[-1.45,0,0],head:[0.05,0,0]},
- plift:{dy:-0.04,torso:[0.05,0.35,0],lHip:[-1.6,0,0.1],lKnee:[1.5,0,0],rHip:[0.05,0,-0.05],rKnee:[0.25,0,0],rSh:[-1.1,0,-0.3],lSh:[-1.15,0,0.35],rEl:[-1.6,0,0],lEl:[-1.5,0,0],head:[0.05,-0.2,0]},
- pstride:{dy:-0.2,torso:[0.15,0.6,0],lHip:[-0.95,0,0.15],lKnee:[0.35,0,0],rHip:[0.45,0,-0.1],rKnee:[0.8,0,0],rSh:[1.9,0,-1.3],rEl:[-1.8,0,0],lSh:[-1.5,0,0.4],lEl:[-0.3,0,0],head:[0.05,-0.3,0]},
- prel:{dy:-0.28,torso:[0.6,-0.1,0],lHip:[-0.85,0,0.15],lKnee:[0.6,0,0],rHip:[0.9,0,-0.1],rKnee:[0.5,0,0],rSh:[-2.35,0,-0.55],rEl:[-0.25,0,0],lSh:[0.6,0,0.6],lEl:[-1.5,0,0],head:[0.05,0,0]},
- pend:{dy:-0.26,torso:[0.85,-0.5,0],lHip:[-0.8,0,0.15],lKnee:[0.6,0,0],rHip:[-1.0,0,-0.2],rKnee:[0.9,0,0],rSh:[-0.5,0,0.7],rEl:[-0.5,0,0],lSh:[0.6,0,0.5],lEl:[-1.2,0,0],head:[-0.2,0,0]},
+ pwind:{dy:0.02,torso:[-0.18,0,0],rSh:[-2.75,0,-0.35],lSh:[-2.75,0,0.35],rEl:[-0.55,0,0],lEl:[-0.55,0,0],rHip:[0.1,0,-0.05],lHip:[0.1,0,0.05],head:[-0.15,0,0]},
+ plift:{dy:-0.03,torso:[0.05,0.85,0],head:[0.05,-0.75,0],lHip:[-1.95,0,0.15],lKnee:[1.9,0,0],rHip:[0.05,0,-0.05],rKnee:[0.25,0,0],rSh:[-1.0,0,-0.3],lSh:[-1.05,0,0.35],rEl:[-1.6,0,0],lEl:[-1.5,0,0]},
+ plift2:{dy:-0.05,torso:[0.05,0.55,0],head:[0.05,-0.5,0],lHip:[-1.2,0,0.15],lKnee:[1.3,0,0],rHip:[0.05,0,-0.05],rKnee:[0.3,0,0],rSh:[-0.7,0,-0.3],lSh:[-0.8,0,0.35],rEl:[-1.7,0,0],lEl:[-1.6,0,0]},
+ pstride:{dy:-0.2,torso:[0.1,0.7,0],head:[0.05,-0.6,0],lHip:[-1.15,0,0.15],lKnee:[0.3,0,0],rHip:[0.5,0,-0.1],rKnee:[0.9,0,0],rSh:[1.5,0,-1.55],rEl:[-2.0,0,0],lSh:[-1.65,0,0.35],lEl:[-0.2,0,0]},
+ parm:{dy:-0.24,torso:[0.35,0.15,0],head:[0.0,-0.15,0],lHip:[-1.0,0,0.15],lKnee:[0.45,0,0],rHip:[0.75,0,-0.1],rKnee:[0.7,0,0],rSh:[-0.9,0,-2.3],rEl:[-1.2,0,0],lSh:[-0.9,0,0.9],lEl:[-1.3,0,0]},
+ prel:{dy:-0.3,torso:[0.7,-0.25,0],head:[-0.1,0.1,0],lHip:[-0.85,0,0.15],lKnee:[0.65,0,0],rHip:[0.95,0,-0.1],rKnee:[0.45,0,0],rSh:[-2.4,0,-0.6],rEl:[-0.15,0,0],lSh:[0.7,0,0.6],lEl:[-1.6,0,0]},
+ pend:{dy:-0.28,torso:[0.95,-0.75,0],head:[-0.3,0.2,0],lHip:[-0.75,0,0.15],lKnee:[0.6,0,0],rHip:[-1.3,0,-0.25],rKnee:[0.5,0,0],rSh:[-0.7,0,0.9],rEl:[-0.6,0,0],lSh:[0.7,0,0.5],lEl:[-1.2,0,0]},
+ pland:{dy:-0.1,torso:[0.4,-0.3,0],head:[-0.2,0.1,0],lHip:[-0.5,0,0.15],lKnee:[0.5,0,0],rHip:[-0.45,0,-0.2],rKnee:[0.6,0,0],rSh:[-0.3,0,-0.3],rEl:[-0.6,0,0],lSh:[-0.5,0,0.4],lEl:[-1.0,0,0]},
 };
 function r3MixPose(a,b,u){const o={};const keys=new Set([...Object.keys(a),...Object.keys(b)]);for(const k of keys){const x=a[k],y=b[k];if(k==='dy'||k==='dz'){o[k]=(x||0)+((y||0)-(x||0))*u;continue;}const X=x||[0,0,0],Y=y||[0,0,0];o[k]=[X[0]+(Y[0]-X[0])*u,X[1]+(Y[1]-X[1])*u,X[2]+(Y[2]-X[2])*u];}return o;}
 const RCLIP={
@@ -3599,6 +3607,18 @@ const RCLIP={
  throw:[[0,'throwWind'],[0.55,'throwRel'],[1,'throwEnd']],
  catchHigh:[[0,'ready'],[1,'catchHigh']],catchLow:[[0,'ready'],[1,'catchLow']],
 };
+/* 投球フォーム別の差分（腕の軌道・上体の傾き） */
+const RPFORM={
+ over:{},
+ three:{pstride:{rSh:[1.3,0,-1.35]},parm:{rSh:[-0.8,0,-1.85],torso:[0.35,0.15,0.18]},prel:{rSh:[-2.1,0,-1.05],torso:[0.7,-0.25,0.22]},pend:{rSh:[-0.6,0,0.7],torso:[0.95,-0.75,0.15]}},
+ side:{pstride:{rSh:[1.25,0,-1.5],rEl:[-1.2,0,0],torso:[0.2,0.75,0.3]},parm:{rSh:[-0.3,0,-1.7],rEl:[-0.5,0,0],torso:[0.45,0.2,0.42]},prel:{rSh:[-1.5,0,-1.65],rEl:[-0.1,0,0],torso:[0.6,-0.25,0.45],dy:-0.34},pend:{rSh:[-1.4,0,0.4],rEl:[-0.4,0,0],torso:[0.85,-0.8,0.25]}},
+ under:{pstride:{rSh:[1.3,0,-0.55],rEl:[-0.4,0,0],torso:[0.35,0.7,0.1]},parm:{rSh:[0.5,0,-0.45],rEl:[-0.2,0,0],torso:[0.85,0.2,0.15],dy:-0.3},prel:{rSh:[-0.95,0,-0.5],rEl:[-0.1,0,0],torso:[1.05,-0.2,0.15],dy:-0.38,head:[-0.55,0.1,0]},pend:{rSh:[-2.0,0,0.3],rEl:[-0.4,0,0],torso:[0.9,-0.7,0.1],dy:-0.3}},
+};
+for(const f in RPFORM){const o=RPFORM[f];for(const k of ['pstride','parm','prel','pend'])RP[k+'_'+f]=Object.assign({},RP[k],o[k]||{});
+ RCLIP['windup_'+f]=[[0,'pset'],[0.2,'pwind'],[0.45,'plift'],[0.68,'pstride_'+f],[0.86,'parm_'+f],[1,'prel_'+f]];
+ RCLIP['stretch_'+f]=[[0,'pset'],[0.4,'plift2'],[0.68,'pstride_'+f],[0.86,'parm_'+f],[1,'prel_'+f]];
+ RCLIP['pfollow_'+f]=[[0,'prel_'+f],[0.45,'pend_'+f],[1,'pland']];}
+function r3PitForm(p){return p&&RPFORM[p.pitForm]?p.pitForm:'over';}
 function r3ClipPose(name,u){const c=RCLIP[name];u=clamp(u,0,1);for(let i=1;i<c.length;i++){if(u<=c[i][0]){const a=c[i-1],b=c[i];const k=(u-a[0])/(b[0]-a[0]);const e=k*k*(3-2*k);return r3MixPose(RP[a[1]],RP[b[1]],e);}}return RP[c[c.length-1][1]];}
 function r3RunPose(ph,k){k=k==null?1:k;const s=Math.sin(ph),c=Math.cos(ph);return {dy:-0.02+0.03*Math.abs(c),torso:[0.22*k,0,0],head:[-0.15,0,0],rHip:[-0.85*s*k,0,-0.05],lHip:[0.85*s*k,0,0.05],rKnee:[(0.35+0.8*Math.max(0,-s))*k,0,0],lKnee:[(0.35+0.8*Math.max(0,s))*k,0,0],rSh:[0.9*s*k,0,-0.15],lSh:[-0.9*s*k,0,0.15],rEl:[-1.3*k,0,0],lEl:[-1.3*k,0,0]};}
 /* ---- ワールド構築 ---- */
@@ -3626,7 +3646,7 @@ function r3BuildWorld(){const S=R3.scene=new THREE.Scene();R3.cam=new THREE.Pers
  R3.batter=new R3Rig();S.add(R3.batter.g);R3.batter.bat.visible=true;
  R3.runners=[];for(let i=0;i<4;i++){const r=new R3Rig();S.add(r.g);r.g.visible=false;R3.runners.push(r);}
  R3.umps=[];for(let i=0;i<3;i++){const r=new R3Rig();r.setColors(R3_UMP,false);S.add(r.g);R3.umps.push(r);}
- /* 捕手のミット（独立して動く） */R3.mitt=new THREE.Mesh(r3Geo('mitt',()=>{const g=new THREE.SphereGeometry(0.17,14,12);g.scale(1,1.1,0.55);return g;}),r3Mat('#7a4f2a'));R3.mitt.castShadow=true;S.add(R3.mitt);
+ /* 捕手のミット（独立して動く） */R3.mitt=new THREE.Mesh(r3Geo('mitt',()=>{const g=new THREE.SphereGeometry(0.11,14,12);g.scale(1,1.1,0.55);return g;}),new THREE.MeshLambertMaterial({color:new THREE.Color('#7a4f2a'),transparent:true,opacity:0.88}));R3.mitt.castShadow=true;S.add(R3.mitt);
  /* ボール */R3.ball=new THREE.Mesh(r3Sph(0.075),new THREE.MeshLambertMaterial({color:0xffffff,emissive:0x333333}));R3.ball.castShadow=true;S.add(R3.ball);
  const gc=document.createElement('canvas');gc.width=gc.height=64;const gg=gc.getContext('2d');const grd=gg.createRadialGradient(32,32,2,32,32,30);grd.addColorStop(0,'rgba(255,255,255,1)');grd.addColorStop(0.35,'rgba(255,255,255,.55)');grd.addColorStop(1,'rgba(255,255,255,0)');gg.fillStyle=grd;gg.fillRect(0,0,64,64);
  R3.glow=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(gc),transparent:true,depthWrite:false,opacity:0.9}));S.add(R3.glow);
@@ -3695,14 +3715,14 @@ function r3ScreenToZone(sx,sy){const nd=new THREE.Vector3(sx/R3.W*2-1,1-sy/R3.H*
 /* HUD：ゾーンを投影した四角形で描く */
 function r3DrawZone(g,alpha){const P=(x,y)=>r3ZoneToScreen(x,y);g.save();g.globalAlpha=alpha==null?1:alpha;
  const poly=(pts)=>{g.beginPath();pts.forEach((p,i)=>{if(i===0)g.moveTo(p[0],p[1]);else g.lineTo(p[0],p[1]);});g.closePath();};
- poly([P(-1,-1),P(1,-1),P(1,1),P(-1,1)]);g.fillStyle='rgba(255,255,255,.08)';g.fill();g.strokeStyle='rgba(255,255,255,.92)';g.lineWidth=2;g.stroke();
- g.strokeStyle='rgba(255,255,255,.3)';g.lineWidth=1;for(const v of [-1/3,1/3]){const a=P(v,-1),b=P(v,1);g.beginPath();g.moveTo(a[0],a[1]);g.lineTo(b[0],b[1]);g.stroke();const c=P(-1,v),d=P(1,v);g.beginPath();g.moveTo(c[0],c[1]);g.lineTo(d[0],d[1]);g.stroke();}
+ poly([P(-1,-1),P(1,-1),P(1,1),P(-1,1)]);g.fillStyle='rgba(10,20,30,.22)';g.fill();g.strokeStyle='rgba(0,0,0,.35)';g.lineWidth=5;g.stroke();g.strokeStyle='rgba(255,255,255,.95)';g.lineWidth=2.5;g.stroke();
+ g.strokeStyle='rgba(255,255,255,.38)';g.lineWidth=1.2;for(const v of [-1/3,1/3]){const a=P(v,-1),b=P(v,1);g.beginPath();g.moveTo(a[0],a[1]);g.lineTo(b[0],b[1]);g.stroke();const c=P(-1,v),d=P(1,v);g.beginPath();g.moveTo(c[0],c[1]);g.lineTo(d[0],d[1]);g.stroke();}
  g.restore();}
 /* ---- カメラ ---- */
 function r3SetCam(pos,look,fov,cut,k){const c=R3.cam;const nowR=Date.now();const dt=Math.min(100,nowR-(R3.lastCamT||nowR));R3.lastCamT=nowR;if(cut||!R3.camPos){R3.camPos=pos.clone();R3.camLook=look.clone();R3.camFov=fov;}else{k=k||0.1;/* フレームレートに依存しない追従（60fps基準の係数kを時間で補正） */const kk=1-Math.pow(1-k,dt/16.7);R3.camPos.lerp(pos,kk);R3.camLook.lerp(look,kk);R3.camFov+=(fov-R3.camFov)*kk;}
  c.position.copy(R3.camPos);c.lookAt(R3.camLook);if(Math.abs(c.fov-R3.camFov)>0.01){c.fov=R3.camFov;c.updateProjectionMatrix();}c.updateMatrixWorld();}
 function r3BatCam(cut){const S=actionSettings();const m=AR.m;const pa=m.pa;const hand=pa&&(AR.mode!=='card'||AR.phase!=='pre')?pa.bHand:(AR.preHand||'右');const sg=hand==='左'?-1:1;
- const wide=S.cam3d==='wide';const pos=wide?new THREE.Vector3(sg*1.4,3.8,6.4):new THREE.Vector3(sg*0.22,2.75,3.6);const look=wide?new THREE.Vector3(0,0.1,-6):new THREE.Vector3(0,-0.58,-4.4);r3SetCam(pos,look,wide?44:R3C.FOV_BAT,cut);}
+ const wide=S.cam3d==='wide';const pos=wide?new THREE.Vector3(sg*1.4,3.8,6.4):new THREE.Vector3(0,1.5,1.8);const look=wide?new THREE.Vector3(0,0.1,-6):new THREE.Vector3(0,-0.87,-7.5);r3SetCam(pos,look,wide?44:R3C.FOV_BAT,cut);}
 function r3PitCam(cut){const S=actionSettings();const m=AR.m;const pa=m.pa;const hs=pa?(pa.p.throws==='左'?-1:1):1;const zoom=S.cam3d==='zoom';
  const pos=new THREE.Vector3(hs*0.75,zoom?2.6:3.2,zoom?-23.6:-25.0);const look=new THREE.Vector3(-hs*0.12,0.8,0.3);r3SetCam(pos,look,zoom?13:R3C.FOV_PIT,cut);}
 function r3OrbitCam(now){const a=now/30000;const cx=0,cz=-35;const pos=new THREE.Vector3(cx+Math.sin(a)*62,17+Math.sin(a*0.7)*3,cz+Math.cos(a)*62);const look=new THREE.Vector3(0,3,-40);r3SetCam(pos,look,44,false,0.04);}
@@ -3760,11 +3780,11 @@ function r3PitchScene(now){const m=AR.m;const d=m.def(),t=m.bat();const cd=arTea
  /* 野手 */const numOf=(team,k)=>{const sl=team.lineup.find(x=>x.pos===k);return sl?(sl.p.number!=null?sl.p.number:POS_NUM[k]):POS_NUM[k];};const pidNum=(team,pid)=>{const pl=team.lineup.map(x=>x.p).concat(team.bench||[]).find(x=>x.id===pid);return pl?(pl.number!=null?pl.number:null):null;};
  for(const k in R3.fielders){const r=R3.fielders[k];r.setColors(cd,false);r.setNumber(numOf(d,k),cd.trim);r.glove.visible=true;const p=DP[k];
   if(k==='投'){r.at(0,0,-R3C.RUBBER+0.15);r.g.scale.x=hs<0?-1:1;r.face(0,1);r.g.visible=true;
-   const windDur=(AR.side==='bat'?650:450);let pose;
-   if(ph==='wind'&&AR.windT0){const u=(now-AR.windT0)/windDur;pose=r3ClipPose('windup',u);}
-   else if((ph==='flight'||ph==='after')&&AR.windT0&&AR.cur){const u=(now-AR.windT0-windDur)/420;pose=u<1?r3ClipPose('pfollow',u):RP.stand;}
+   const windDur=arWindDur();let pose;const form=r3PitForm(pa?pa.p:d.pitcher);const stretch=m.bases.some(Boolean);
+   if(ph==='wind'&&AR.windT0){const u=(now-AR.windT0)/windDur;pose=r3ClipPose((stretch?'stretch_':'windup_')+form,u);}
+   else if((ph==='flight'||ph==='after')&&AR.windT0&&AR.cur){const u=(now-AR.windT0-windDur)/520;pose=u<1?r3ClipPose('pfollow_'+form,u):RP.ready;}
    else{const w=Math.sin(now/1100);pose=Object.assign({},RP.pset);pose.dy=w*0.012;pose.head=[0.05+w*0.04,0,0];pose.torso=[w*0.02,0,0];}r.apply(pose);continue;}
-  if(k==='捕'){r.at(0,0,1.6);r.g.scale.x=1;r.face(0,-1);r.g.visible=true;const cp=Object.assign({},RP.crouch);cp.dy=RP.crouch.dy+Math.sin(now/900)*0.02;r.apply(cp);r.glove.visible=false;continue;}
+  if(k==='捕'){r.at(0,0,1.6);r.g.scale.x=1;r.face(0,-1);r.g.visible=!(AR.side==='bat'&&S.cam3d!=='wide');const cp=Object.assign({},RP.crouch);cp.dy=RP.crouch.dy+Math.sin(now/900)*0.02;r.apply(cp);r.glove.visible=false;continue;}
   r.g.scale.x=1;r.g.visible=true;r.at(p[0],0,-p[1]);r.face(-p[0],p[1]);const rp=Object.assign({},RP.ready);rp.dy=RP.ready.dy+Math.sin(now/700+k.charCodeAt(0))*0.02;r.apply(rp);}
  /* 打者 */{const b=R3.batter;b.g.visible=true;b.setColors(cb,true);b.setNumber(pa?(pa.b.number!=null?pa.b.number:null):null,cb.trim);b.bat.visible=true;b.g.scale.x=sg<0?-1:1;b.at(-sg*0.86,0,0.1);b.face(sg,0);
   const bunt=pa&&(pa.buntMode||(pa.bm&&pa.bm.bunt)||pa.cmd==='squeeze')||(AR.side==='bat'&&AR.mode!=='card'&&AR.swingType==='bunt');
@@ -3775,13 +3795,13 @@ function r3PitchScene(now){const m=AR.m;const d=m.def(),t=m.bat();const cd=arTea
   for(let i=n;i<4;i++)R3.runners[i].g.visible=false;}
  r3PlaceUmps(AR.side!=='bat');
  /* ミットの目標 */let mittT;if(AR.side==='pit'&&ph==='pre'&&AR.target)mittT=r3ZoneW(AR.target.x,AR.target.y);else if(AR.sign&&AR.side==='pit')mittT=r3ZoneW(AR.sign.tx,AR.sign.ty);else mittT=r3ZoneW(0,0.3);
- mittT.z=0.55;R3.mitt.visible=true;
+ mittT.z=0.3;R3.mitt.visible=true;
  /* ボール */const ball=R3.ball;const pit=R3.fielders['投'];
- if(ph==='wind'&&AR.windT0){pit.g.updateMatrixWorld(true);ball.position.copy(pit.handPos('r'));ball.visible=true;const u=(now-AR.windT0)/(AR.side==='bat'?650:450);if(u>=0.95)R3.relPos=ball.position.clone();R3.hit=null;R3.mitt.position.lerp(mittT,0.2);}
+ if(ph==='wind'&&AR.windT0){pit.g.updateMatrixWorld(true);ball.position.copy(pit.handPos('r'));ball.visible=true;const u=(now-AR.windT0)/arWindDur();if(u>=0.95)R3.relPos=ball.position.clone();R3.hit=null;R3.mitt.position.lerp(mittT,0.2);}
  else if((ph==='flight'||ph==='after')&&P&&AR.t0){const T=P.T*AR.speed;const u=(now-AR.t0)/T;const ev=AR.ev;const tc=AR.swingT!=null?AR.swingT+75*AR.speed:null;const hit=!!(ev&&AR.swung&&tc!=null&&(ev.kind==='inplay'||ev.kind==='foul')&&now>=tc);
   if(hit){if(!R3.hit||R3.hit.ev!==ev){R3.hit=r3MakeHit(ev,P);R3.hit.ev=ev;R3.hit.tc=tc;}ball.position.copy(r3HitPos(R3.hit,now-R3.hit.tc));ball.visible=true;R3.mitt.position.lerp(mittT,0.1);}
-  else if(u<1){ball.position.copy(r3PitchPos(P,u,R3.relPos));ball.visible=true;const tgt=r3ZoneW(P.x,P.y);tgt.z=0.45;if(u>0.75)R3.mitt.position.lerp(tgt,0.25);else R3.mitt.position.lerp(mittT,0.1);}
-  else{const tgt=r3ZoneW(P.x,P.y);tgt.z=0.45;R3.mitt.position.lerp(tgt,0.4);ball.position.copy(R3.mitt.position);ball.position.z-=0.08;ball.visible=!(ev&&(ev.kind==='hbp'));}}
+  else if(u<1){ball.position.copy(r3PitchPos(P,u,R3.relPos));ball.visible=true;const tgt=r3ZoneW(P.x,P.y);tgt.z=0.3;if(u>0.75)R3.mitt.position.lerp(tgt,0.25);else R3.mitt.position.lerp(mittT,0.1);}
+  else{const tgt=r3ZoneW(P.x,P.y);tgt.z=0.3;R3.mitt.position.lerp(tgt,0.4);ball.position.copy(R3.mitt.position);ball.position.z-=0.08;ball.visible=!(ev&&(ev.kind==='hbp'));}}
  else{ball.visible=false;R3.hit=null;R3.mitt.position.lerp(mittT,0.1);}}
 /* フィールドプレーのシーン */
 function r3FieldScene(sc,t,now){const m=AR.m;const cd=sc.colDef||arTeamColors(m.def()),cb=sc.colBat||arTeamColors(m.bat());const b=fwAt(sc.ball,t);const dT=sc.defTeam||m.def(),bT=sc.batTeam||m.bat();
