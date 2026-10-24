@@ -31,6 +31,7 @@ def run():
         pg.click('[data-act="startGame"]')
         pg.wait_for_timeout(200)
         assert pg.is_visible('#game'),'game not visible'
+        pg.evaluate("actionSettings().view3d=false")  # UIテストでは3D描画を切る（ソフトウェアGLだと遅すぎる）
         if SHOT: pg.screenshot(path='/home/claude/hsb/test/shot_home.png',full_page=False)
         week=0; matches=0; shots=0
         def modal_open():
