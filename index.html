@@ -1650,9 +1650,9 @@ Match.prototype.cpuSwingInput=function(P){const pa=this.pa;const be=pa.be,b=pa.b
  return {type,cx:px+gauss(0,sc),cy:py+gauss(0,sc)-(bm.cyUp||0),dt:gauss(0,st)+(bm.dtBias||0)};};
 /* スイングと球の接触判定 */
 Match.prototype.contact=function(be,pe,P,sw,bHand){const meet=be.meet,pow=be.pow;
- let r=0.30+(meet-50)/330;if(sw.type==='power')r*=0.72;r=clamp(r,0.12,0.5);const rx=r*1.25,ry=r*0.85;
+ let r=0.30+(meet-50)/330;if(sw.type==='power')r*=0.72;r=clamp(r,0.12,0.5);const em=sw.ease||null;if(em)r*=em.r||1;const rx=r*1.25,ry=r*0.85;
  const d=Math.hypot((sw.cx-P.x)/rx,(sw.cy-P.y)/ry);
- const tw=55+(meet-50)*0.2;const adt=Math.abs(sw.dt);
+ const tw=(55+(meet-50)*0.2)*(em?(em.tw||1):1);const adt=Math.abs(sw.dt);
  const tf=adt<=tw?1:adt<=2.2*tw?1-(adt-tw)/(1.2*tw)*0.7:adt<=3.2*tw?0.3:0;
  const res={kind:'miss',d,tf,tw,rx,ry};
  if(tf===0||d>1.3)return res;
@@ -2774,7 +2774,9 @@ function viewEditList(){if(!canEdit())return '';const list=G.players.slice().sor
 /* ================= 操作モード（プロスピ風）：試合アリーナ ================= */
 const AR={m:null,ctx:null,el:null,cv:null,g:null,W:0,H:0,dpr:1,phase:'idle',side:'bat',swingType:'meet',panel:null,pitchSel:0,power:'normal',target:null,gauge:null,cursor:{x:0,y:-0.1},cur:null,ev:null,t0:0,swing:null,swung:false,anim:null,dots:[],foot:'',speed:1,field:null,banner:null,raf:0,lastDraw:0,cpuSwingAt:null,windT0:0,resultAt:0,msgT:0,pending:null,ptrDown:false,audio:null};
 function r3on(){return typeof R3!=='undefined'&&R3.on&&!!R3.renderer;}
-function actionSettings(){const S=G.settings.action=G.settings.action||{};if(S.speed==null)S.speed=1;if(S.gauge==null)S.gauge=true;if(!S.meter)S.meter=S.gauge===false?'none':'meter';if(!S.run)S.run='manual';if(S.assist==null)S.assist=false;if(S.sound==null)S.sound=true;if(S.bat==null)S.bat=true;if(S.pit==null)S.pit=true;if(S.autoThrow==null)S.autoThrow=false;if(S.camera==null)S.camera='catcher';if(S.defThrow==null)S.defThrow=true;if(S.replay==null)S.replay=true;if(S.lower==null)S.lower=true;if(S.view3d==null)S.view3d=true;if(!S.cam3d)S.cam3d='std';return S;}
+function actionSettings(){const S=G.settings.action=G.settings.action||{};if(S.speed==null)S.speed=1;if(S.gauge==null)S.gauge=true;if(!S.meter)S.meter=S.gauge===false?'none':'meter';if(!S.run)S.run='manual';if(S.assist==null)S.assist=false;if(S.sound==null)S.sound=true;if(S.bat==null)S.bat=true;if(S.pit==null)S.pit=true;if(S.autoThrow==null)S.autoThrow=false;if(S.camera==null)S.camera='catcher';if(S.defThrow==null)S.defThrow=true;if(S.replay==null)S.replay=true;if(S.lower==null)S.lower=true;if(S.view3d==null)S.view3d=true;if(!S.cam3d)S.cam3d='std';if(!S.batEase)S.batEase='easy';if(!S.ctl2){S.ctl2=true;S.meter='simple';S.gauge=true;S.defThrow=false;S.batEase='easy';}return S;}
+/* 打撃アシスト：ヒットゾーン（カーソル）とタイミング許容の倍率 */
+function arEase(){const S=actionSettings();return S.batEase==='hard'?{r:0.85,tw:0.85}:S.batEase==='normal'?{r:1,tw:1}:{r:2.0,tw:1.8};}
 /* ---- 効果音（WebAudio） ---- */
 function arSound(kind){const S=actionSettings();if(!S.sound)return;try{if(!AR.audio){const C=window.AudioContext||window.webkitAudioContext;if(!C)return;AR.audio=new C();}const a=AR.audio;if(a.state==='suspended')a.resume();const t=a.currentTime;
  const tone=(f,d,type,vol,when)=>{const o=a.createOscillator(),g=a.createGain();o.type=type||'sine';o.frequency.value=f;g.gain.setValueAtTime(vol||0.15,t+(when||0));g.gain.exponentialRampToValueAtTime(0.001,t+(when||0)+d);o.connect(g);g.connect(a.destination);o.start(t+(when||0));o.stop(t+(when||0)+d+0.02);};
@@ -2786,7 +2788,7 @@ function startActionUI(){const S=actionSettings();AR.speed=S.speed;AR.m=UI.match
  let el=$('#arena');if(!el){el=document.createElement('div');el.id='arena';el.className='arena';document.body.appendChild(el);}
  el.hidden=false;el.innerHTML=`<div class="ar-top" id="artop"></div><div class="ar-stage" id="arstage"><canvas id="arcv"></canvas><div class="ar-ov" id="arov"></div><div class="ar-vel" id="arvel" hidden></div><div class="ar-pci" id="arpci" hidden></div><div class="ar-lt" id="arlt" hidden></div><div class="ar-rep" id="arrep" hidden><span>REPLAY</span></div><div class="ar-gauge" id="argauge" hidden><div class="gbar"><em class="pw"></em><b class="acc"></b><i id="argmark"></i></div><span id="arglbl">パワー</span></div></div><div class="ar-info" id="arinfo"></div><div class="ar-ctl" id="arctl"></div><div class="ar-foot" id="arfoot"></div><div class="ar-sheet" id="arsheet" hidden></div>`;
  AR.el=el;AR.cv=$('#arcv');AR.g=AR.cv.getContext('2d');
- const st=$('#arstage');st.onpointerdown=arPointerDown;st.onpointermove=arPointerMove;st.onpointerup=()=>{AR.ptrDown=false;};st.onpointercancel=()=>{AR.ptrDown=false;};
+ const st=$('#arstage');st.onpointerdown=arPointerDown;st.onpointermove=arPointerMove;st.onpointerup=arPointerUp;st.onpointercancel=e=>{AR.ptrDown=false;AR.hold=false;};
  window.addEventListener('resize',arResize);document.addEventListener('keydown',arKey);
  try{if(window.ResizeObserver){AR.ro=new ResizeObserver(()=>arResize());AR.ro.observe(st);}}catch(e){}
  arResize();if(S.view3d&&typeof r3Start==='function')r3Start(st);arResize();const m=AR.m;AR.banner={title:'PLAY BALL',lines:[`${m.A.name}（先攻）先発 ${m.A.pitcher.name}`,`${m.B.name}（後攻）先発 ${m.B.pitcher.name}`,'',AR.ctx.label||''],until:0,wait:true};arSetPhase('half');arRenderAll();arLoop();}
@@ -2823,7 +2825,8 @@ function arNextPA(){const m=AR.m;if(m.done){arFinish();return;}
  if(!arUserOps()){arSimHalf();return;}
  const S=actionSettings();m.askRun=S.run==='manual';m.askDef=S.pit&&S.defThrow;m.paStart();AR.side=m.userBatting()?'bat':'pit';AR.dots=[];AR.cur=null;AR.ev=null;AR.swing=null;AR.swung=false;AR.target=null;AR.gauge=null;AR.panel=null;AR.pending=null;
  AR.autoT=0;if(AR.side==='bat'){AR.swingType=AR.swingType==='bunt'?'meet':AR.swingType;AR.cursor={x:0,y:-0.05};if(S.autoThrow)AR.autoT=performance.now()+1500;}
- else{const ps=m.pa.p.pit.pitches;AR.pitchSel=0;AR.power='normal';AR.sign=m.cpuPitchInput();AR.sign.idx=Math.max(0,ps.indexOf(AR.sign.pitch));}
+ else{const ps=m.pa.p.pit.pitches;AR.pitchSel=0;AR.power='normal';AR.sign=m.cpuPitchInput();AR.sign.idx=Math.max(0,ps.indexOf(AR.sign.pitch));AR.target=arDefaultTarget();}
+ AR.hold=false;AR.holdStart=false;
  if(m.pa.cmd==='ibb'&&AR.side==='bat'){const ev=m.paIbb();AR.ev=ev;arShowResult(ev);return;}
  arSetPhase('pre');arRenderAll();arLowerThird();}
 function arSetPhase(ph){AR.phase=ph;AR.phaseT=performance.now();}
@@ -2835,21 +2838,34 @@ function arFinish(){endActionUI();finishMatch();}
 /* ---- 入力 ---- */
 function arS2Z(sx,sy){if(r3on())return r3ScreenToZone(sx,sy);const z=arZone();return {x:(sx-z.cx)/(z.w/2)*(AR.side==='pit'?-1:1),y:(sy-z.cy)/(z.h/2)};}
 function arStagePos(e){const r=AR.cv.getBoundingClientRect();return {sx:e.clientX-r.left,sy:e.clientY-r.top};}
-function arPointerDown(e){if(e.target.closest('.ar-gauge')){arRelease();return;}const {sx,sy}=arStagePos(e);AR.ptrDown=true;AR.ptrLast={sx,sy};AR.ptrMoved=0;arTap(sx,sy,e);}
+function arPointerDown(e){if(e.target.closest('.ar-gauge')){arRelease();return;}const {sx,sy}=arStagePos(e);AR.ptrDown=true;AR.ptrLast={sx,sy};AR.ptrStart={sx,sy};AR.ptrMoved=0;AR.ptrT=performance.now();try{e.target.setPointerCapture&&e.target.setPointerCapture(e.pointerId);}catch(x){}
+ const ph=AR.phase;const act=AR.mode!=='card';
+ /* 打撃：押すと投球が始まり、押したままカーソルを動かし、離すとスイング */
+ if(act&&AR.side==='bat'&&ph==='pre'&&!AR.panel){AR.hold=true;AR.holdStart=true;arThrowCpu();return;}
+ if(act&&AR.side==='bat'&&(ph==='wind'||ph==='flight')&&!AR.swung){if(AR.holdStart){AR.hold=true;return;}/* 投球ボタンで始めた場合：タップでスイング */if(ph==='flight')arSwing();return;}
+ /* 投球：タップで開始／リリース、ドラッグで狙い */
+ if(act&&AR.side==='pit'&&ph==='gauge'){arRelease();return;}
+ if(act&&AR.side==='pit'&&ph==='pre'){return;}
+ arTap(sx,sy,e);}
 function arPointerMove(e){if(!AR.ptrDown)return;const {sx,sy}=arStagePos(e);const last=AR.ptrLast||{sx,sy};const dx=sx-last.sx,dy=sy-last.sy;AR.ptrLast={sx,sy};AR.ptrMoved=(AR.ptrMoved||0)+Math.abs(dx)+Math.abs(dy);
- if(AR.side==='bat'&&(AR.phase==='pre'||AR.phase==='wind'||AR.phase==='flight')){const q=arS2Z(sx,sy);AR.cursor={x:clamp(q.x,-1.9,1.9),y:clamp(q.y,-1.9,1.9)};}
- else if(AR.side==='pit'&&AR.phase==='pre'&&r3on()&&AR.mode!=='card'){/* 3Dの投球：ドラッグで相対的に狙いを動かす */const t=AR.target||{x:0,y:0};const k=1/48;AR.target={x:clamp(t.x+dx*k,-1.9,1.9),y:clamp(t.y+dy*k,-1.9,1.9)};}}
+ if(AR.side==='bat'&&(AR.phase==='pre'||AR.phase==='wind'||AR.phase==='flight')){if(AR.mode==='card')return;/* 相対移動（指で画面を隠さずに済む） */const z=arZone();const k=Math.max(1/80,1.8/Math.max(40,z.w));AR.cursor={x:clamp(AR.cursor.x+dx*k,-1.9,1.9),y:clamp(AR.cursor.y+dy*k,-1.9,1.9)};}
+ else if(AR.side==='pit'&&AR.phase==='pre'&&AR.mode!=='card'){/* ドラッグで相対的に狙いを動かす */const t=AR.target||arDefaultTarget();const k=1/45;AR.target={x:clamp(t.x+dx*k,-1.9,1.9),y:clamp(t.y+dy*k,-1.9,1.9)};}}
+function arPointerUp(e){const was=AR.ptrDown;AR.ptrDown=false;if(!was)return;const now=performance.now();const moved=(AR.ptrMoved||0)>12;const act=AR.mode!=='card';
+ if(AR.hold){AR.hold=false;const P=AR.cur;
+  if(act&&AR.side==='bat'&&AR.phase==='flight'&&!AR.swung&&P){const u=(now-AR.t0)/(P.T*AR.speed);if(u>=0.22)arSwing();else AR.foot='早く離したので見逃し';}
+  else if(act&&AR.side==='bat'&&AR.phase==='wind'){AR.foot='早く離したので見逃し';arRenderFoot();}
+  return;}
+ if(act&&AR.side==='pit'&&AR.phase==='pre'&&!AR.panel&&!moved&&now-(AR.ptrT||0)<700){const {sx,sy}=arStagePos(e);const q=arS2Z(sx,sy);
+  if(Math.abs(q.x)<=1.7&&Math.abs(q.y)<=1.7)AR.target={x:clamp(q.x,-1.9,1.9),y:clamp(q.y,-1.9,1.9)};else if(!AR.target)AR.target=arDefaultTarget();
+  if(actionSettings().meter!=='none')arStartGauge();else arThrowUser(null);}}
+function arDefaultTarget(){const s=AR.sign;return s?{x:s.tx,y:s.ty}:{x:0,y:0.2};}
 function arTap(sx,sy,e){const m=AR.m;const ph=AR.phase;const q=arS2Z(sx,sy);const zx=q.x,zy=q.y;
  if(ph==='half'){arAfterBanner();return;}
  if(ph==='after'||ph==='field'||ph==='replay'){arSkip();return;}
  if(AR.mode==='card'){if((ph==='wind'||ph==='flight')&&AR.cur){AR.windT0-=5000;AR.t0=Math.min(AR.t0,performance.now()-AR.cur.T*AR.speed*1.2);}return;}
  if(ph==='decide'||ph==='sim'||ph==='idle')return;
- if(AR.side==='bat'){
-  if(ph==='pre'||ph==='wind'){AR.cursor={x:clamp(zx,-1.9,1.9),y:clamp(zy,-1.9,1.9)};return;}
-  if(ph==='flight'&&!AR.swung){AR.cursor={x:clamp(zx,-1.9,1.9),y:clamp(zy,-1.9,1.9)};arSwing();}}
- else{
-  if(ph==='pre'){if(r3on()){/* 3D：1回目のタップで狙いを置き、同じ場所をもう一度タップで投球開始（ドラッグで微調整） */if(AR.target&&Math.hypot(zx-AR.target.x,zy-AR.target.y)<1.2){if(actionSettings().meter!=='none')arStartGauge();else arThrowUser(null);return;}if(Math.abs(zx)>3.5||Math.abs(zy)>3.5)return;AR.target={x:clamp(zx,-1.9,1.9),y:clamp(zy,-1.9,1.9)};arRenderCtl();return;}if(Math.abs(zx)>2.2||Math.abs(zy)>2.2)return;AR.target={x:clamp(zx,-1.9,1.9),y:clamp(zy,-1.9,1.9)};if(actionSettings().meter!=="none")arStartGauge();else arThrowUser(null);}
-  else if(ph==='gauge')arRelease();}}
+ if(AR.side==='bat'){if(ph==='flight'&&!AR.swung)arSwing();}
+ else{if(ph==='gauge')arRelease();}}
 function arKey(e){if(!AR.el||AR.el.hidden)return;const k=e.key;
  if(k===' '||k==='Enter'){e.preventDefault();if(AR.phase==='flight'&&AR.side==='bat'&&!AR.swung)arSwing();else if(AR.phase==='gauge')arRelease();else if(AR.phase==='pre'&&AR.side==='bat'&&!AR.panel)arThrowCpu();else if(AR.phase==='pre'&&AR.side==='pit'&&AR.target){if(actionSettings().meter!=="none")arStartGauge();else arThrowUser(null);}else if(AR.phase==='after'||AR.phase==='field'||AR.phase==='replay')arSkip();else if(AR.phase==='half')arAfterBanner();return;}
  const dx=k==='ArrowLeft'?-0.15:k==='ArrowRight'?0.15:0,dy=k==='ArrowUp'?-0.15:k==='ArrowDown'?0.15:0;
@@ -2858,7 +2874,7 @@ function arKey(e){if(!AR.el||AR.el.hidden)return;const k=e.key;
 /* ---- 打撃：CPU投手の投球 ---- */
 function arThrowCpu(){const m=AR.m;if(AR.phase!=='pre'||AR.side!=='bat')return;AR.panel=null;arHideLower();const P=m.throwPitch(null);AR.cur=P;AR.swing=null;AR.swung=false;AR.swingT=null;AR.ev=null;AR.cpuSwingAt=null;AR.caughtSnd=false;arSetPhase('wind');AR.windT0=performance.now();arRenderAll();}
 function arSwing(){const m=AR.m;if(AR.phase!=='flight'||AR.swung)return;const P=AR.cur;const now=performance.now();const dtReal=now-AR.t0-(P.T*AR.speed-70*AR.speed);const dt=dtReal/AR.speed;
- AR.swung=true;AR.swingT=now;const type=AR.swingType;AR.swing={type,cx:AR.cursor.x,cy:AR.cursor.y,dt};
+ AR.swung=true;AR.swingT=now;const type=AR.swingType;AR.swing={type,cx:AR.cursor.x,cy:AR.cursor.y,dt,ease:arEase()};
  AR.ev=m.resolvePitch(P,AR.swing);arSwingSound(AR.ev);}
 function arSwingSound(ev){const k=ev?ev.kind:'miss';if(k==='inplay'){setTimeout(()=>arSound(ev.bb&&ev.bb.bunt?'mitt':'hit'),75*AR.speed);}else if(k==='foul'){arSound('swing');setTimeout(()=>arSound('foul'),75*AR.speed);}else arSound('swing');}
 /* ---- 投球：ユーザー ---- */
@@ -2920,7 +2936,8 @@ function arAfterResult(){const m=AR.m;const ev=AR.ev;arOverlay('','');
  if(ev&&ev.halfEnd){arBanner();return;}
  if(ev&&ev.paDone){arNextPA();return;}
  AR.cur=null;AR.swing=null;AR.swung=false;AR.target=null;arSetPhase('pre');
- if(AR.side==='pit'){const ps=m.pa.p.pit.pitches;AR.sign=m.cpuPitchInput();AR.sign.idx=Math.max(0,ps.indexOf(AR.sign.pitch));}
+ if(AR.side==='pit'){const ps=m.pa.p.pit.pitches;AR.sign=m.cpuPitchInput();AR.sign.idx=Math.max(0,ps.indexOf(AR.sign.pitch));AR.target=arDefaultTarget();}
+ AR.hold=false;AR.holdStart=false;
  arRenderAll();}
 function arBanner(){const m=AR.m;const s=m.situation();AR.banner={title:m.done?'試合終了':`${s.inn}回${s.top?'表':'裏'} ${s.batTeam}の攻撃`,lines:[],until:performance.now()+2200,wait:false};arHideLower();arSetPhase('half');arRenderAll();}
 function arAfterBanner(){AR.banner=null;AR.bannerEl=null;arOverlay('','');if(AR.m.done){arFinish();return;}arNextPA();}
@@ -3064,11 +3081,11 @@ function arDrawCatcherView(now){const g=AR.g,W=AR.W,H=AR.H;const m=AR.m;const z=
    const x=cx0+vx*st.ts,y=cy0+vy*st.ts+(st.foul?0:200*st.ts*st.ts);const r=clamp(r0+gr*st.ts,2,24);if(st.ts<0.6)arDrawBall(g,x,y,r,now/40);arContactFx(g,cx0,cy0,st.ts,st.foul);}
   else if(u<1){const [x,y,r]=ballPos(u);if(u>0.3){const [px,py,pr]=ballPos(Math.max(0,u-0.05));g.globalAlpha=0.25;arDrawBall(g,px,py,pr*0.85,0);g.globalAlpha=1;}arDrawBall(g,x,y,r,now/110);}}
  else if(P&&ph==='wind'){const u=(now-AR.windT0)/650;if(u>0.7)arDrawBall(g,relX,relY,4,0);}
- /* ミートカーソル */if(pa&&AR.mode!=='card'&&(ph==='pre'||ph==='wind'||ph==='flight')){const be=pa.be||m.battingEff(pa.b,pa.p,pa.p.pit.pitches[0]||{name:'ストレート',velo:120,move:40,sharp:40,ctrl:40});let r=clamp(0.30+(be.meet-50)/330,0.12,0.5);const t=AR.swingType;if(t==='power')r*=0.72;const rx=t==='bunt'?0.6:r*1.25,ry=t==='bunt'?0.42:r*0.85;const [cx,cy]=arZ2S(AR.cursor.x,AR.cursor.y);const sx=rx*z.w/2,sy=ry*z.h/2;
+ /* ミートカーソル */if(pa&&AR.mode!=='card'&&(ph==='pre'||ph==='wind'||ph==='flight')){const be=pa.be||m.battingEff(pa.b,pa.p,pa.p.pit.pitches[0]||{name:'ストレート',velo:120,move:40,sharp:40,ctrl:40});let r=clamp(0.30+(be.meet-50)/330,0.12,0.5)*arEase().r;const t=AR.swingType;if(t==='power')r*=0.72;const rx=t==='bunt'?0.6:r*1.25,ry=t==='bunt'?0.42:r*0.85;const [cx,cy]=arZ2S(AR.cursor.x,AR.cursor.y);const sx=rx*z.w/2,sy=ry*z.h/2;
   g.save();g.strokeStyle=t==='power'?'#ff5a4a':t==='bunt'?'#ffd166':'#5ab0ff';g.fillStyle=t==='power'?'rgba(255,90,74,.2)':t==='bunt'?'rgba(255,209,102,.2)':'rgba(90,176,255,.2)';g.lineWidth=2;g.beginPath();g.ellipse(cx,cy,sx,sy,0,0,Math.PI*2);g.fill();g.stroke();g.beginPath();g.ellipse(cx,cy,sx*0.4,sy*0.4,0,0,Math.PI*2);g.stroke();g.restore();}
  /* スイングの風切り */if(AR.swung&&AR.swingT&&now>=AR.swingT&&now-AR.swingT<260&&AR.ev&&(AR.ev.kind==='miss'||AR.ev.kind==='kSwing')){const k=(now-AR.swingT)/260;arSwoosh(g,z.cx,z.cy+z.h*0.05,z.w*0.7,hand==='左'?-1:1,1-k);}
  if(ph==='pre'&&!AR.panel&&AR.mode==='card'){g.font='12px sans-serif';g.textAlign='center';g.fillStyle='rgba(255,255,255,.9)';g.fillText('下のカードで指示を出す（おまかせも可）',W/2,H-8);}
- else if(ph==='pre'&&!AR.panel){g.font='12px sans-serif';g.textAlign='center';g.fillStyle='rgba(255,255,255,.9)';g.fillText(S.autoThrow?'ドラッグでカーソル移動。球が来たらタップ！':'ドラッグでカーソル移動 →「投球」で始まる',W/2,H-8);}}
+ else if(ph==='pre'&&!AR.panel){g.font='12px sans-serif';g.textAlign='center';g.fillStyle='rgba(255,255,255,.9)';g.fillText('画面を押すと投球開始。押したまま動かして狙い、離すとスイング',W/2,H-8);}}
 /* ===== 投球（投手視点） ===== */
 function arDrawPitcherView(now){const g=AR.g,W=AR.W,H=AR.H;const m=AR.m;const z=arZone();const PL=arPal();const def=m.def(),bat=m.bat();const cd=arTeamColors(def),cb=arTeamColors(bat);const P=AR.cur;const pa=m.pa;const ph=AR.phase;
  /* バックネット・スタンド */const sky=g.createLinearGradient(0,0,0,H*0.12);sky.addColorStop(0,PL.sky1);sky.addColorStop(1,PL.sky2);g.fillStyle=sky;g.fillRect(0,0,W,H*0.12);
@@ -3101,7 +3118,7 @@ function arDrawPitcherView(now){const g=AR.g,W=AR.W,H=AR.H;const m=AR.m;const z=
  else if(ph==='wind'){const u=(now-AR.windT0)/450;arDrawBall(g,hx-hs*u*18,hy-u*26,13,0);}
  else if(ph==='gauge'||ph==='pre')arDrawBall(g,hx,hy-4,13,0);
  if(AR.swung&&AR.swingT&&now>=AR.swingT&&now-AR.swingT<260&&AR.ev&&(AR.ev.kind==='miss'||AR.ev.kind==='kSwing')){const k=(now-AR.swingT)/260;arSwoosh(g,z.cx,z.cy+z.h*0.1,z.w*0.6,hand==='左'?1:-1,1-k);}
- if(ph==='pre'){g.font='12px sans-serif';g.textAlign='center';g.fillStyle='rgba(255,255,255,.9)';g.fillText(AR.mode==='card'?'下のカードで投球の指示を出す':(AR.target?'「投球」またはもう一度タップで投げる':'球種を選んで、投げたいコースをタップ'),W/2,H-8);}}
+ if(ph==='pre'){g.font='12px sans-serif';g.textAlign='center';g.fillStyle='rgba(255,255,255,.9)';g.fillText(AR.mode==='card'?'下のカードで投球の指示を出す':'ドラッグで狙いを動かす → タップで開始 → もう一度タップでリリース',W/2,H-8);}}
 /* ---- HTML部分の描画 ---- */
 function arRenderAll(){arRenderTop();arRenderInfo();arRenderCtl();arRenderFoot();}
 function arRenderTop(){const m=AR.m;const s=m.situation();const pa=m.pa;const live=pa&&!(AR.mode==='card'&&AR.phase==='pre');const bb=live?pa.balls:0,ss=live?pa.strikes:0;
@@ -3128,8 +3145,8 @@ function arRenderCtl(){const m=AR.m;const el=$('#arctl');if(!el)return;if(AR.mod
   const B=m.bases;const canSteal=(B[0]&&!B[1])||(B[1]&&!B[2]);const canHR=B[0]&&!B[1]&&m.outs<2;const canSq=B[2]&&m.outs<2;const canBunt=(B[0]||B[1])&&m.outs<2;
   const seg=['meet','power','bunt'].map(k=>`<button class="btn sm ${AR.swingType===k?'primary':''}" data-act="arSwingType" data-k="${k}">${k==='meet'?'ミート':k==='power'?'強振':'バント'}</button>`).join('');
   const cmds=`${canSteal?b(pa.cmd==='steal'?'盗塁 ✓':'盗塁','arCmd',{c:'steal'},'sm '+(pa.cmd==='steal'?'primary':'')):''}${canHR?b(pa.cmd==='hitrun'?'エンドラン ✓':'エンドラン','arCmd',{c:'hitrun'},'sm '+(pa.cmd==='hitrun'?'primary':'')):''}${canSq?b(pa.cmd==='squeeze'?'スクイズ ✓':'スクイズ','arCmd',{c:'squeeze'},'sm '+(pa.cmd==='squeeze'?'primary':'')):''}${t.bench.some(x=>!isPitcher(x))&&pa.n===0?b('代打','arPinchList',{},'sm'):''}${B.some(Boolean)&&t.bench.length?b('代走','arPinchRunList',{},'sm'):''}`;
-  const go=ph==='pre'?b(actionSettings().autoThrow?'すぐ投球 ▶':'投球 ▶','arThrow',{},'primary go'):`<span class="tiny muted">${ph==='wind'?'投手が振りかぶる…':ph==='flight'?(AR.swung?'':'タイミングを合わせてタップ！'):''}</span>`;
-  el.innerHTML=`<div class="ar-row"><span class="lbl">打ち方</span>${seg}<span class="sp"></span>${go}</div><div class="ar-row scroll"><span class="lbl">作戦</span>${cmds||'<span class="tiny muted">走者なし</span>'}</div><div class="tiny muted">${AR.swingType==='power'?'強振：カーソルが小さい代わりに飛距離が出る':AR.swingType==='bunt'?'バント：転がす（送り／セーフティ）':'ミート：カーソルが大きく確実に当てる'}</div>`;}
+  const go=ph==='pre'?b('投球 ▶','arThrow',{},'primary go'):`<span class="tiny muted">${ph==='wind'?'投手が振りかぶる…':ph==='flight'?(AR.swung?'':(AR.hold?'離すとスイング！':'タイミングを合わせてタップ！')):''}</span>`;
+  el.innerHTML=`<div class="ar-row"><span class="lbl">打ち方</span>${seg}<span class="sp"></span>${go}</div><div class="ar-row scroll"><span class="lbl">作戦</span>${cmds||'<span class="tiny muted">走者なし</span>'}</div><div class="tiny muted">${AR.swingType==='power'?'強振：カーソルが小さい代わりに飛距離が出る':AR.swingType==='bunt'?'バント：転がす（送り／セーフティ）':'ミート：カーソルが大きく確実に当てる'}　／　画面を押して投球→離してスイング（押し続けると見逃し）</div>`;}
  else{
   const ps=p_pitches(pa.p);const sign=AR.sign;
   const pbtn=ps.map((x,i)=>`<button class="btn sm pt ${AR.pitchSel===i?'primary':''}" data-act="arPitchSel" data-i="${i}">${sign&&sign.idx===i?'◎':''}${esc(x.name)}<small>${Math.round(x.velo)}km 変${letter(x.move)} 制${letter(x.ctrl)}</small></button>`).join('');
@@ -3138,16 +3155,16 @@ function arRenderCtl(){const m=AR.m;const el=$('#arctl');if(!el)return;if(AR.mod
   const B=m.bases;const canPick=(B[0]&&!B[1])||(B[1]&&!B[2]);
   const dcmd=`${b(d.infieldIn?'前進守備 ✓':'前進守備','arShift',{k:'in'},'sm '+(d.infieldIn?'primary':''))}${b(d.ofDeep?'外野深め ✓':'外野深め','arShift',{k:'deep'},'sm '+(d.ofDeep?'primary':''))}${b(d.ofIn?'外野前進 ✓':'外野前進','arShift',{k:'ofin'},'sm '+(d.ofIn?'primary':''))}${B[1]&&!B[0]||B[2]&&!B[0]?b('敬遠','arIbb',{},'sm'):''}${canPick?b('ピッチアウト','arPitchout',{},'sm')+b('牽制','arPickoff',{},'sm'):''}${d.bench.some(x=>isPitcher(x)||x.sub.includes('投'))?b('投手交代','arChangeList',{},'sm'):''}${d.mound<3?b('タイム('+(3-d.mound)+')','arTimeout',{},'sm'):''}`;
   const sel=ps[Math.min(AR.pitchSel,ps.length-1)];
-  const gh=ph==='gauge'?(AR.gauge&&AR.gauge.stage==='pw'?'<span class="tiny" style="color:var(--gold)">① パワー：上がりきる前にタップ（赤はオーバー）</span>':AR.gauge&&AR.gauge.mode==='simple'?'<span class="tiny muted">中央でタップ！</span>':'<span class="tiny" style="color:var(--accent2)">② 精度：緑の線でタップ！</span>'):'';
-  el.innerHTML=`<div class="ar-row pts scroll">${pbtn}</div><div class="ar-row"><span class="lbl">力</span>${pw}<span class="sp"></span>${ph==='pre'?`${b('サイン通り','arAutoPitch',{},'sm')}${AR.target?b('投球 ▶','arThrowBtn',{},'primary go'):(r3on()?'<span class="tiny muted">画面をタップして狙いを置く</span>':'')}`:gh}</div><div class="ar-row scroll"><span class="lbl">守備</span>${dcmd}</div><div class="tiny muted">${sign?`捕手のサイン：${esc(sign.pitch.name)}・${zoneLabel(sign.tx,sign.ty,pa.bHand)}`:''}${!meter&&AR.power==='max'?'　全力：+2km/h 制球↓':!meter&&AR.power==='ease'?'　抜く：-4km/h 制球↑':''}</div>`;}}
+  const gh=ph==='gauge'?(AR.gauge&&AR.gauge.stage==='pw'?'<span class="tiny" style="color:var(--gold)">① パワー：上がりきる前にタップ（赤はオーバー）</span>':AR.gauge&&AR.gauge.mode==='simple'?'<span class="tiny" style="color:var(--accent2)">緑の中央でもう一度タップ！</span>':'<span class="tiny" style="color:var(--accent2)">② 精度：緑の線でタップ！</span>'):'';
+  el.innerHTML=`<div class="ar-row pts scroll">${pbtn}</div><div class="ar-row"><span class="lbl">力</span>${pw}<span class="sp"></span>${ph==='pre'?`${b('サイン通り','arAutoPitch',{},'sm')}${b('投球 ▶','arThrowBtn',{},'primary go')}`:gh}</div><div class="ar-row scroll"><span class="lbl">守備</span>${dcmd}</div><div class="tiny muted">${sign?`捕手のサイン：${esc(sign.pitch.name)}・${zoneLabel(sign.tx,sign.ty,pa.bHand)}`:''}${!meter&&AR.power==='max'?'　全力：+2km/h 制球↓':!meter&&AR.power==='ease'?'　抜く：-4km/h 制球↑':''}</div>`;}}
 function p_pitches(p){return p.pit.pitches.length?p.pit.pitches:[{name:'ストレート',velo:p.pit.velo,move:40,sharp:40,ctrl:40}];}
 /* ---- ボタン操作 ---- */
 ACT.arSwingType=d=>{AR.swingType=d.k;arSound('ui');arRenderCtl();};
 ACT.arCmd=d=>{const pa=AR.m.pa;if(!pa)return;pa.cmd=pa.cmd===d.c?null:d.c;if(pa.cmd==='squeeze')AR.swingType='bunt';arSound('ui');arRenderCtl();};
-ACT.arThrow=()=>{arThrowCpu();};
+ACT.arThrow=()=>{AR.holdStart=false;arThrowCpu();};
 ACT.arPitchSel=d=>{AR.pitchSel=parseInt(d.i);arSound('ui');arRenderCtl();};
 ACT.arPower=d=>{AR.power=d.k;arRenderCtl();};
-ACT.arThrowBtn=()=>{if(AR.phase!=='pre'||!AR.target)return;if(actionSettings().meter!=="none")arStartGauge();else arThrowUser(null);};
+ACT.arThrowBtn=()=>{if(AR.phase!=='pre')return;if(!AR.target)AR.target=arDefaultTarget();if(actionSettings().meter!=="none")arStartGauge();else arThrowUser(null);};
 ACT.arAutoPitch=()=>{if(AR.phase!=='pre')return;const s=AR.sign||AR.m.cpuPitchInput();AR.target={x:s.tx,y:s.ty};AR.pitchSel=s.idx!=null?s.idx:Math.max(0,p_pitches(AR.m.pa.p).indexOf(s.pitch));AR.power=s.power;arThrowUser(null);};
 ACT.arShift=d=>{const m=AR.m;const t=m.def();if(d.k==='in'){t.infieldIn=!t.infieldIn;m.addLog(t.infieldIn?'前進守備を敷く':'守備位置を戻す','note');}else if(d.k==='deep'){t.ofDeep=!t.ofDeep;if(t.ofDeep)t.ofIn=false;}else{t.ofIn=!t.ofIn;if(t.ofIn)t.ofDeep=false;}arSound('ui');arRenderCtl();};
 ACT.arIbb=()=>{const m=AR.m;if(AR.phase!=='pre')return;const ev=m.paIbb();arShowResult(ev);};
@@ -3162,8 +3179,8 @@ ACT.arPinchRunList=()=>{const m=AR.m;const t=m.bat();const bases=[0,1,2].filter(
 ACT.arPinchRun=d=>{const m=AR.m;const t=m.bat();const np=t.bench.find(p=>p.id==d.id);if(!np)return;m.pinchRun(t,parseInt(d.base),np);AR.panel=null;AR.foot=`代走 ${np.name}`;arRenderAll();};
 ACT.arChangeList=()=>{const m=AR.m;const t=m.def();const rel=t.bench.filter(p=>isPitcher(p)||p.sub.includes('投'));AR.panel=`<div class="ar-panel"><b class="small">リリーフを選択</b><div class="wrap">${rel.map(p=>b(esc(p.name)+' '+letter(pitRating(p))+' '+Math.round(p.pit.velo)+'km 疲'+Math.round(p.fatigue),'arChange',{id:p.id},'sm')).join('')}${b('やめる','arPanelClose',{},'sm ghost')}</div></div>`;arRenderCtl();};
 ACT.arChange=d=>{const m=AR.m;const t=m.def();const np=t.bench.find(p=>p.id==d.id);if(!np)return;m.changePitcher(t,np);m.paRefresh();AR.panel=null;AR.pitchSel=0;AR.target=null;AR.sign=m.cpuPitchInput();AR.sign.idx=Math.max(0,p_pitches(np).indexOf(AR.sign.pitch));AR.foot=`投手交代 ${np.name}`;arRenderAll();};
-ACT.arMenu=()=>{if(AR.mode==='card'){cdMenu();return;}const S=actionSettings();AR.panel=`<div class="ar-panel"><b class="small">メニュー</b><div class="wrap" style="margin:6px 0">${b('この打席おまかせ','arAutoPA',{},'sm')}${b('この回おまかせ','arAutoInn',{},'sm')}${b('最後までおまかせ','arAutoEnd',{},'sm danger')}</div><div class="grid2 small"><label class="f">球の速さ<select data-chg="arSet" data-k="speed"><option value="1.3"${S.speed==1.3?' selected':''}>ゆっくり</option><option value="1"${S.speed==1?' selected':''}>普通</option><option value="0.8"${S.speed==0.8?' selected':''}>速い</option></select></label><label class="f">投球メーター<select data-chg="arSet" data-k="meter"><option value="meter"${S.meter==='meter'?' selected':''}>2段階（パワー→精度）</option><option value="simple"${S.meter==='simple'?' selected':''}>シンプル（往復ゲージ）</option><option value="none"${S.meter==='none'?' selected':''}>使わない（能力任せ）</option></select></label><label class="f">走塁の判断<select data-chg="arSet" data-k="run"><option value="manual"${S.run==='manual'?' selected':''}>自分で決める</option><option value="auto"${S.run==='auto'?' selected':''}>自動</option></select></label><label class="f">守備の送球先<select data-chg="arSet" data-k="defThrow"><option value="1"${S.defThrow?' selected':''}>自分で選ぶ</option><option value="0"${!S.defThrow?' selected':''}>自動</option></select></label><label class="f">本塁打リプレイ<select data-chg="arSet" data-k="replay"><option value="1"${S.replay?' selected':''}>見る</option><option value="0"${!S.replay?' selected':''}>省略</option></select></label><label class="f">選手カード表示<select data-chg="arSet" data-k="lower"><option value="1"${S.lower?' selected':''}>打席ごとに出す</option><option value="0"${!S.lower?' selected':''}>出さない</option></select></label><label class="f">画面表示<select data-chg="arSet" data-k="view3d"><option value="1"${S.view3d?' selected':''}>3D</option><option value="0"${!S.view3d?' selected':''}>2D（軽量）</option></select></label><label class="f">3Dカメラ<select data-chg="arSet" data-k="cam3d"><option value="std"${S.cam3d==='std'?' selected':''}>標準</option><option value="zoom"${S.cam3d==='zoom'?' selected':''}>投球ズーム</option><option value="wide"${S.cam3d==='wide'?' selected':''}>打席を引きで</option></select></label><label class="f">到達点アシスト<select data-chg="arSet" data-k="assist"><option value="0"${!S.assist?' selected':''}>なし</option><option value="1"${S.assist?' selected':''}>表示する</option></select></label><label class="f">効果音<select data-chg="arSet" data-k="sound"><option value="1"${S.sound?' selected':''}>あり</option><option value="0"${!S.sound?' selected':''}>なし</option></select></label><label class="f">打撃時の投球<select data-chg="arSet" data-k="autoThrow"><option value="0"${!S.autoThrow?' selected':''}>ボタンで開始</option><option value="1"${S.autoThrow?' selected':''}>自動で投げてくる</option></select></label></div><div class="wrap" style="margin-top:6px">${b('試合経過を見る','arLog',{},'sm')}${b('閉じる','arPanelClose',{},'sm primary')}</div></div>`;arRenderCtl();};
-CHG.arSet=(d,el)=>{const S=actionSettings();const v=el.value;if(d.k==='speed'){S.speed=parseFloat(v);AR.speed=S.speed;}else if(d.k==='run'||d.k==='cardAnim'||d.k==='meter'||d.k==='cam3d')S[d.k]=v;else S[d.k]=v==='1';if(d.k==='meter')S.gauge=v!=='none';if(d.k==='defThrow'&&AR.m)AR.m.askDef=S.pit&&S.defThrow;if(d.k==='view3d')arApplyView();saveGame();};
+ACT.arMenu=()=>{if(AR.mode==='card'){cdMenu();return;}const S=actionSettings();AR.panel=`<div class="ar-panel"><b class="small">メニュー</b><div class="wrap" style="margin:6px 0">${b('この打席おまかせ','arAutoPA',{},'sm')}${b('この回おまかせ','arAutoInn',{},'sm')}${b('最後までおまかせ','arAutoEnd',{},'sm danger')}</div><div class="grid2 small"><label class="f">球の速さ<select data-chg="arSet" data-k="speed"><option value="1.3"${S.speed==1.3?' selected':''}>ゆっくり</option><option value="1"${S.speed==1?' selected':''}>普通</option><option value="0.8"${S.speed==0.8?' selected':''}>速い</option></select></label><label class="f">投球の操作<select data-chg="arSet" data-k="meter"><option value="simple"${S.meter==='simple'?' selected':''}>2回押し（開始→リリース）</option><option value="meter"${S.meter==='meter'?' selected':''}>3回押し（開始→パワー→精度）</option><option value="none"${S.meter==='none'?' selected':''}>1回押し（制球は能力任せ）</option></select></label><label class="f">打撃の難易度<select data-chg="arSet" data-k="batEase"><option value="easy"${S.batEase==='easy'?' selected':''}>やさしい（ヒットゾーン大）</option><option value="normal"${S.batEase==='normal'?' selected':''}>ふつう</option><option value="hard"${S.batEase==='hard'?' selected':''}>むずかしい</option></select></label><label class="f">走塁の判断<select data-chg="arSet" data-k="run"><option value="manual"${S.run==='manual'?' selected':''}>自分で決める</option><option value="auto"${S.run==='auto'?' selected':''}>自動</option></select></label><label class="f">守備の送球先<select data-chg="arSet" data-k="defThrow"><option value="1"${S.defThrow?' selected':''}>自分で選ぶ</option><option value="0"${!S.defThrow?' selected':''}>自動</option></select></label><label class="f">本塁打リプレイ<select data-chg="arSet" data-k="replay"><option value="1"${S.replay?' selected':''}>見る</option><option value="0"${!S.replay?' selected':''}>省略</option></select></label><label class="f">選手カード表示<select data-chg="arSet" data-k="lower"><option value="1"${S.lower?' selected':''}>打席ごとに出す</option><option value="0"${!S.lower?' selected':''}>出さない</option></select></label><label class="f">画面表示<select data-chg="arSet" data-k="view3d"><option value="1"${S.view3d?' selected':''}>3D</option><option value="0"${!S.view3d?' selected':''}>2D（軽量）</option></select></label><label class="f">3Dカメラ<select data-chg="arSet" data-k="cam3d"><option value="std"${S.cam3d==='std'?' selected':''}>標準</option><option value="zoom"${S.cam3d==='zoom'?' selected':''}>投球ズーム</option><option value="wide"${S.cam3d==='wide'?' selected':''}>打席を引きで</option></select></label><label class="f">到達点アシスト<select data-chg="arSet" data-k="assist"><option value="0"${!S.assist?' selected':''}>なし</option><option value="1"${S.assist?' selected':''}>表示する</option></select></label><label class="f">効果音<select data-chg="arSet" data-k="sound"><option value="1"${S.sound?' selected':''}>あり</option><option value="0"${!S.sound?' selected':''}>なし</option></select></label><label class="f">打撃時の投球<select data-chg="arSet" data-k="autoThrow"><option value="0"${!S.autoThrow?' selected':''}>ボタンで開始</option><option value="1"${S.autoThrow?' selected':''}>自動で投げてくる</option></select></label></div><div class="wrap" style="margin-top:6px">${b('試合経過を見る','arLog',{},'sm')}${b('閉じる','arPanelClose',{},'sm primary')}</div></div>`;arRenderCtl();};
+CHG.arSet=(d,el)=>{const S=actionSettings();const v=el.value;if(d.k==='speed'){S.speed=parseFloat(v);AR.speed=S.speed;}else if(d.k==='run'||d.k==='cardAnim'||d.k==='meter'||d.k==='cam3d'||d.k==='batEase')S[d.k]=v;else S[d.k]=v==='1';if(d.k==='meter')S.gauge=v!=='none';if(d.k==='defThrow'&&AR.m)AR.m.askDef=S.pit&&S.defThrow;if(d.k==='view3d')arApplyView();saveGame();};
 function arApplyView(){const S=actionSettings();const st=$('#arstage');if(!st)return;if(S.view3d&&!r3on()&&typeof r3Start==='function'){if(!r3Start(st))toast('この端末では3D表示を使えません');}else if(!S.view3d&&r3on())r3Stop();arResize();}
 /* 3D時のHUD（2Dキャンバスにゾーン・カーソル・吹き出しだけを描く） */
 function arDrawHud3d(now){const g=AR.g,W=AR.W,H=AR.H;const ph=AR.phase;const m=AR.m;
@@ -3176,11 +3193,11 @@ function arDrawHud3d(now){const g=AR.g,W=AR.W,H=AR.H;const ph=AR.phase;const m=A
  const st=P&&(ph==='flight'||ph==='after')?arPitchState(now):null;
  if(st&&ph==='flight'&&!st.hit&&S.assist&&bat&&st.u>0.3){const [ax,ay]=arZ2S(P.x,P.y);g.strokeStyle='rgba(255,230,120,.75)';g.lineWidth=1.5;g.beginPath();g.arc(ax,ay,9,0,Math.PI*2);g.stroke();}
  if(st&&st.hit){const [cx0,cy0]=arZ2S(P.x,P.y);arContactFx(g,cx0,cy0,st.ts,st.foul);}
- if(pa&&AR.mode!=='card'&&bat&&(ph==='pre'||ph==='wind'||ph==='flight')){const be=pa.be||m.battingEff(pa.b,pa.p,pa.p.pit.pitches[0]||{name:'ストレート',velo:120,move:40,sharp:40,ctrl:40});let r=clamp(0.30+(be.meet-50)/330,0.12,0.5);const t=AR.swingType;if(t==='power')r*=0.72;const rx=t==='bunt'?0.6:r*1.25,ry=t==='bunt'?0.42:r*0.85;const [cx,cy]=arZ2S(AR.cursor.x,AR.cursor.y);const sx=rx*z.w/2,sy=ry*z.h/2;
+ if(pa&&AR.mode!=='card'&&bat&&(ph==='pre'||ph==='wind'||ph==='flight')){const be=pa.be||m.battingEff(pa.b,pa.p,pa.p.pit.pitches[0]||{name:'ストレート',velo:120,move:40,sharp:40,ctrl:40});let r=clamp(0.30+(be.meet-50)/330,0.12,0.5)*arEase().r;const t=AR.swingType;if(t==='power')r*=0.72;const rx=t==='bunt'?0.6:r*1.25,ry=t==='bunt'?0.42:r*0.85;const [cx,cy]=arZ2S(AR.cursor.x,AR.cursor.y);const sx=rx*z.w/2,sy=ry*z.h/2;
   g.save();g.strokeStyle=t==='power'?'#ff5a4a':t==='bunt'?'#ffd166':'#5ab0ff';g.fillStyle=t==='power'?'rgba(255,90,74,.2)':t==='bunt'?'rgba(255,209,102,.2)':'rgba(90,176,255,.2)';g.lineWidth=2;g.beginPath();g.ellipse(cx,cy,sx,sy,0,0,Math.PI*2);g.fill();g.stroke();g.beginPath();g.ellipse(cx,cy,sx*0.4,sy*0.4,0,0,Math.PI*2);g.stroke();g.restore();}
  if(!bat&&AR.target&&(ph==='pre'||ph==='gauge'||ph==='wind')){const [mx,my]=arZ2S(AR.target.x,AR.target.y);g.strokeStyle='#ffd166';g.lineWidth=2;g.beginPath();g.arc(mx,my,Math.max(7,z.w*0.16),0,Math.PI*2);g.stroke();g.beginPath();g.moveTo(mx-14,my);g.lineTo(mx+14,my);g.moveTo(mx,my-14);g.lineTo(mx,my+14);g.stroke();}
  if(AR.swung&&AR.swingT&&now>=AR.swingT&&now-AR.swingT<260&&AR.ev&&(AR.ev.kind==='miss'||AR.ev.kind==='kSwing')){const k=(now-AR.swingT)/260;const hand=pa?pa.bHand:'右';arSwoosh(g,z.cx,z.cy+z.h*0.05,z.w*0.9,(hand==='左')===bat?-1:1,1-k);}
- if(ph==='pre'&&!AR.panel){g.font='12px sans-serif';g.textAlign='center';g.fillStyle='rgba(255,255,255,.9)';g.shadowColor='#000';g.shadowBlur=4;const txt=AR.mode==='card'?(bat?'下のカードで指示を出す（おまかせも可）':'下のカードで投球の指示を出す'):bat?(S.autoThrow?'ドラッグでカーソル移動。球が来たらタップ！':'ドラッグでカーソル移動 →「投球」で始まる'):(AR.target?'ドラッグで微調整。もう一度タップか「投球」で投げる':'球種を選んで、投げたい場所をタップ');g.fillText(txt,W/2,H-8);g.shadowBlur=0;}}
+ if(ph==='pre'&&!AR.panel){g.font='12px sans-serif';g.textAlign='center';g.fillStyle='rgba(255,255,255,.9)';g.shadowColor='#000';g.shadowBlur=4;const txt=AR.mode==='card'?(bat?'下のカードで指示を出す（おまかせも可）':'下のカードで投球の指示を出す'):bat?'画面を押すと投球開始。押したまま動かして狙い、離すとスイング':'ドラッグで狙いを動かす → タップで開始 → もう一度タップでリリース';g.fillText(txt,W/2,H-8);g.shadowBlur=0;}}
 ACT.arLog=()=>{const m=AR.m;AR.panel=`<div class="ar-panel"><b class="small">試合経過</b>${logHtml(m.log,60)}<div style="margin-top:6px">${b('閉じる','arPanelClose',{},'sm primary')}</div></div>`;arRenderCtl();const lg=$('#mlog');if(lg)lg.scrollTop=lg.scrollHeight;};
 function arAbortPA(){const m=AR.m;if(m.pa&&!m.pa.done){if(m.pending){m.finishInplay(null);}else m.cpuFinishPA();}AR.pending=null;}
 ACT.arAutoPA=()=>{const m=AR.m;const inn=m.inn,top=m.top;arAbortPA();AR.panel=null;const last=m.log[m.log.length-1];AR.foot=last?last.text:'';arOverlay('','');if(m.done||m.inn!==inn||m.top!==top){arBanner();return;}arNextPA();};
