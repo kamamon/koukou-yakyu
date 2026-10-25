@@ -4,7 +4,7 @@ function serialize(){return JSON.stringify(G);}
 function saveGame(){try{localStorage.setItem(SAVE_KEY,serialize());}catch(e){}}
 function loadGame(){try{const s=localStorage.getItem(SAVE_KEY);if(!s)return false;const g=JSON.parse(s);if(!g||!g.players)return false;G=g;migrate();return true;}catch(e){return false;}}
 function hasSave(){try{return !!localStorage.getItem(SAVE_KEY);}catch(e){return false;}}
-function migrate(){G.settings=G.settings||{mode:'card'};if(G.settings.mode==='action'&&!G.settings.keepAction){G.settings.mode='card';}G.tourneyLog=G.tourneyLog||[];G.uniform=G.uniform||defaultUniform();G.emblem=G.emblem||defaultEmblem();G.u18Log=G.u18Log||[];G.notices=G.notices||[];G.coachMarket=G.coachMarket||[];G.scoutMarket=G.scoutMarket||[];G.mode=G.mode||'normal';G.gameOver=!!G.gameOver;
+function migrate(){G.settings=G.settings||{mode:'card'};if(!G.stars){try{applyEliteSchools();refreshStars(true);}catch(e){console.warn(e);}}if(G.settings.mode==='action'&&!G.settings.keepAction){G.settings.mode='card';}G.tourneyLog=G.tourneyLog||[];G.uniform=G.uniform||defaultUniform();G.emblem=G.emblem||defaultEmblem();G.u18Log=G.u18Log||[];G.notices=G.notices||[];G.coachMarket=G.coachMarket||[];G.scoutMarket=G.scoutMarket||[];G.mode=G.mode||'normal';G.gameOver=!!G.gameOver;
  if(G.fac&&G.fac.analysis){G.fac.video=G.fac.analysis;delete G.fac.analysis;}
  for(const k in G.fac){if(!FAC[k]){delete G.fac[k];continue;}const f=G.fac[k];if(f.model>=FAC[k].models.length)f.model=FAC[k].models.length-1;}
  if(G.coach&&!G.coach.style){G.coach.style=pick(COACH_STYLES).id;G.coach.bio=G.coach.bio||(G.coach.type==='教師'?'学校の先生':'外部招へい');G.coach.career=G.coach.career||'';}
@@ -29,6 +29,22 @@ document.addEventListener('change',e=>{const el=e.target.closest('[data-chg]');i
 document.addEventListener('input',e=>{const el=e.target.closest('[data-inp]');if(!el)return;const f=INP[el.dataset.inp];if(f)f(el.dataset,el);});
 document.addEventListener('click',e=>{if(e.target.id==='overlay'&&!UI.lock){closeModal();render();}});
 function rk(v){const l=typeof v==='string'?v[0]:letter(v);return `<span class="rk rk-${l}">${typeof v==='string'?esc(v):l}</span>`;}
+/* 総合ランク（厳しい基準） */function rkR(p){const l=ratingRank(p);return `<span class="rk rk-${l}">${l}</span>`;}
+/* ---- レーダーチャート（能力の見える化） ----
+ axes:[{l:ラベル,v:0-100,s:補足}] / opts.exact で霧（未判明ノイズ）なしの実値 */
+const RK_COL={S:'#d4a017',A:'#d2452f',B:'#e07a2a',C:'#2f8a4f',D:'#3673b8',E:'#7c6fc4',F:'#8a97a8',G:'#8a97a8'};
+function radarAxes(p,opts){opts=opts||{};const ex=!!opts.exact;const f=ex?0:fogLevel();const val=(g,k)=>ex?p[g][k]:shown(p,g,k);
+ if((isPitcher(p)&&!opts.bat)||opts.pit){const t=p.pit;const velo=ex?t.velo:shownVelo(p);const nz=(p.noise&&p.noise.velo||0)*f*10;const ctrl=clamp(avg(t.pitches.map(x=>x.ctrl))+nz,1,100);const br=t.pitches.slice(1);const brk=br.length?clamp(avg(br.map(x=>x.move*0.5+x.sharp*0.5))+Math.min(12,br.length*4)+nz,1,100):12;
+  return [{l:'球速',v:clamp((velo-100)*2.1,5,100),s:Math.round(velo)+'km/h'},{l:'制球',v:ctrl},{l:'変化球',v:brk,s:br.length+'種'},{l:'スタミナ',v:val('pit','stamina')},{l:'対右',v:(val('pit','hitR')+val('pit','kR')+val('pit','hrR'))/3},{l:'対左',v:(val('pit','hitL')+val('pit','kL')+val('pit','hrL'))/3}];}
+ return [{l:'ミート',v:(val('bat','meetR')+val('bat','meetL'))/2},{l:'パワー',v:(val('bat','powR')+val('bat','powL'))/2},{l:'走力',v:val('bat','speed')},{l:'守備',v:val('bat','field')},{l:'肩',v:(val('bat','arm')+val('bat','thr'))/2},{l:'選球眼',v:val('bat','eye')},{l:'勝負強さ',v:val('bat','clutch')}];}
+function radarSvg(axes,size,color,opts){opts=opts||{};const n=axes.length;size=size||150;const cx=size/2,cy=size/2;const R=size*0.31;const pad=size*0.14;const pt=(i,r)=>{const a=-Math.PI/2+i*2*Math.PI/n;return [+(cx+Math.cos(a)*r).toFixed(1),+(cy+Math.sin(a)*r).toFixed(1)];};
+ const ring=k=>`<polygon points="${axes.map((_,i)=>pt(i,R*k).join(',')).join(' ')}" fill="${k===1?'rgba(128,140,160,.08)':'none'}" stroke="rgba(128,140,160,${k===1?'.55':'.3'})" stroke-width="1"/>`;
+ const spokes=axes.map((_,i)=>{const [x,y]=pt(i,R);return `<line x1="${cx}" y1="${cy}" x2="${x}" y2="${y}" stroke="rgba(128,140,160,.3)" stroke-width="1"/>`;}).join('');
+ const vv=axes.map(a=>clamp(a.v,3,100));const poly=vv.map((v,i)=>pt(i,R*v/100).join(',')).join(' ');
+ const fs=size*0.078;const labels=axes.map((a,i)=>{const [x,y]=pt(i,R+size*0.11);const l=letter(a.v);const fog=opts.fog&&!opts.exact;const t2=fog?'?':(opts.num?(a.s||String(Math.round(a.v))):l);return `<text x="${x}" y="${y-fs*0.42}" text-anchor="middle" dominant-baseline="middle" font-size="${fs}" fill="currentColor" opacity=".85">${esc(a.l)}</text><text x="${x}" y="${y+fs*0.62}" text-anchor="middle" dominant-baseline="middle" font-size="${fs*1.05}" font-weight="800" fill="${fog?'currentColor':RK_COL[l]}">${t2}${a.s&&opts.sub&&!opts.num?`<tspan font-size="${fs*0.72}" font-weight="500" fill="currentColor" opacity=".8"> ${esc(a.s)}</tspan>`:''}</text>`;}).join('');
+ const dots=vv.map((v,i)=>{const [x,y]=pt(i,R*v/100);return `<circle cx="${x}" cy="${y}" r="${(size*0.016).toFixed(1)}" fill="${color}" stroke="#fff" stroke-width="1"/>`;}).join('');
+ return `<svg class="radar" viewBox="${-pad} 0 ${size+pad*2} ${size}" width="${(opts.w||size)*(size+pad*2)/size}" height="${opts.w||size}" role="img" aria-label="能力レーダーチャート">${ring(0.25)}${ring(0.5)}${ring(0.75)}${ring(1)}${spokes}<polygon points="${poly}" fill="${color}" fill-opacity=".38" stroke="${color}" stroke-width="2" stroke-linejoin="round"/>${dots}${labels}</svg>`;}
+function radarHtml(p,opts){opts=opts||{};const col=opts.color||((isPitcher(p)&&!opts.bat)||opts.pit?'#3b82f6':'#e0533c');return radarSvg(radarAxes(p,opts),opts.size||160,col,Object.assign({fog:fogLevel()>0.5},opts));}
 function pById(id){return G.players.find(p=>p.id==id);}
 function fontCss(id){const f=UNI_FONTS.find(x=>x.id===id)||UNI_FONTS[0];return f.css;}
 /* ================= ユニフォーム・校章 SVG ================= */

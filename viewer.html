@@ -444,7 +444,8 @@ function r3Frame(now){if(!r3on())return;const m=AR.m;if(!m)return;try{
  const night=arNight();if(night!==R3.night)r3SetNight(night);
  const ph=AR.phase;const cut=(R3.lastPhase!==ph&&(ph==='field'||ph==='replay'||R3.lastPhase==='field'||R3.lastPhase==='replay'||R3.lastPhase==='half'||R3.lastPhase==='decide'||R3.lastPhase==null))||R3.lastSide!==AR.side;R3.lastSide=AR.side;
  const fieldPh=ph==='field'||ph==='decide'||ph==='replay'||(ph==='after'&&AR.field&&AR.ev&&(AR.ev.kind==='inplay'||AR.ev.runShown||/^pickoff/.test(AR.ev.kind)));
- if(ph==='half'||ph==='sim'||ph==='idle'){r3IdleScene(now);r3OrbitCam(now);}
+ if(ph==='intro'&&AR.intro){r3IntroScene(now);}
+ else if(ph==='half'||ph==='sim'||ph==='idle'){r3IdleScene(now);r3OrbitCam(now);}
  else if(fieldPh&&AR.field){const sc=AR.field;let t;if(ph==='replay'&&AR.replay){const rp=AR.replay;t=Math.min(rp.until,rp.from+(now-rp.t0)*rp.rate);}else t=Math.min(sc.T,fwTime(sc,now));
   r3FieldScene(sc,t,now);if(ph==='replay')r3ReplayCam(sc,t,cut);else r3FieldCam(sc,t,cut,now);}
  else{r3PitchScene(now);const ev=AR.ev;const react=ph==='after'&&ev&&(ev.kind==='kSwing'||ev.kind==='kLook'||ev.kind==='kBunt')&&AR.resultAt&&now-AR.resultAt>350;if(react)r3ReactCam(R3.batter,R3.lastReact!==ev);R3.lastReact=react?ev:null;if(!react){if(AR.side==='bat')r3BatCam(cut||!!R3.lastPhaseReact);else r3PitCam(cut||!!R3.lastPhaseReact);}R3.lastPhaseReact=react;}
@@ -455,6 +456,29 @@ function r3Frame(now){if(!r3on())return;const m=AR.m;if(!m)return;try{
  /* 歓声（観客がはねる） */{const ch=R3.cheerUntil&&now<R3.cheerUntil;const dy=ch?Math.abs(Math.sin(now/110))*0.3:0;R3.crowd.position.y=dy;R3.crowdH.position.y=dy;}
  R3.renderer.render(R3.scene,R3.cam);
  }catch(e){console.warn('3D frame error',e);r3Fail();}}
+/* 試合前カットイン：相手の注目投手（マウンド）／注目野手（打席）に寄るカメラ */
+function r3IntroScene(now){const m=AR.m;const it=AR.intro;const item=it.items[it.idx];const p=item.p;const opp=it.team;const other=opp===m.A?m.B:m.A;const co=arTeamColors(opp),cu=arTeamColors(other);
+ const u=clamp((now-it.t0)/it.dur,0,1);const key=it.idx+':'+it.t0;const cut=R3.introKey!==key;R3.introKey=key;const e=1-Math.pow(1-u,2.2);
+ const numOf=(team,k)=>{const sl=team.lineup.find(x=>x.pos===k);return sl?(sl.p.number!=null?sl.p.number:POS_NUM[k]):POS_NUM[k];};
+ R3.ball.visible=false;R3.mitt.visible=false;for(const r of R3.runners)r.g.visible=false;for(const r of R3.umps)r.g.visible=false;
+ if(item.kind==='pit'){const DP=fwDefPos(opp);const hs=p.throws==='左'?-1:1;const z0=-R3C.RUBBER+0.15;
+  for(const k in R3.fielders){const r=R3.fielders[k];r.g.visible=true;r.setColors(co,false);r.setNumber(k==='投'?(p.number!=null?p.number:1):numOf(opp,k),co.trim);r.setGear(k==='捕'?'catcher':null);r.glove.visible=k!=='捕';r3Dress(r,k==='投'?p:r3PlayerOf(opp,k));r.setExpression(null);
+   if(k==='投'){r.at(0,0,z0);r.g.scale.x=hs<0?-1:1;r.face(0,1);r.setExpression(u<0.45?null:'focus');const w=Math.sin(now/1100);
+    /* 前半：マウンドで立って一息（胸を張る）→後半：セットポジションで構える */const k2=clamp((u-0.42)/0.22,0,1);const kk=k2*k2*(3-2*k2);const st=Object.assign({},RP.stand);st.head=[0.0+w*0.03,0,0];st.torso=[-0.04+w*0.015,0,0];st.rSh=[0.12,0,-0.16];st.lSh=[0.12,0,0.16];const sp={rSh:[-0.62,0,-0.25],lSh:[-0.66,0,0.3],rEl:[-1.25,0,0],lEl:[-1.2,0,0],head:[0.02+w*0.04,0,0],torso:[-0.02,0,0]};/* グラブを胸の前で合わせる（顔が隠れない高さ） */const pose=kk<=0?st:kk>=1?sp:r3MixPose(st,sp,kk);pose.dy=w*0.012;r.apply(pose);continue;}
+   if(k==='捕'){r.at(0,0,1.6);r.g.scale.x=1;r.face(0,-1);r.apply(RP.crouch);r.glove.visible=false;continue;}
+   const q=DP[k];r.g.scale.x=1;r.at(q[0],0,-q[1]);r.face(-q[0],q[1]);r.apply(RP.ready);}
+  R3.batter.g.visible=false;
+  /* 投げる腕側の斜め前から寄る（グラブで顔が隠れない）。頭が画面上1/4に来るよう胸より少し上を注視 */const pos=new THREE.Vector3(-hs*(2.4-0.7*e),1.78-0.18*e,z0+3.8-1.2*e);const look=new THREE.Vector3(-hs*0.06,1.32-0.02*e,z0);r3SetCam(pos,look,31-5*e,cut,0.25);}
+ else{const DP=fwDefPos(other);const op=other.pitcher;
+  for(const k in R3.fielders){const r=R3.fielders[k];r.g.visible=true;r.setColors(cu,false);r.setNumber(numOf(other,k),cu.trim);r.setGear(k==='捕'?'catcher':null);r.glove.visible=k!=='捕';r3Dress(r,k==='投'?op:r3PlayerOf(other,k));r.setExpression(null);
+   if(k==='投'){r.at(0,0,-R3C.RUBBER+0.15);r.g.scale.x=(op&&op.throws==='左')?-1:1;r.face(0,1);r.apply(RP.pset);continue;}
+   if(k==='捕'){r.g.visible=false;continue;}
+   const q=DP[k];r.g.scale.x=1;r.at(q[0],0,-q[1]);r.face(-q[0],q[1]);r.apply(RP.ready);}
+  const b=R3.batter;b.g.visible=true;b.setColors(co,true);b.setNumber(p.number!=null?p.number:null,co.trim);r3Dress(b,p);b.setGear(null);b.setExpression(u<0.4?null:'focus');b.bat.visible=true;
+  const hand=p.bats==='両'?'左':p.bats;const sg=hand==='左'?-1:1;b.g.scale.x=sg<0?-1:1;b.at(-sg*0.86,0,0.1);b.face(sg,0);
+  const w=Math.sin(now/420),w2=Math.sin(now/650);const pose=Object.assign({},RP.stance);pose.batDir=[-0.55+w*0.08,0.8,-0.3+w*0.12];pose.dy=RP.stance.dy+w2*0.015;pose.head=[0.05+w2*0.03,1.0,0];b.apply(pose);
+  const pos=new THREE.Vector3(sg*(2.5-0.75*e),1.55-0.12*e,-3.2+1.05*e);const look=new THREE.Vector3(-sg*0.5,1.18-0.03*e,0.1);r3SetCam(pos,look,31-6*e,cut,0.25);}
+ R3.trailP.length=0;}
 /* 全員を定位置へ（ベンチ中の俯瞰など） */
 function r3IdleScene(now){const m=AR.m;const d=m.def(),t=m.bat();const cd=arTeamColors(d),cb=arTeamColors(t);const DP=fwDefPos(d);
  for(const k in R3.fielders){const r=R3.fielders[k];r.g.visible=true;r.setColors(cd,false);r.setGear(k==='捕'?'catcher':null);r.glove.visible=k!=='捕';r3Dress(r,r3PlayerOf(d,k));r.setExpression(null);const p=DP[k];r.at(p[0],0,-p[1]);r.face(-p[0],p[1]);r.apply(k==='捕'?RP.crouch:RP.stand);}

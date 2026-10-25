@@ -85,6 +85,11 @@ function ctrlAvg(p){return avg(p.pit.pitches.map(x=>x.ctrl));}
 function batRating(p){const b=p.bat;return b.meetR*0.2+b.meetL*0.12+b.powR*0.17+b.powL*0.1+b.eye*0.08+b.speed*0.1+b.field*0.1+b.arm*0.05+b.thr*0.04+b.clutch*0.04;}
 function pitRating(p){const t=p.pit;const v=clamp((t.velo-95)*1.8,0,100);return v*0.22+t.stamina*0.1+t.hrR*0.08+t.hrL*0.06+t.hitR*0.1+t.hitL*0.08+t.kR*0.1+t.kL*0.08+pitchQ(p)*0.18;}
 function rating(p){return isPitcher(p)?pitRating(p)*0.8+batRating(p)*0.2:batRating(p);}
+/* 総合ランクの文字：Sは全国でも数人しかいない水準（個々の能力値の文字より厳しい） */
+const ratingLetter=v=>v>=94?'S':v>=86?'A':v>=77?'B':v>=68?'C':v>=58?'D':v>=48?'E':v>=38?'F':'G';
+function ratingRank(p){return ratingLetter(rating(p));}
+/* 学校の強さの文字：90以上（S）は全国で3〜5校だけ */
+const strengthLetter=v=>letter(v);
 function fogLevel(){const c=G.coach.level,s=G.scout?G.scout.level:0;return clamp(1-c*0.09-s*0.03,0,1);}
 function shown(p,g,k){const t=p[g][k];const n=clamp(p.noise[g+k]||0,-2,2);return clamp(t+n*fogLevel()*10,1,100);}
 function shownVelo(p){return Math.round(p.pit.velo+(p.noise.velo||0)*fogLevel()*5);}
@@ -131,7 +136,8 @@ function newGame(cfg){
  const mk=(st)=>{let n;do{n=genSchoolName(G.school.pref);}while(prefNames.has(n));prefNames.add(n);return {name:n,strength:st,pref:G.school.pref};};
  for(let i=0;i<ns-1;i++){const base=i<3?58+G.school.pw*6:i<8?50+G.school.pw*4:36+G.school.pw*3;G.schools.pref.push(mk(Math.round(clamp(base+gauss(0,6),25,95))));}
  G.schools.local=shuffle(G.schools.pref.slice(3)).slice(0,7);
- for(const pr of PREF_DATA){G.schools.powers[pr.name]=[0,1,2].map(i=>({name:genSchoolName(pr.name),strength:Math.round(clamp(64+pr.pw*5-i*4+gauss(0,4),45,95)),pref:pr.name}));}
+ for(const pr of PREF_DATA){const used=pr.name===G.school.pref?prefNames:new Set();G.schools.powers[pr.name]=[0,1,2].map(i=>{let n;do{n=genSchoolName(pr.name);}while(used.has(n));used.add(n);return {name:n,strength:Math.round(clamp(62+pr.pw*4.5-i*4+gauss(0,4),45,88)),pref:pr.name};});}
+ applyEliteSchools();refreshStars(true);
  for(let g=1;g<=3;g++){const n=elite?ri(13,16):ri(10,13);for(let i=0;i<n;i++){const q=custom?clamp(gauss(custom.q+(g-1)*4,6),20,95):elite?clamp(gauss(68+(g-1)*4,6),50,92):clamp(gauss(40+G.rep*0.12+(g-1)*5,7),25,75);G.players.push(genPlayer({grade:g,q,uniqProb:custom?clamp(custom.uniq,0,100)/100:elite?0.12:0.03}));}}
  if(custom&&custom.stars>0){const n=clamp(Math.round(custom.stars),0,9);for(let i=0;i<n;i++){const pos=i%3===0?'投':i%3===1?pick(['遊','中','捕']):pick(['一','三','左','右','二']);const p=genPlayer({grade:1,q:clamp(custom.starQ||80,50,95),pos,potential:clamp(custom.starPot||10,1,10),uniqProb:1,forceUnique:true,scouted:true,rank:'S',title:pick(TITLES_NATIONAL)});if(pos==='投'){p.pit.velo=Math.max(p.pit.velo,veloFromQ(custom.starQ||80)+ri(0,4));p.pit.pitches[0].velo=Math.round(p.pit.velo);p.caps.velo=veloCapFor(p.potential,p.pit.velo);}G.players.push(p);}}
  ensurePositions();
@@ -245,7 +251,7 @@ function applyMaintenance(){const lv=GROUND_LV[G.ground.lv-1];let add=0;const gk
  G.ground.dur=clamp(G.ground.dur-3/gk+add*gk,0,lv.maxDur);}
 function decayFacilities(){for(const k of FAC_KEYS){const f=G.fac[k];if(!f||f.broken)continue;if(R()<0.8)f.dur-=1;if(R()<0.08)f.dur-=1;if(f.dur<=0){f.dur=0;f.broken=true;notice(`${FAC[k].name}（${FAC[k].models[f.model].name}）が故障した！修理か買い替えが必要だ。`);}}}
 function monthlyCosts(){if(G.coach.salary)spend(G.coach.salary/12,'監督給与');if(G.scout&&G.scout.salary)spend(G.scout.salary/12,'スカウト給与');const d=DORM_LV[G.dorm.lv];if(d.upkeep)spend(d.upkeep,'寮の維持費');spend(3+active().length*0.15,'用具・消耗品');const up=facUpkeep();if(up>0)spend(up,'設備維持費');if(G.month===4)spend(12,'保険・連盟登録費');}
-function genPracticeList(){const list=[];const loc=shuffle(G.schools.pref).slice(0,4).map(s=>({name:s.name,strength:s.strength,dist:R()<0.5?0:1}));const far=[];for(let i=0;i<2;i++){const pr=pick(PREF_DATA);const pw=pick(G.schools.powers[pr.name]);far.push({name:pw.name,strength:Math.round(clamp(pw.strength+gauss(0,5),30,95)),dist:pr.region===G.school.region?2:3,pref:pr.name});}
+function genPracticeList(){const list=[];const loc=shuffle(G.schools.pref).slice(0,4).map(s=>({name:s.name,strength:s.strength,dist:R()<0.5?0:1,elite:!!s.elite}));const far=[];for(let i=0;i<2;i++){const pr=pick(PREF_DATA);const pw=pick(G.schools.powers[pr.name]);far.push({name:pw.name,strength:Math.round(clamp(pw.strength+gauss(0,5),30,pw.elite?95:89)),dist:pr.region===G.school.region?2:3,pref:pr.name,elite:!!pw.elite});}
  for(const o of loc.concat(far)){o.home=R()<0.5;o.cost=practiceCost(o);list.push(o);}return list;}
 function practiceCost(o){const disc=Math.min(60,catSum('cost'))/100;const items={バス代:Math.round((4+o.dist*4)*(1-disc)*10)/10,運転手:Math.round(2*(1-disc)*10)/10,弁当代:2.5};if(o.dist>=3)items['宿泊費']=28;if(!o.home)items['球場使用料']=o.dist>=2?5:3;items.total=Math.round(Object.values(items).reduce((s,v)=>s+v,0)*10)/10;return items;}
 function weekTick(){
@@ -259,6 +265,38 @@ function weekTick(){
  fireEvents();
  maybeEvent();
 }
+/* ---- 全国の強豪校と注目選手 ----
+ Sランク（強さ90以上）の学校は全国で3〜5校。それ以外は89以下に抑える。 */
+function allSchools(){const arr=G.schools.pref.slice();for(const k in G.schools.powers)arr.push(...G.schools.powers[k]);return arr;}
+/* 既存校・注目選手の学校と名前がかぶらない新しい校名（その場限りの出場校用） */
+function genSchoolNameU(pref){const taken=new Set(allSchools().filter(s=>s.pref===pref).map(s=>s.name));for(const st of (G.stars||[]))if(st.pref===pref)taken.add(st.school);if(G.school&&G.school.pref===pref)taken.add(G.school.name);let n;let g=0;do{n=genSchoolName(pref);}while(taken.has(n)&&g++<30);return n;}
+function applyEliteSchools(){const arr=allSchools();for(const s of arr){s.elite=false;if(s.strength>88)s.strength=88;}
+ const n=3+ri(0,2);const ranked=arr.map(s=>({s,k:s.strength+(PREF_DATA.find(p=>p.name===s.pref)||{pw:2}).pw*1.5+gauss(0,3)})).sort((a,b)=>b.k-a.k);
+ for(let i=0;i<n&&i<ranked.length;i++){const s=ranked[i].s;s.elite=true;s.strength=ri(90,94);}}
+function isEliteSchool(name){return allSchools().some(s=>s.name===name&&s.elite);}
+/* 注目選手：全国でSランクは数人、Aランクは十数人。強豪校に所属し、対戦時はその学校のロスターに実際に入る */
+const STAR_TITLES_P=['昨夏の甲子園で8強入りのエース','U-18日本代表候補','最速15{v}km/hの本格派','県大会ノーヒットノーラン達成','プロ注目の右腕','プロ注目の左腕','中学時代に全国制覇の経験'];
+const STAR_TITLES_B=['高校通算{hr}本塁打のスラッガー','U-18日本代表候補','50m5秒台の俊足巧打','昨夏の甲子園で打率5割','プロ注目の強打者','中学時代に全国制覇の経験','1年夏からレギュラーの天才'];
+function refreshStars(init){G.stars=G.stars||[];
+ if(!init){for(const st of G.stars)st.grade++;G.stars=G.stars.filter(st=>st.grade<=3);for(const st of G.stars)st.q=Math.min(97,st.q+ri(0,2));}
+ const arr=allSchools();const elites=arr.filter(s=>s.elite);const strong=arr.filter(s=>!s.elite&&s.strength>=84);
+ const mk=(school,rank,grade)=>{const taken=G.stars.filter(x=>x.school===school.name).map(x=>x.pos);const isP=!taken.includes('投')&&R()<0.45;const pos=isP?'投':(pick(shuffle(['遊','中','捕','三','一','右','左','二']).filter(x=>!taken.includes(x)))||'一');const q=rank==='S'?ri(95,97):ri(90,92);const name=genName();
+  let title=pick(isP?STAR_TITLES_P:STAR_TITLES_B);title=title.replace('{v}',String(ri(0,4))).replace('{hr}',String(ri(30,55)));
+  return {id:'star'+Math.random().toString(36).slice(2,8),name,pos,school:school.name,pref:school.pref,grade:grade||ri(1,3),q,rank,title,throws:isP&&R()<0.3?'左':'右',bats:R()<0.35?'左':'右'};};
+ const sCount=()=>G.stars.filter(x=>x.rank==='S').length,aCount=()=>G.stars.filter(x=>x.rank==='A').length;
+ const sTarget=init?ri(3,5):ri(3,5),aTarget=12+ri(0,6);
+ let guard=0;while(sCount()<sTarget&&elites.length&&guard++<40){const sc=pick(elites);if(G.stars.filter(x=>x.school===sc.name).length>=3)continue;G.stars.push(mk(sc,'S',init?ri(1,3):ri(1,2)));}
+ guard=0;while(aCount()<aTarget&&(strong.length||elites.length)&&guard++<80){const pool=strong.length&&R()<0.6?strong:elites;const sc=pick(pool);if(G.stars.filter(x=>x.school===sc.name).length>=3)continue;G.stars.push(mk(sc,'A',init?ri(1,3):ri(1,2)));}}
+function starsOf(schoolName,pref){return (G.stars||[]).filter(st=>st.school===schoolName&&(!pref||!st.pref||st.pref===pref));}
+/* 総合値が上限を超えないように全体を縮める（無名のCPU選手が偶然Sになるのを防ぐ） */
+function capRating(p,max){for(let it=0;it<6&&rating(p)>max;it++){const f=Math.max(0.8,(max-0.6)/rating(p));for(const k of ALL_BAT)p.bat[k]=Math.round(p.bat[k]*f);const t=p.pit;for(const k of ALL_PIT)t[k]=Math.round(t[k]*f);t.velo=Math.round(95+(t.velo-95)*f);for(const q of t.pitches){q.move=Math.round(q.move*f);q.sharp=Math.round(q.sharp*f);q.ctrl=Math.round(q.ctrl*f);}if(t.pitches[0])t.pitches[0].velo=t.velo;}return p;}
+/* 能力を底上げして総合値を目標に合わせる（注目選手の生成用） */
+function boostToRating(p,target){const isP=isPitcher(p);
+ for(let it=0;it<10;it++){const need=target-rating(p);if(need<=0)break;const d=Math.max(0.4,need*1.1);
+  for(const k of ALL_BAT)p.bat[k]=Math.min(99,p.bat[k]+d*(isP?0.6:1));
+  if(isP){const t=p.pit;t.velo=Math.min(158,t.velo+d/1.8);for(const k of ALL_PIT)t[k]=Math.min(99,t[k]+d);for(const q of t.pitches){q.move=Math.min(99,q.move+d);q.sharp=Math.min(99,q.sharp+d);q.ctrl=Math.min(99,q.ctrl+d);}}}
+ for(const k of ALL_BAT)p.bat[k]=Math.round(p.bat[k]);const t=p.pit;for(const k of ALL_PIT)t[k]=Math.round(t[k]);t.velo=Math.round(t.velo);for(const q of t.pitches){q.move=Math.round(q.move);q.sharp=Math.round(q.sharp);q.ctrl=Math.round(q.ctrl);}if(t.pitches[0])t.pitches[0].velo=t.velo;
+ for(const k of ALL_BAT)p.caps['bat'+k]=Math.max(p.caps['bat'+k]||0,p.bat[k]);for(const k of ALL_PIT)p.caps['pit'+k]=Math.max(p.caps['pit'+k]||0,t[k]);if(p.caps.velo!=null)p.caps.velo=Math.max(p.caps.velo,t.velo);return p;}
 function advanceWeek(){if(G.queue.length||G.gameOver)return false;weekTick();saveGame();return true;}
 function fireEvents(){const key=G.month+'-'+G.week;
  switch(key){

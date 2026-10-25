@@ -1,9 +1,15 @@
 /* ================= 試合エンジン ================= */
 function cpuRoster(name,strength,pref){
- const q=strength;const mk=(pos,dq)=>{const p=genPlayer({grade:ri(1,3),q:clamp(q+dq,20,96),pos,uniqProb:q>80?0.12:0.02});p.cpu=true;return p;};
+ const elite=strength>=90;const cap=elite?92:89;const maxR=elite?93.4:91.5;/* 無名のCPU選手は総合Sに届かない（Sは全国の注目選手だけ） */
+ const q=strength;const mk=(pos,dq)=>{const p=genPlayer({grade:ri(1,3),q:clamp(q+dq,20,cap),pos,uniqProb:q>80?0.12:0.02});p.cpu=true;if(rating(p)>maxR)capRating(p,maxR);return p;};
  const lineupPos=['中','遊','三','一','左','捕','右','二'];
  const fielders=lineupPos.map((pos,i)=>mk(pos,i<4?ri(-2,6):ri(-8,2)));
- const ace=mk('投',ri(0,6));const rel=[mk('投',ri(-8,-2)),mk('投',ri(-14,-6))];
+ let ace=mk('投',ri(0,6));const rel=[mk('投',ri(-8,-2)),mk('投',ri(-14,-6))];
+ /* 全国の注目選手が所属する学校なら、その選手を実際に入れる */
+ for(const st of (typeof starsOf==='function'?starsOf(name,pref):[])){const sp=genPlayer({grade:st.grade,q:st.q,pos:st.pos,name:st.name,rank:st.rank,title:st.title,uniqProb:st.rank==='S'?0.8:0.5});sp.cpu=true;sp.nstar=st;sp.throws=st.throws;sp.bats=st.bats;
+  if(st.pos==='投'){const vmin=st.rank==='S'?146:141;if(sp.pit.velo<vmin)sp.pit.velo=ri(vmin,vmin+8);sp.pit.pitches[0].velo=Math.round(sp.pit.velo);if(sp.pit.pitches.length<3){const names=shuffle(PITCH_NAMES.filter(n=>n!=='ナックル'&&!sp.pit.pitches.some(q=>q.name===n))).slice(0,3-sp.pit.pitches.length);for(const n of names){const off=PITCH_SPEED_OFF[n]||[-10,-20];sp.pit.pitches.push({name:n,velo:sp.pit.velo+ri(off[1],off[0]),move:ri(80,92),sharp:ri(80,92),ctrl:ri(78,90)});}}}
+  boostToRating(sp,st.rank==='S'?ri(94,97):ri(88,92));if(st.rank!=='S'&&rating(sp)>93.2)capRating(sp,93.2);if(st.pos==='投'){if(ace.nstar){rel.unshift(ace);rel.length=Math.min(rel.length,3);}ace=sp;}
+  else{let i=fielders.findIndex(f=>f.pos===st.pos&&!f.nstar);if(i<0)i=fielders.findIndex(f=>!f.nstar&&f.pos!=='捕');if(i<0)continue;sp.pos=fielders[i].pos;fielders[i]=sp;}}
  const benchF=[mk(pick(['一','二','三','左','右']),ri(-14,-6)),mk(pick(['捕','遊','中']),ri(-14,-6))];
  const lineup=fielders.map(p=>({p,pos:p.pos}));lineup.push({p:ace,pos:'投'});
  return {name,isUser:false,strength,pref,lineup,bench:rel.concat(benchF),pitcher:ace};

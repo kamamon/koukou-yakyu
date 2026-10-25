@@ -409,3 +409,39 @@ label.f>*{color:var(--ink)}
 @media (max-width:360px){.ccard .cd{display:none}.ccard{min-height:70px}.ar-ctl.card{height:160px}}
 .cseq{display:flex;flex-direction:column;gap:1px;font-size:11px;color:var(--muted);max-height:110px;overflow:auto}
 .cseq .hl{color:var(--accent2);font-weight:700}
+
+/* ---- レーダーチャート ---- */
+.radar{display:block;max-width:100%;height:auto;font-family:var(--font-ui,sans-serif)}
+.radar-box{display:flex;flex-direction:column;align-items:center;gap:2px}
+.radar-box .radar-ttl{font-size:11px;color:var(--muted);letter-spacing:.08em}
+.radar-tabs{display:flex;gap:4px;margin:4px 0 2px}
+.radar-tabs button{font-size:11px;padding:2px 8px;border-radius:999px;border:1px solid var(--line,#ccc);background:transparent;color:inherit}
+.radar-tabs button.on{background:var(--accent,#2f6fdd);color:#fff;border-color:transparent}
+/* ---- 試合前カットイン（相手の注目選手） ---- */
+.ar-cutin{position:absolute;left:0;right:0;bottom:0;top:0;pointer-events:none;overflow:hidden;color:#fff;font-family:var(--font-ui,sans-serif)}
+.ar-cutin .ci-band{position:absolute;left:-12%;right:-12%;bottom:0;height:46%;background:linear-gradient(100deg,var(--tb,#1b2a4a) 0 58%,var(--tc,#d4a017) 58% 60%,rgba(8,14,20,.92) 60%);transform:skewY(-4deg) translateX(110%);transform-origin:left bottom;animation:ciBand .55s cubic-bezier(.2,.9,.25,1) forwards;box-shadow:0 -6px 24px rgba(0,0,0,.45)}
+.ar-cutin .ci-tag{position:absolute;left:0;top:7%;background:linear-gradient(90deg,var(--tc,#d4a017),rgba(0,0,0,0));color:#111;font-weight:900;letter-spacing:.14em;font-size:12px;padding:4px 48px 4px 12px;transform:translateX(-110%);animation:ciTag .45s .15s cubic-bezier(.2,.9,.25,1) forwards;text-shadow:none}
+.ar-cutin .ci-tag.bat{background:linear-gradient(90deg,#ffe08a,rgba(0,0,0,0))}
+.ar-cutin .ci-body{position:absolute;left:0;right:0;bottom:0;height:46%;display:flex;align-items:flex-end;justify-content:space-between;padding:0 10px 10px 12px;opacity:0;animation:ciIn .4s .3s ease-out forwards}
+.ar-cutin .ci-main{flex:1 1 auto;min-width:0;color:var(--tx,#fff);text-shadow:0 1px 0 rgba(0,0,0,.35),0 2px 8px rgba(0,0,0,.35)}
+.ar-cutin .ci-main .rk{color:#fff}
+.ar-cutin .ci-school{font-size:12px;opacity:.9;letter-spacing:.06em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ar-cutin .ci-name{font-family:var(--font-display);font-size:30px;line-height:1.05;letter-spacing:.04em;margin:2px 0 2px}
+.ar-cutin .ci-name small{display:block;font-family:var(--font-ui,sans-serif);font-size:12px;letter-spacing:.04em;opacity:.95;margin-top:2px}
+.ar-cutin .ci-rank{display:flex;align-items:center;gap:6px;font-size:12px;flex-wrap:wrap}
+.ar-cutin .ci-rank .rk{font-size:22px;min-width:1.2em;background:rgba(0,0,0,.55);border-radius:6px;padding:0 6px;line-height:1.25;text-shadow:none}
+.ar-cutin .ci-rank .rk.rk-S{color:#ffd54a}.ar-cutin .ci-rank .rk.rk-A{color:#ff7a66}.ar-cutin .ci-rank .rk.rk-B{color:#ffab5e}.ar-cutin .ci-rank .rk.rk-C{color:#7ddc9a}.ar-cutin .ci-rank .rk.rk-D{color:#8fbcff}
+.ar-cutin .ci-rank .ttl{background:rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.35);border-radius:999px;padding:1px 8px;font-size:11px;color:#fff}
+.ar-cutin .ci-stats{font-family:var(--font-num);font-size:12px;opacity:.95;margin-top:4px;display:flex;gap:10px;flex-wrap:wrap}
+.ar-cutin .ci-stats b{font-size:15px}
+.ar-cutin .ci-radar{flex:0 0 auto;width:min(38%,150px);background:rgba(8,14,20,.55);border-radius:10px;padding:4px;margin-left:6px;color:#fff;transform:scale(.6);opacity:0;animation:ciPop .45s .5s cubic-bezier(.2,1.2,.3,1) forwards}
+.ar-cutin .ci-radar .radar{width:100%;height:auto}
+.ar-cutin .ci-foot{position:absolute;right:10px;top:7%;font-size:11px;color:rgba(255,255,255,.8);background:rgba(0,0,0,.4);border-radius:999px;padding:2px 8px}
+.ar-cutin .ci-av{position:absolute;left:50%;top:9%;transform:translateX(-50%);width:min(46%,200px);filter:drop-shadow(0 6px 10px rgba(0,0,0,.5));opacity:0;animation:ciIn .5s .1s ease-out forwards}
+.ar-cutin .ci-av svg{width:100%;height:auto}
+@keyframes ciBand{to{transform:skewY(-4deg) translateX(0)}}
+@keyframes ciTag{to{transform:none}}
+@keyframes ciIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+@keyframes ciPop{to{transform:none;opacity:1}}
+.ar-cutin.out{animation:ciOut .3s ease-in forwards}
+@keyframes ciOut{to{opacity:0;transform:translateX(-6%)}}

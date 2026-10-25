@@ -425,6 +425,42 @@ label.f>*{color:var(--ink)}
 @media (max-width:360px){.ccard .cd{display:none}.ccard{min-height:70px}.ar-ctl.card{height:160px}}
 .cseq{display:flex;flex-direction:column;gap:1px;font-size:11px;color:var(--muted);max-height:110px;overflow:auto}
 .cseq .hl{color:var(--accent2);font-weight:700}
+
+/* ---- レーダーチャート ---- */
+.radar{display:block;max-width:100%;height:auto;font-family:var(--font-ui,sans-serif)}
+.radar-box{display:flex;flex-direction:column;align-items:center;gap:2px}
+.radar-box .radar-ttl{font-size:11px;color:var(--muted);letter-spacing:.08em}
+.radar-tabs{display:flex;gap:4px;margin:4px 0 2px}
+.radar-tabs button{font-size:11px;padding:2px 8px;border-radius:999px;border:1px solid var(--line,#ccc);background:transparent;color:inherit}
+.radar-tabs button.on{background:var(--accent,#2f6fdd);color:#fff;border-color:transparent}
+/* ---- 試合前カットイン（相手の注目選手） ---- */
+.ar-cutin{position:absolute;left:0;right:0;bottom:0;top:0;pointer-events:none;overflow:hidden;color:#fff;font-family:var(--font-ui,sans-serif)}
+.ar-cutin .ci-band{position:absolute;left:-12%;right:-12%;bottom:0;height:46%;background:linear-gradient(100deg,var(--tb,#1b2a4a) 0 58%,var(--tc,#d4a017) 58% 60%,rgba(8,14,20,.92) 60%);transform:skewY(-4deg) translateX(110%);transform-origin:left bottom;animation:ciBand .55s cubic-bezier(.2,.9,.25,1) forwards;box-shadow:0 -6px 24px rgba(0,0,0,.45)}
+.ar-cutin .ci-tag{position:absolute;left:0;top:7%;background:linear-gradient(90deg,var(--tc,#d4a017),rgba(0,0,0,0));color:#111;font-weight:900;letter-spacing:.14em;font-size:12px;padding:4px 48px 4px 12px;transform:translateX(-110%);animation:ciTag .45s .15s cubic-bezier(.2,.9,.25,1) forwards;text-shadow:none}
+.ar-cutin .ci-tag.bat{background:linear-gradient(90deg,#ffe08a,rgba(0,0,0,0))}
+.ar-cutin .ci-body{position:absolute;left:0;right:0;bottom:0;height:46%;display:flex;align-items:flex-end;justify-content:space-between;padding:0 10px 10px 12px;opacity:0;animation:ciIn .4s .3s ease-out forwards}
+.ar-cutin .ci-main{flex:1 1 auto;min-width:0;color:var(--tx,#fff);text-shadow:0 1px 0 rgba(0,0,0,.35),0 2px 8px rgba(0,0,0,.35)}
+.ar-cutin .ci-main .rk{color:#fff}
+.ar-cutin .ci-school{font-size:12px;opacity:.9;letter-spacing:.06em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ar-cutin .ci-name{font-family:var(--font-display);font-size:30px;line-height:1.05;letter-spacing:.04em;margin:2px 0 2px}
+.ar-cutin .ci-name small{display:block;font-family:var(--font-ui,sans-serif);font-size:12px;letter-spacing:.04em;opacity:.95;margin-top:2px}
+.ar-cutin .ci-rank{display:flex;align-items:center;gap:6px;font-size:12px;flex-wrap:wrap}
+.ar-cutin .ci-rank .rk{font-size:22px;min-width:1.2em;background:rgba(0,0,0,.55);border-radius:6px;padding:0 6px;line-height:1.25;text-shadow:none}
+.ar-cutin .ci-rank .rk.rk-S{color:#ffd54a}.ar-cutin .ci-rank .rk.rk-A{color:#ff7a66}.ar-cutin .ci-rank .rk.rk-B{color:#ffab5e}.ar-cutin .ci-rank .rk.rk-C{color:#7ddc9a}.ar-cutin .ci-rank .rk.rk-D{color:#8fbcff}
+.ar-cutin .ci-rank .ttl{background:rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.35);border-radius:999px;padding:1px 8px;font-size:11px;color:#fff}
+.ar-cutin .ci-stats{font-family:var(--font-num);font-size:12px;opacity:.95;margin-top:4px;display:flex;gap:10px;flex-wrap:wrap}
+.ar-cutin .ci-stats b{font-size:15px}
+.ar-cutin .ci-radar{flex:0 0 auto;width:min(38%,150px);background:rgba(8,14,20,.55);border-radius:10px;padding:4px;margin-left:6px;color:#fff;transform:scale(.6);opacity:0;animation:ciPop .45s .5s cubic-bezier(.2,1.2,.3,1) forwards}
+.ar-cutin .ci-radar .radar{width:100%;height:auto}
+.ar-cutin .ci-foot{position:absolute;right:10px;top:7%;font-size:11px;color:rgba(255,255,255,.8);background:rgba(0,0,0,.4);border-radius:999px;padding:2px 8px}
+.ar-cutin .ci-av{position:absolute;left:50%;top:9%;transform:translateX(-50%);width:min(46%,200px);filter:drop-shadow(0 6px 10px rgba(0,0,0,.5));opacity:0;animation:ciIn .5s .1s ease-out forwards}
+.ar-cutin .ci-av svg{width:100%;height:auto}
+@keyframes ciBand{to{transform:skewY(-4deg) translateX(0)}}
+@keyframes ciTag{to{transform:none}}
+@keyframes ciIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+@keyframes ciPop{to{transform:none;opacity:1}}
+.ar-cutin.out{animation:ciOut .3s ease-in forwards}
+@keyframes ciOut{to{opacity:0;transform:translateX(-6%)}}
 </style>
 </head>
 <body>
@@ -1094,6 +1130,11 @@ function ctrlAvg(p){return avg(p.pit.pitches.map(x=>x.ctrl));}
 function batRating(p){const b=p.bat;return b.meetR*0.2+b.meetL*0.12+b.powR*0.17+b.powL*0.1+b.eye*0.08+b.speed*0.1+b.field*0.1+b.arm*0.05+b.thr*0.04+b.clutch*0.04;}
 function pitRating(p){const t=p.pit;const v=clamp((t.velo-95)*1.8,0,100);return v*0.22+t.stamina*0.1+t.hrR*0.08+t.hrL*0.06+t.hitR*0.1+t.hitL*0.08+t.kR*0.1+t.kL*0.08+pitchQ(p)*0.18;}
 function rating(p){return isPitcher(p)?pitRating(p)*0.8+batRating(p)*0.2:batRating(p);}
+/* 総合ランクの文字：Sは全国でも数人しかいない水準（個々の能力値の文字より厳しい） */
+const ratingLetter=v=>v>=94?'S':v>=86?'A':v>=77?'B':v>=68?'C':v>=58?'D':v>=48?'E':v>=38?'F':'G';
+function ratingRank(p){return ratingLetter(rating(p));}
+/* 学校の強さの文字：90以上（S）は全国で3〜5校だけ */
+const strengthLetter=v=>letter(v);
 function fogLevel(){const c=G.coach.level,s=G.scout?G.scout.level:0;return clamp(1-c*0.09-s*0.03,0,1);}
 function shown(p,g,k){const t=p[g][k];const n=clamp(p.noise[g+k]||0,-2,2);return clamp(t+n*fogLevel()*10,1,100);}
 function shownVelo(p){return Math.round(p.pit.velo+(p.noise.velo||0)*fogLevel()*5);}
@@ -1140,7 +1181,8 @@ function newGame(cfg){
  const mk=(st)=>{let n;do{n=genSchoolName(G.school.pref);}while(prefNames.has(n));prefNames.add(n);return {name:n,strength:st,pref:G.school.pref};};
  for(let i=0;i<ns-1;i++){const base=i<3?58+G.school.pw*6:i<8?50+G.school.pw*4:36+G.school.pw*3;G.schools.pref.push(mk(Math.round(clamp(base+gauss(0,6),25,95))));}
  G.schools.local=shuffle(G.schools.pref.slice(3)).slice(0,7);
- for(const pr of PREF_DATA){G.schools.powers[pr.name]=[0,1,2].map(i=>({name:genSchoolName(pr.name),strength:Math.round(clamp(64+pr.pw*5-i*4+gauss(0,4),45,95)),pref:pr.name}));}
+ for(const pr of PREF_DATA){const used=pr.name===G.school.pref?prefNames:new Set();G.schools.powers[pr.name]=[0,1,2].map(i=>{let n;do{n=genSchoolName(pr.name);}while(used.has(n));used.add(n);return {name:n,strength:Math.round(clamp(62+pr.pw*4.5-i*4+gauss(0,4),45,88)),pref:pr.name};});}
+ applyEliteSchools();refreshStars(true);
  for(let g=1;g<=3;g++){const n=elite?ri(13,16):ri(10,13);for(let i=0;i<n;i++){const q=custom?clamp(gauss(custom.q+(g-1)*4,6),20,95):elite?clamp(gauss(68+(g-1)*4,6),50,92):clamp(gauss(40+G.rep*0.12+(g-1)*5,7),25,75);G.players.push(genPlayer({grade:g,q,uniqProb:custom?clamp(custom.uniq,0,100)/100:elite?0.12:0.03}));}}
  if(custom&&custom.stars>0){const n=clamp(Math.round(custom.stars),0,9);for(let i=0;i<n;i++){const pos=i%3===0?'投':i%3===1?pick(['遊','中','捕']):pick(['一','三','左','右','二']);const p=genPlayer({grade:1,q:clamp(custom.starQ||80,50,95),pos,potential:clamp(custom.starPot||10,1,10),uniqProb:1,forceUnique:true,scouted:true,rank:'S',title:pick(TITLES_NATIONAL)});if(pos==='投'){p.pit.velo=Math.max(p.pit.velo,veloFromQ(custom.starQ||80)+ri(0,4));p.pit.pitches[0].velo=Math.round(p.pit.velo);p.caps.velo=veloCapFor(p.potential,p.pit.velo);}G.players.push(p);}}
  ensurePositions();
@@ -1254,7 +1296,7 @@ function applyMaintenance(){const lv=GROUND_LV[G.ground.lv-1];let add=0;const gk
  G.ground.dur=clamp(G.ground.dur-3/gk+add*gk,0,lv.maxDur);}
 function decayFacilities(){for(const k of FAC_KEYS){const f=G.fac[k];if(!f||f.broken)continue;if(R()<0.8)f.dur-=1;if(R()<0.08)f.dur-=1;if(f.dur<=0){f.dur=0;f.broken=true;notice(`${FAC[k].name}（${FAC[k].models[f.model].name}）が故障した！修理か買い替えが必要だ。`);}}}
 function monthlyCosts(){if(G.coach.salary)spend(G.coach.salary/12,'監督給与');if(G.scout&&G.scout.salary)spend(G.scout.salary/12,'スカウト給与');const d=DORM_LV[G.dorm.lv];if(d.upkeep)spend(d.upkeep,'寮の維持費');spend(3+active().length*0.15,'用具・消耗品');const up=facUpkeep();if(up>0)spend(up,'設備維持費');if(G.month===4)spend(12,'保険・連盟登録費');}
-function genPracticeList(){const list=[];const loc=shuffle(G.schools.pref).slice(0,4).map(s=>({name:s.name,strength:s.strength,dist:R()<0.5?0:1}));const far=[];for(let i=0;i<2;i++){const pr=pick(PREF_DATA);const pw=pick(G.schools.powers[pr.name]);far.push({name:pw.name,strength:Math.round(clamp(pw.strength+gauss(0,5),30,95)),dist:pr.region===G.school.region?2:3,pref:pr.name});}
+function genPracticeList(){const list=[];const loc=shuffle(G.schools.pref).slice(0,4).map(s=>({name:s.name,strength:s.strength,dist:R()<0.5?0:1,elite:!!s.elite}));const far=[];for(let i=0;i<2;i++){const pr=pick(PREF_DATA);const pw=pick(G.schools.powers[pr.name]);far.push({name:pw.name,strength:Math.round(clamp(pw.strength+gauss(0,5),30,pw.elite?95:89)),dist:pr.region===G.school.region?2:3,pref:pr.name,elite:!!pw.elite});}
  for(const o of loc.concat(far)){o.home=R()<0.5;o.cost=practiceCost(o);list.push(o);}return list;}
 function practiceCost(o){const disc=Math.min(60,catSum('cost'))/100;const items={バス代:Math.round((4+o.dist*4)*(1-disc)*10)/10,運転手:Math.round(2*(1-disc)*10)/10,弁当代:2.5};if(o.dist>=3)items['宿泊費']=28;if(!o.home)items['球場使用料']=o.dist>=2?5:3;items.total=Math.round(Object.values(items).reduce((s,v)=>s+v,0)*10)/10;return items;}
 function weekTick(){
@@ -1268,6 +1310,38 @@ function weekTick(){
  fireEvents();
  maybeEvent();
 }
+/* ---- 全国の強豪校と注目選手 ----
+ Sランク（強さ90以上）の学校は全国で3〜5校。それ以外は89以下に抑える。 */
+function allSchools(){const arr=G.schools.pref.slice();for(const k in G.schools.powers)arr.push(...G.schools.powers[k]);return arr;}
+/* 既存校・注目選手の学校と名前がかぶらない新しい校名（その場限りの出場校用） */
+function genSchoolNameU(pref){const taken=new Set(allSchools().filter(s=>s.pref===pref).map(s=>s.name));for(const st of (G.stars||[]))if(st.pref===pref)taken.add(st.school);if(G.school&&G.school.pref===pref)taken.add(G.school.name);let n;let g=0;do{n=genSchoolName(pref);}while(taken.has(n)&&g++<30);return n;}
+function applyEliteSchools(){const arr=allSchools();for(const s of arr){s.elite=false;if(s.strength>88)s.strength=88;}
+ const n=3+ri(0,2);const ranked=arr.map(s=>({s,k:s.strength+(PREF_DATA.find(p=>p.name===s.pref)||{pw:2}).pw*1.5+gauss(0,3)})).sort((a,b)=>b.k-a.k);
+ for(let i=0;i<n&&i<ranked.length;i++){const s=ranked[i].s;s.elite=true;s.strength=ri(90,94);}}
+function isEliteSchool(name){return allSchools().some(s=>s.name===name&&s.elite);}
+/* 注目選手：全国でSランクは数人、Aランクは十数人。強豪校に所属し、対戦時はその学校のロスターに実際に入る */
+const STAR_TITLES_P=['昨夏の甲子園で8強入りのエース','U-18日本代表候補','最速15{v}km/hの本格派','県大会ノーヒットノーラン達成','プロ注目の右腕','プロ注目の左腕','中学時代に全国制覇の経験'];
+const STAR_TITLES_B=['高校通算{hr}本塁打のスラッガー','U-18日本代表候補','50m5秒台の俊足巧打','昨夏の甲子園で打率5割','プロ注目の強打者','中学時代に全国制覇の経験','1年夏からレギュラーの天才'];
+function refreshStars(init){G.stars=G.stars||[];
+ if(!init){for(const st of G.stars)st.grade++;G.stars=G.stars.filter(st=>st.grade<=3);for(const st of G.stars)st.q=Math.min(97,st.q+ri(0,2));}
+ const arr=allSchools();const elites=arr.filter(s=>s.elite);const strong=arr.filter(s=>!s.elite&&s.strength>=84);
+ const mk=(school,rank,grade)=>{const taken=G.stars.filter(x=>x.school===school.name).map(x=>x.pos);const isP=!taken.includes('投')&&R()<0.45;const pos=isP?'投':(pick(shuffle(['遊','中','捕','三','一','右','左','二']).filter(x=>!taken.includes(x)))||'一');const q=rank==='S'?ri(95,97):ri(90,92);const name=genName();
+  let title=pick(isP?STAR_TITLES_P:STAR_TITLES_B);title=title.replace('{v}',String(ri(0,4))).replace('{hr}',String(ri(30,55)));
+  return {id:'star'+Math.random().toString(36).slice(2,8),name,pos,school:school.name,pref:school.pref,grade:grade||ri(1,3),q,rank,title,throws:isP&&R()<0.3?'左':'右',bats:R()<0.35?'左':'右'};};
+ const sCount=()=>G.stars.filter(x=>x.rank==='S').length,aCount=()=>G.stars.filter(x=>x.rank==='A').length;
+ const sTarget=init?ri(3,5):ri(3,5),aTarget=12+ri(0,6);
+ let guard=0;while(sCount()<sTarget&&elites.length&&guard++<40){const sc=pick(elites);if(G.stars.filter(x=>x.school===sc.name).length>=3)continue;G.stars.push(mk(sc,'S',init?ri(1,3):ri(1,2)));}
+ guard=0;while(aCount()<aTarget&&(strong.length||elites.length)&&guard++<80){const pool=strong.length&&R()<0.6?strong:elites;const sc=pick(pool);if(G.stars.filter(x=>x.school===sc.name).length>=3)continue;G.stars.push(mk(sc,'A',init?ri(1,3):ri(1,2)));}}
+function starsOf(schoolName,pref){return (G.stars||[]).filter(st=>st.school===schoolName&&(!pref||!st.pref||st.pref===pref));}
+/* 総合値が上限を超えないように全体を縮める（無名のCPU選手が偶然Sになるのを防ぐ） */
+function capRating(p,max){for(let it=0;it<6&&rating(p)>max;it++){const f=Math.max(0.8,(max-0.6)/rating(p));for(const k of ALL_BAT)p.bat[k]=Math.round(p.bat[k]*f);const t=p.pit;for(const k of ALL_PIT)t[k]=Math.round(t[k]*f);t.velo=Math.round(95+(t.velo-95)*f);for(const q of t.pitches){q.move=Math.round(q.move*f);q.sharp=Math.round(q.sharp*f);q.ctrl=Math.round(q.ctrl*f);}if(t.pitches[0])t.pitches[0].velo=t.velo;}return p;}
+/* 能力を底上げして総合値を目標に合わせる（注目選手の生成用） */
+function boostToRating(p,target){const isP=isPitcher(p);
+ for(let it=0;it<10;it++){const need=target-rating(p);if(need<=0)break;const d=Math.max(0.4,need*1.1);
+  for(const k of ALL_BAT)p.bat[k]=Math.min(99,p.bat[k]+d*(isP?0.6:1));
+  if(isP){const t=p.pit;t.velo=Math.min(158,t.velo+d/1.8);for(const k of ALL_PIT)t[k]=Math.min(99,t[k]+d);for(const q of t.pitches){q.move=Math.min(99,q.move+d);q.sharp=Math.min(99,q.sharp+d);q.ctrl=Math.min(99,q.ctrl+d);}}}
+ for(const k of ALL_BAT)p.bat[k]=Math.round(p.bat[k]);const t=p.pit;for(const k of ALL_PIT)t[k]=Math.round(t[k]);t.velo=Math.round(t.velo);for(const q of t.pitches){q.move=Math.round(q.move);q.sharp=Math.round(q.sharp);q.ctrl=Math.round(q.ctrl);}if(t.pitches[0])t.pitches[0].velo=t.velo;
+ for(const k of ALL_BAT)p.caps['bat'+k]=Math.max(p.caps['bat'+k]||0,p.bat[k]);for(const k of ALL_PIT)p.caps['pit'+k]=Math.max(p.caps['pit'+k]||0,t[k]);if(p.caps.velo!=null)p.caps.velo=Math.max(p.caps.velo,t.velo);return p;}
 function advanceWeek(){if(G.queue.length||G.gameOver)return false;weekTick();saveGame();return true;}
 function fireEvents(){const key=G.month+'-'+G.week;
  switch(key){
@@ -1343,10 +1417,16 @@ function draftEvent(){const cands=G.players.filter(p=>p.grade===3&&(p.path==='�
  enqueue({type:'draft',ids:cands.map(p=>p.id),board:draftBoard(our)});}
 /* ================= 試合エンジン ================= */
 function cpuRoster(name,strength,pref){
- const q=strength;const mk=(pos,dq)=>{const p=genPlayer({grade:ri(1,3),q:clamp(q+dq,20,96),pos,uniqProb:q>80?0.12:0.02});p.cpu=true;return p;};
+ const elite=strength>=90;const cap=elite?92:89;const maxR=elite?93.4:91.5;/* 無名のCPU選手は総合Sに届かない（Sは全国の注目選手だけ） */
+ const q=strength;const mk=(pos,dq)=>{const p=genPlayer({grade:ri(1,3),q:clamp(q+dq,20,cap),pos,uniqProb:q>80?0.12:0.02});p.cpu=true;if(rating(p)>maxR)capRating(p,maxR);return p;};
  const lineupPos=['中','遊','三','一','左','捕','右','二'];
  const fielders=lineupPos.map((pos,i)=>mk(pos,i<4?ri(-2,6):ri(-8,2)));
- const ace=mk('投',ri(0,6));const rel=[mk('投',ri(-8,-2)),mk('投',ri(-14,-6))];
+ let ace=mk('投',ri(0,6));const rel=[mk('投',ri(-8,-2)),mk('投',ri(-14,-6))];
+ /* 全国の注目選手が所属する学校なら、その選手を実際に入れる */
+ for(const st of (typeof starsOf==='function'?starsOf(name,pref):[])){const sp=genPlayer({grade:st.grade,q:st.q,pos:st.pos,name:st.name,rank:st.rank,title:st.title,uniqProb:st.rank==='S'?0.8:0.5});sp.cpu=true;sp.nstar=st;sp.throws=st.throws;sp.bats=st.bats;
+  if(st.pos==='投'){const vmin=st.rank==='S'?146:141;if(sp.pit.velo<vmin)sp.pit.velo=ri(vmin,vmin+8);sp.pit.pitches[0].velo=Math.round(sp.pit.velo);if(sp.pit.pitches.length<3){const names=shuffle(PITCH_NAMES.filter(n=>n!=='ナックル'&&!sp.pit.pitches.some(q=>q.name===n))).slice(0,3-sp.pit.pitches.length);for(const n of names){const off=PITCH_SPEED_OFF[n]||[-10,-20];sp.pit.pitches.push({name:n,velo:sp.pit.velo+ri(off[1],off[0]),move:ri(80,92),sharp:ri(80,92),ctrl:ri(78,90)});}}}
+  boostToRating(sp,st.rank==='S'?ri(94,97):ri(88,92));if(st.rank!=='S'&&rating(sp)>93.2)capRating(sp,93.2);if(st.pos==='投'){if(ace.nstar){rel.unshift(ace);rel.length=Math.min(rel.length,3);}ace=sp;}
+  else{let i=fielders.findIndex(f=>f.pos===st.pos&&!f.nstar);if(i<0)i=fielders.findIndex(f=>!f.nstar&&f.pos!=='捕');if(i<0)continue;sp.pos=fielders[i].pos;fielders[i]=sp;}}
  const benchF=[mk(pick(['一','二','三','左','右']),ri(-14,-6)),mk(pick(['捕','遊','中']),ri(-14,-6))];
  const lineup=fielders.map(p=>({p,pos:p.pos}));lineup.push({p:ace,pos:'投'});
  return {name,isUser:false,strength,pref,lineup,bench:rel.concat(benchF),pitcher:ace};
@@ -1961,22 +2041,23 @@ const TOURNEY_DEFS={
  practice:{name:'練習試合',imp:0.6,mercy:true},
 };
 function userTeamRef(){return {name:G.school.name,strength:teamStrength(),isUser:true,pref:G.school.pref};}
-function champOf(pr){const pw=G.schools.powers[pr.name];if(R()<0.7){const s=pick(pw);return {name:s.name,strength:Math.round(clamp(s.strength+gauss(0,4),40,96)),pref:pr.name};}return {name:genSchoolName(pr.name),strength:Math.round(clamp(52+pr.pw*5+gauss(0,6),40,92)),pref:pr.name};}
-function driftSchools(){const mean=46+G.school.pw*5;for(const s of G.schools.pref)s.strength=Math.round(clamp(s.strength*0.82+mean*0.18+gauss(0,5),25,95));for(const k in G.schools.powers)for(const s of G.schools.powers[k])s.strength=Math.round(clamp(s.strength*0.85+(64+PREF_DATA.find(p=>p.name===k).pw*5)*0.15+gauss(0,4),45,96));}
-function buildTeams(kind){const u=userTeamRef();const cp=s=>({name:s.name,strength:Math.round(clamp(s.strength+gauss(0,3),20,97)),pref:s.pref});
+function champOf(pr){const pw=G.schools.powers[pr.name];if(R()<0.7){const s=pick(pw);return {name:s.name,strength:Math.round(clamp(s.strength+gauss(0,3),40,s.elite?96:89)),pref:pr.name,elite:!!s.elite};}return {name:genSchoolNameU(pr.name),strength:Math.round(clamp(52+pr.pw*5+gauss(0,6),40,86)),pref:pr.name};}
+function driftSchools(){const mean=46+G.school.pw*5;for(const s of G.schools.pref)s.strength=Math.round(clamp(s.strength*0.82+mean*0.18+gauss(0,5),25,88));for(const k in G.schools.powers){const pw=PREF_DATA.find(p=>p.name===k).pw;G.schools.powers[k].forEach((s,i)=>{s.strength=Math.round(clamp(s.strength*0.85+(62+pw*4.5-i*4)*0.15+gauss(0,4),45,88));});}applyEliteSchools();refreshStars(false);}
+function buildTeams(kind){const u=userTeamRef();const cp=s=>({name:s.name,strength:Math.round(clamp(s.strength+gauss(0,3),20,s.elite?96:89)),pref:s.pref,elite:!!s.elite});const built=buildTeamsRaw(kind,u,cp);for(const t of built){if(!t.isUser&&!t.elite&&t.strength>89)t.strength=89;}return built;}
+function buildTeamsRaw(kind,u,cp){
  switch(kind){
   case 'district':case 'autumnDistrict':return [u].concat(G.schools.local.map(cp));
   case 'pref':return [u].concat(G.schools.pref.map(cp));
   case 'autumnPref':{const top=G.schools.pref.slice().sort((a,b)=>b.strength-a.strength).slice(0,15);return [u].concat(top.map(cp));}
   case 'koshien':{const arr=[u];for(const pr of PREF_DATA){if(pr.name===G.school.pref)continue;arr.push(champOf(pr));}arr.push(champOf(PREF_DATA.find(p=>p.name==='東京')));return arr;}
-  case 'regional':{const arr=[u];const prs=PREF_DATA.filter(p=>p.region===G.school.region&&p.name!==G.school.pref);for(const pr of prs){const pw=G.schools.powers[pr.name].slice().sort((a,b)=>b.strength-a.strength);arr.push(cp(pw[0]));arr.push(cp(pw[1]));if(arr.length>=16)break;}while(arr.length<16){const pr=pick(PREF_DATA.filter(p=>p.region===G.school.region));arr.push({name:genSchoolName(pr.name),strength:Math.round(clamp(50+pr.pw*5+gauss(0,6),40,90)),pref:pr.name});}return arr.slice(0,16);}
-  case 'jingu':{const arr=[u];for(const rg of REGIONS){if(rg===G.school.region)continue;const pr=pick(PREF_DATA.filter(p=>p.region===rg));const pw=G.schools.powers[pr.name].slice().sort((a,b)=>b.strength-a.strength)[0];arr.push({name:pw.name,strength:Math.round(clamp(pw.strength+ri(2,8),50,97)),pref:pr.name});}return arr;}
-  case 'invite1':{const arr=[u];for(let i=0;i<7;i++){const pr=pick(PREF_DATA);arr.push({name:genSchoolName(pr.name),strength:ri(42,66),pref:pr.name});}return arr;}
-  case 'invite2':{const arr=[u];for(let i=0;i<7;i++){const pr=pick(PREF_DATA);const pw=pick(G.schools.powers[pr.name]);arr.push({name:pw.name,strength:Math.round(clamp(pw.strength+gauss(2,4),60,95)),pref:pr.name});}return arr;}
+  case 'regional':{const arr=[u];const prs=PREF_DATA.filter(p=>p.region===G.school.region&&p.name!==G.school.pref);for(const pr of prs){const pw=G.schools.powers[pr.name].slice().sort((a,b)=>b.strength-a.strength);arr.push(cp(pw[0]));arr.push(cp(pw[1]));if(arr.length>=16)break;}while(arr.length<16){const pr=pick(PREF_DATA.filter(p=>p.region===G.school.region));arr.push({name:genSchoolNameU(pr.name),strength:Math.round(clamp(50+pr.pw*5+gauss(0,6),40,86)),pref:pr.name});}return arr.slice(0,16);}
+  case 'jingu':{const arr=[u];for(const rg of REGIONS){if(rg===G.school.region)continue;const pr=pick(PREF_DATA.filter(p=>p.region===rg));const pw=G.schools.powers[pr.name].slice().sort((a,b)=>b.strength-a.strength)[0];arr.push({name:pw.name,strength:Math.round(clamp(pw.strength+ri(2,8),50,pw.elite?97:89)),pref:pr.name,elite:!!pw.elite});}return arr;}
+  case 'invite1':{const arr=[u];for(let i=0;i<7;i++){const pr=pick(PREF_DATA);arr.push({name:genSchoolNameU(pr.name),strength:ri(42,66),pref:pr.name});}return arr;}
+  case 'invite2':{const arr=[u];for(let i=0;i<7;i++){const pr=pick(PREF_DATA);const pw=pick(G.schools.powers[pr.name]);arr.push({name:pw.name,strength:Math.round(clamp(pw.strength+gauss(2,4),60,pw.elite?95:89)),pref:pr.name,elite:!!pw.elite});}return arr;}
   case 'senbatsu':{const arr=[u];const quota=Object.assign({},SENBATSU_SLOTS);quota[G.school.region]=Math.max(0,quota[G.school.region]-1);
-   for(const rg of REGIONS){const prs=PREF_DATA.filter(p=>p.region===rg);for(let i=0;i<(quota[rg]||0);i++){const pr=pick(prs);const pw=G.schools.powers[pr.name].slice().sort((a,b)=>b.strength-a.strength);const sch=pw[Math.min(i<2?0:1,pw.length-1)];const name=arr.some(x=>x.name===sch.name)?genSchoolName(pr.name):sch.name;arr.push({name,strength:Math.round(clamp(sch.strength+gauss(3,4),62,97)),pref:pr.name});}}
-   while(arr.length<32){const pr=pick(PREF_DATA);arr.push({name:genSchoolName(pr.name),strength:Math.round(clamp(58+pr.pw*5+gauss(0,5),50,90)),pref:pr.name});}return arr.slice(0,32);}
-  case 'invite3':{const arr=[u];for(let i=0;i<15;i++){const pr=pick(PREF_DATA);const pw=G.schools.powers[pr.name].slice().sort((a,b)=>b.strength-a.strength)[0];arr.push({name:pw.name,strength:Math.round(clamp(pw.strength+gauss(5,4),65,97)),pref:pr.name});}return arr;}
+   for(const rg of REGIONS){const prs=PREF_DATA.filter(p=>p.region===rg);for(let i=0;i<(quota[rg]||0);i++){const pr=pick(prs);const pw=G.schools.powers[pr.name].slice().sort((a,b)=>b.strength-a.strength);const sch=pw[Math.min(i<2?0:1,pw.length-1)];const name=arr.some(x=>x.name===sch.name)?genSchoolNameU(pr.name):sch.name;arr.push({name,strength:Math.round(clamp(sch.strength+gauss(3,4),62,sch.elite&&name===sch.name?97:89)),pref:pr.name,elite:!!(sch.elite&&name===sch.name)});}}
+   while(arr.length<32){const pr=pick(PREF_DATA);arr.push({name:genSchoolNameU(pr.name),strength:Math.round(clamp(58+pr.pw*5+gauss(0,5),50,86)),pref:pr.name});}return arr.slice(0,32);}
+  case 'invite3':{const arr=[u];for(let i=0;i<15;i++){const pr=pick(PREF_DATA);const pw=G.schools.powers[pr.name].slice().sort((a,b)=>b.strength-a.strength)[0];arr.push({name:pw.name,strength:Math.round(clamp(pw.strength+gauss(5,4),65,pw.elite?97:89)),pref:pr.name,elite:!!pw.elite});}return arr;}
  }return [u];}
 /* 固定トーナメント（勝ち上がりの木構造） */
 function buildTree(teams){const N=teams.length;let P=1;while(P<N)P*=2;const byes=P-N;const slots=new Array(P).fill(null);const pairs=shuffle(Array.from({length:P/2},(_,i)=>i));const byePairs=new Set(pairs.slice(0,byes));const ts=shuffle(teams);let ti=0;
@@ -2142,11 +2223,11 @@ function makeCandidate(o){const rank=o.rank;const q=clamp(Math.round(RANK_Q[rank
  return c;}
 function genCandidates(){const sl=G.scout?G.scout.level:0;const ss=G.scout?G.scout.spec:'';const list=[];
  const champPref=pick(PREF_DATA).name,runPref=pick(PREF_DATA).name;const champSch=genSchoolName(champPref).replace(/高校|学園|学院|高等学校/,'中学'),runSch=genSchoolName(runPref).replace(/高校|学園|学院|高等学校/,'中学');
- for(const t of TITLES_NATIONAL){const isChamp=['全国大会優勝投手','全国大会MVP'].includes(t);const isRun=t==='全国準優勝投手';const pr=isChamp?champPref:isRun?runPref:pick(PREF_DATA).name;list.push(makeCandidate({rank:isChamp?(R()<0.5?'S':'A'):(R()<0.15?'S':'A'),title:t,pref:pr,national:true,msch:isChamp?champSch:isRun?runSch:undefined}));}
+ for(const t of TITLES_NATIONAL){const isChamp=['全国大会優勝投手','全国大会MVP'].includes(t);const isRun=t==='全国準優勝投手';const pr=isChamp?champPref:isRun?runPref:pick(PREF_DATA).name;list.push(makeCandidate({rank:isChamp?(R()<0.25?'S':'A'):(R()<0.06?'S':'A'),title:t,pref:pr,national:true,msch:isChamp?champSch:isRun?runSch:undefined}));}
  for(const t of TITLES_PREF)list.push(makeCandidate({rank:R()<0.3?'A':'B',title:t,pref:G.school.pref}));
  const n=8+Math.round(sl*1.5)+(ss==='中学野球に精通'?4:0);
  for(let i=0;i<n;i++){const local=R()<(sl>=3?0.6:0.95);const pr=local?G.school.pref:pick(PREF_DATA).name;let rank=rankFromP();if(sl>=5&&R()<0.25&&RANKS.indexOf(rank)>2)rank=RANKS[RANKS.indexOf(rank)-1];const title=R()<0.25?pick(TITLES_MISC):null;list.push(makeCandidate({rank,title,pref:pr}));}
- if(R()<0.15){list.push(makeCandidate({rank:R()<0.4?'S':'A',title:null,pref:pick(PREF_DATA).name}));}
+ if(R()<0.15){list.push(makeCandidate({rank:R()<0.12?'S':'A',title:null,pref:pick(PREF_DATA).name}));}
  if(ss==='若手発掘'){for(let i=0;i<2;i++)list.push(makeCandidate({rank:R()<0.3?'A':'B',title:null,pref:R()<0.6?G.school.pref:pick(PREF_DATA).name,potential:ri(8,10)}));}
  G.candidatesAll=list;G.candidates=list;G.candidatesYear=G.year;G.mschNationals={champ:champSch,champPref,run:runSch,runPref};
  const star=list.find(c=>c.title==='全国大会優勝投手');if(star)addNews('中学野球',`全国制覇の${star.name}投手、進路に注目`,`中学の全国大会で優勝投手となった${star.pref}・${star.msch}の${star.name}君（15）。各地の強豪校がすでに動き始めているという。`,{imp:2,avatar:{seed:star.pid,pref:star.pref}});}
@@ -2373,7 +2454,7 @@ function serialize(){return JSON.stringify(G);}
 function saveGame(){try{localStorage.setItem(SAVE_KEY,serialize());}catch(e){}}
 function loadGame(){try{const s=localStorage.getItem(SAVE_KEY);if(!s)return false;const g=JSON.parse(s);if(!g||!g.players)return false;G=g;migrate();return true;}catch(e){return false;}}
 function hasSave(){try{return !!localStorage.getItem(SAVE_KEY);}catch(e){return false;}}
-function migrate(){G.settings=G.settings||{mode:'card'};if(G.settings.mode==='action'&&!G.settings.keepAction){G.settings.mode='card';}G.tourneyLog=G.tourneyLog||[];G.uniform=G.uniform||defaultUniform();G.emblem=G.emblem||defaultEmblem();G.u18Log=G.u18Log||[];G.notices=G.notices||[];G.coachMarket=G.coachMarket||[];G.scoutMarket=G.scoutMarket||[];G.mode=G.mode||'normal';G.gameOver=!!G.gameOver;
+function migrate(){G.settings=G.settings||{mode:'card'};if(!G.stars){try{applyEliteSchools();refreshStars(true);}catch(e){console.warn(e);}}if(G.settings.mode==='action'&&!G.settings.keepAction){G.settings.mode='card';}G.tourneyLog=G.tourneyLog||[];G.uniform=G.uniform||defaultUniform();G.emblem=G.emblem||defaultEmblem();G.u18Log=G.u18Log||[];G.notices=G.notices||[];G.coachMarket=G.coachMarket||[];G.scoutMarket=G.scoutMarket||[];G.mode=G.mode||'normal';G.gameOver=!!G.gameOver;
  if(G.fac&&G.fac.analysis){G.fac.video=G.fac.analysis;delete G.fac.analysis;}
  for(const k in G.fac){if(!FAC[k]){delete G.fac[k];continue;}const f=G.fac[k];if(f.model>=FAC[k].models.length)f.model=FAC[k].models.length-1;}
  if(G.coach&&!G.coach.style){G.coach.style=pick(COACH_STYLES).id;G.coach.bio=G.coach.bio||(G.coach.type==='教師'?'学校の先生':'外部招へい');G.coach.career=G.coach.career||'';}
@@ -2398,6 +2479,22 @@ document.addEventListener('change',e=>{const el=e.target.closest('[data-chg]');i
 document.addEventListener('input',e=>{const el=e.target.closest('[data-inp]');if(!el)return;const f=INP[el.dataset.inp];if(f)f(el.dataset,el);});
 document.addEventListener('click',e=>{if(e.target.id==='overlay'&&!UI.lock){closeModal();render();}});
 function rk(v){const l=typeof v==='string'?v[0]:letter(v);return `<span class="rk rk-${l}">${typeof v==='string'?esc(v):l}</span>`;}
+/* 総合ランク（厳しい基準） */function rkR(p){const l=ratingRank(p);return `<span class="rk rk-${l}">${l}</span>`;}
+/* ---- レーダーチャート（能力の見える化） ----
+ axes:[{l:ラベル,v:0-100,s:補足}] / opts.exact で霧（未判明ノイズ）なしの実値 */
+const RK_COL={S:'#d4a017',A:'#d2452f',B:'#e07a2a',C:'#2f8a4f',D:'#3673b8',E:'#7c6fc4',F:'#8a97a8',G:'#8a97a8'};
+function radarAxes(p,opts){opts=opts||{};const ex=!!opts.exact;const f=ex?0:fogLevel();const val=(g,k)=>ex?p[g][k]:shown(p,g,k);
+ if((isPitcher(p)&&!opts.bat)||opts.pit){const t=p.pit;const velo=ex?t.velo:shownVelo(p);const nz=(p.noise&&p.noise.velo||0)*f*10;const ctrl=clamp(avg(t.pitches.map(x=>x.ctrl))+nz,1,100);const br=t.pitches.slice(1);const brk=br.length?clamp(avg(br.map(x=>x.move*0.5+x.sharp*0.5))+Math.min(12,br.length*4)+nz,1,100):12;
+  return [{l:'球速',v:clamp((velo-100)*2.1,5,100),s:Math.round(velo)+'km/h'},{l:'制球',v:ctrl},{l:'変化球',v:brk,s:br.length+'種'},{l:'スタミナ',v:val('pit','stamina')},{l:'対右',v:(val('pit','hitR')+val('pit','kR')+val('pit','hrR'))/3},{l:'対左',v:(val('pit','hitL')+val('pit','kL')+val('pit','hrL'))/3}];}
+ return [{l:'ミート',v:(val('bat','meetR')+val('bat','meetL'))/2},{l:'パワー',v:(val('bat','powR')+val('bat','powL'))/2},{l:'走力',v:val('bat','speed')},{l:'守備',v:val('bat','field')},{l:'肩',v:(val('bat','arm')+val('bat','thr'))/2},{l:'選球眼',v:val('bat','eye')},{l:'勝負強さ',v:val('bat','clutch')}];}
+function radarSvg(axes,size,color,opts){opts=opts||{};const n=axes.length;size=size||150;const cx=size/2,cy=size/2;const R=size*0.31;const pad=size*0.14;const pt=(i,r)=>{const a=-Math.PI/2+i*2*Math.PI/n;return [+(cx+Math.cos(a)*r).toFixed(1),+(cy+Math.sin(a)*r).toFixed(1)];};
+ const ring=k=>`<polygon points="${axes.map((_,i)=>pt(i,R*k).join(',')).join(' ')}" fill="${k===1?'rgba(128,140,160,.08)':'none'}" stroke="rgba(128,140,160,${k===1?'.55':'.3'})" stroke-width="1"/>`;
+ const spokes=axes.map((_,i)=>{const [x,y]=pt(i,R);return `<line x1="${cx}" y1="${cy}" x2="${x}" y2="${y}" stroke="rgba(128,140,160,.3)" stroke-width="1"/>`;}).join('');
+ const vv=axes.map(a=>clamp(a.v,3,100));const poly=vv.map((v,i)=>pt(i,R*v/100).join(',')).join(' ');
+ const fs=size*0.078;const labels=axes.map((a,i)=>{const [x,y]=pt(i,R+size*0.11);const l=letter(a.v);const fog=opts.fog&&!opts.exact;const t2=fog?'?':(opts.num?(a.s||String(Math.round(a.v))):l);return `<text x="${x}" y="${y-fs*0.42}" text-anchor="middle" dominant-baseline="middle" font-size="${fs}" fill="currentColor" opacity=".85">${esc(a.l)}</text><text x="${x}" y="${y+fs*0.62}" text-anchor="middle" dominant-baseline="middle" font-size="${fs*1.05}" font-weight="800" fill="${fog?'currentColor':RK_COL[l]}">${t2}${a.s&&opts.sub&&!opts.num?`<tspan font-size="${fs*0.72}" font-weight="500" fill="currentColor" opacity=".8"> ${esc(a.s)}</tspan>`:''}</text>`;}).join('');
+ const dots=vv.map((v,i)=>{const [x,y]=pt(i,R*v/100);return `<circle cx="${x}" cy="${y}" r="${(size*0.016).toFixed(1)}" fill="${color}" stroke="#fff" stroke-width="1"/>`;}).join('');
+ return `<svg class="radar" viewBox="${-pad} 0 ${size+pad*2} ${size}" width="${(opts.w||size)*(size+pad*2)/size}" height="${opts.w||size}" role="img" aria-label="能力レーダーチャート">${ring(0.25)}${ring(0.5)}${ring(0.75)}${ring(1)}${spokes}<polygon points="${poly}" fill="${color}" fill-opacity=".38" stroke="${color}" stroke-width="2" stroke-linejoin="round"/>${dots}${labels}</svg>`;}
+function radarHtml(p,opts){opts=opts||{};const col=opts.color||((isPitcher(p)&&!opts.bat)||opts.pit?'#3b82f6':'#e0533c');return radarSvg(radarAxes(p,opts),opts.size||160,col,Object.assign({fog:fogLevel()>0.5},opts));}
 function pById(id){return G.players.find(p=>p.id==id);}
 function fontCss(id){const f=UNI_FONTS.find(x=>x.id===id)||UNI_FONTS[0];return f.css;}
 /* ================= ユニフォーム・校章 SVG ================= */
@@ -2462,7 +2559,7 @@ function viewPlayers(){const f=UI.playersFilter;let list=G.players.slice();if(f=
  list.sort((a,b)=>(a.grade-b.grade)||(POS.indexOf(a.pos)-POS.indexOf(b.pos))||(rating(b)-rating(a)));
  const chips=[['all','全員'],['P','投手'],['B','野手'],['1','1年'],['2','2年'],['3','3年'],['ret','引退']].map(c=>`<button class="btn sm ${f===c[0]?'on':''}" data-act="pfilter" data-f="${c[0]}">${c[1]}</button>`).join('');
  const rows=list.map(p=>{const st=p.injury>0?`<span class="badge red">ケガ${p.injury}週</span>`:p.mentor?`<span class="badge gold">先輩指導</span>`:p.posChange?`<span class="badge gold">転向中</span>`:p.retired?`<span class="badge gray">引退</span>`:`<select data-chg="train" data-id="${p.id}">${trainOptions(p)}</select>`;
-  return `<div class="pl ${p.injury>0?'inj':''} ${p.retired?'ret':''}"><div class="no" style="font-family:${esc(fontCss(G.uniform.numFont))}">${p.number||'-'}</div><div style="min-width:0"><div class="nm" data-act="pdetail" data-id="${p.id}">${esc(p.name)} <span class="muted small">${p.grade}年 ${esc(playerPosLabel(p))} ${p.throws}投${p.bats}打</span> ${rk(rating(p))}${p.unique.length?' <span class="badge gold">固有</span>':''}${p.scouted?' <span class="badge">★</span>':''}</div><div class="sub">${condIcon(p)?'<b>'+condIcon(p)+'</b> ':''}${isPitcher(p)?'球速'+shownVelo(p)+'km 制球'+letter(clamp(ctrlAvg(p)+(p.noise.velo||0)*fogLevel()*12,1,100))+' 奪三振'+letter(shown(p,'pit','kR'))+' ':'ミート'+letter(shown(p,'bat','meetR'))+' パワー'+letter(shown(p,'bat','powR'))+' 走'+letter(shown(p,'bat','speed'))+' 守'+letter(shown(p,'bat','field'))+' '}疲労${Math.round(p.fatigue)}</div><div class="bar" style="margin-top:3px"><i class="${fatCls(p.fatigue)}" style="width:${Math.round(p.fatigue)}%"></i></div></div><div>${st}</div></div>`;}).join('');
+  return `<div class="pl ${p.injury>0?'inj':''} ${p.retired?'ret':''}"><div class="no" style="font-family:${esc(fontCss(G.uniform.numFont))}">${p.number||'-'}</div><div style="min-width:0"><div class="nm" data-act="pdetail" data-id="${p.id}">${esc(p.name)} <span class="muted small">${p.grade}年 ${esc(playerPosLabel(p))} ${p.throws}投${p.bats}打</span> ${rkR(p)}${p.unique.length?' <span class="badge gold">固有</span>':''}${p.scouted?' <span class="badge">★</span>':''}</div><div class="sub">${condIcon(p)?'<b>'+condIcon(p)+'</b> ':''}${isPitcher(p)?'球速'+shownVelo(p)+'km 制球'+letter(clamp(ctrlAvg(p)+(p.noise.velo||0)*fogLevel()*12,1,100))+' 奪三振'+letter(shown(p,'pit','kR'))+' ':'ミート'+letter(shown(p,'bat','meetR'))+' パワー'+letter(shown(p,'bat','powR'))+' 走'+letter(shown(p,'bat','speed'))+' 守'+letter(shown(p,'bat','field'))+' '}疲労${Math.round(p.fatigue)}</div><div class="bar" style="margin-top:3px"><i class="${fatCls(p.fatigue)}" style="width:${Math.round(p.fatigue)}%"></i></div></div><div>${st}</div></div>`;}).join('');
  return `<div class="hd">部員 <span class="muted small">${active().length}人</span></div><div class="subtabs">${chips}</div>
  <section class="card"><div class="row"><label class="f" style="flex:1">表示中の部員に一括設定<select data-chg="bulkSel" id="bulkSel">${TRAIN_KEYS.filter(k=>TRAIN[k].lv<=G.coach.level&&(!TRAIN[k].catReq||hasCat(TRAIN[k].cat))).map(k=>`<option value="${k}">${TRAIN[k].name}</option>`).join('')}</select></label>${b('適用','bulkApply',{},'sm')}</div><div class="hint">監督レベルが上がると練習メニューが増えます（現在Lv${G.coach.level}）。疲労が高い部員は休養させましょう。情報の精度：${fogLevel()<0.15?'正確':fogLevel()<0.5?'おおよそ':'あいまい（監督・スカウトのレベルで向上）'}</div></section>
  <div class="list">${rows||'<div class="muted">該当する部員がいません</div>'}</div>`;}
@@ -2484,8 +2581,9 @@ function playerDetailHtml(p){const s=p.season,c=p.career;const avgS=s.ab?(s.h/s.
   <label class="f">先輩指導（8週・先輩はその間成長しない）<select id="mentorSel" ${G.coach.level<4?'disabled':''}><option value="">${G.coach.level<4?'監督Lv4以上で解禁':'選択…'}</option>${mentorOpts}</select>${b('開始','startMentor',{id:p.id},'sm')}</label>
   <label class="f">ポジション転向（6週）／サブ追加（4週）<select id="posSel" ${G.coach.level<5?'disabled':''}>${G.coach.level<5?'<option>監督Lv5以上で解禁</option>':POS.filter(x=>x!==p.pos).map(x=>`<option value="${x}">${x}${(x==='投'&&p.revealed.P)||(x==='捕'&&p.revealed.C)?'（才能あり！）':''}</option>`).join('')}</select><div class="wrap">${b('転向','startPos',{id:p.id,kind:'main'},'sm')}${b('サブ追加','startPos',{id:p.id,kind:'sub'},'sm')}</div></label></div>`:'';
  return `<h2>${esc(p.name)} <span class="muted" style="font-size:13px">${p.grade}年 ${esc(playerPosLabel(p))}</span>${G.mode==='custom'?' '+b('エディット','playerEdit',{id:p.id},'sm'):''}</h2>
- <div class="row" style="align-items:flex-start"><div class="kv" style="flex:1"><b>総合</b><span>${rk(rating(p))} ${fogLevel()<0.15?Math.round(rating(p)):''}</span><b>潜在能力</b><span>${esc(shownPot(p))}${p.awakened?' <span class="badge gold">覚醒×'+p.awakened+'</span>':''}</span>${isPitcher(p)?`<b>球速</b><span>${shownVelo(p)}km/h${capShown()?'（潜在最高 '+p.caps.velo+'km/h）':''}<br><span class="tiny muted">試合最速 ${p.maxVelo?p.maxVelo+'km/h':'未計測'}</span></span>`:''}<b>身長/体重</b><span>${p.height}cm / ${p.weight}kg</span><b>投/打</b><span>${p.throws}投 ${p.bats}打</span><b>成長型</b><span>${G.coach.level>=5?p.growth:'？（監督Lv5で判明）'}</span><b>学力</b><span>${p.academic}</span><b>丈夫さ</b><span>${letter(p.tough)}</span><b>性格</b><span>${esc(personaOf(p).name)} <span class="tiny muted">${esc(personaOf(p).desc)}</span></span><b>信頼度</b><span>${Math.round(p.trust||0)} <span class="trust"><i style="width:${Math.round(p.trust||0)}%" class="${(p.trust||0)<30?'bad':(p.trust||0)<55?'warn':''}"></i></span> <span class="tiny muted">試合の采配カードの効き方に影響</span></span><b>疲労</b><span>${Math.round(p.fatigue)}${p.injury?' / ケガ 残り'+p.injury+'週':''}</span><b>調子</b><span>${condLabel(p)} ${condIcon(p)}</span><b>出身</b><span>${esc(p.hometown)}${p.title?' ・ '+esc(p.title):''}${p.scouted?' ・ スカウト入部':''}</span></div>
+ <div class="row" style="align-items:flex-start"><div class="kv" style="flex:1"><b>総合</b><span>${rkR(p)} ${fogLevel()<0.15?Math.round(rating(p)):''}</span><b>潜在能力</b><span>${esc(shownPot(p))}${p.awakened?' <span class="badge gold">覚醒×'+p.awakened+'</span>':''}</span>${isPitcher(p)?`<b>球速</b><span>${shownVelo(p)}km/h${capShown()?'（潜在最高 '+p.caps.velo+'km/h）':''}<br><span class="tiny muted">試合最速 ${p.maxVelo?p.maxVelo+'km/h':'未計測'}</span></span>`:''}<b>身長/体重</b><span>${p.height}cm / ${p.weight}kg</span><b>投/打</b><span>${p.throws}投 ${p.bats}打</span><b>成長型</b><span>${G.coach.level>=5?p.growth:'？（監督Lv5で判明）'}</span><b>学力</b><span>${p.academic}</span><b>丈夫さ</b><span>${letter(p.tough)}</span><b>性格</b><span>${esc(personaOf(p).name)} <span class="tiny muted">${esc(personaOf(p).desc)}</span></span><b>信頼度</b><span>${Math.round(p.trust||0)} <span class="trust"><i style="width:${Math.round(p.trust||0)}%" class="${(p.trust||0)<30?'bad':(p.trust||0)<55?'warn':''}"></i></span> <span class="tiny muted">試合の采配カードの効き方に影響</span></span><b>疲労</b><span>${Math.round(p.fatigue)}${p.injury?' / ケガ 残り'+p.injury+'週':''}</span><b>調子</b><span>${condLabel(p)} ${condIcon(p)}</span><b>出身</b><span>${esc(p.hometown)}${p.title?' ・ '+esc(p.title):''}${p.scouted?' ・ スカウト入部':''}</span></div>
  <div class="col center">${jerseySVG(G.uniform,G.emblem,{view:'back',width:90,number:p.number||''})}<label class="f">背番号<input type="number" min="0" max="99" value="${p.number||''}" data-chg="number" data-id="${p.id}" style="width:70px"></label></div></div>
+ <div class="row" style="justify-content:center;gap:6px;flex-wrap:wrap;margin:6px 0">${showPit?`<div class="radar-box"><span class="radar-ttl">投手能力</span>${radarHtml(p,{pit:true,size:150,w:122})}</div>`:''}<div class="radar-box"><span class="radar-ttl">野手能力</span>${radarHtml(p,{bat:true,size:150,w:122})}</div></div>
  <div style="margin:6px 0">${talent}${abilHtml(p)}</div>${abilEffectsHtml(p)}
  ${training}${special}
  <div class="sep"></div>
@@ -2565,11 +2663,12 @@ ACT.sfilter=d=>{UI.scoutFilter=d.f;render();};
 ACT.candVisit=d=>{const c=candById(d.id);if(!c)return;const st=candVisit(c);if(st==='money')toast('資金が足りません');else if(st==='max')toast('これ以上の情報はありません');else{toast(`${c.name}君を視察した（情報★${c.info}）`);saveGame();render();}};
 ACT.candNego=d=>{const c=candById(d.id);if(!c)return;const r=candNegotiate(c,!!d.pr);if(r==='money')toast('資金が足りません');else if(r==='limit')toast('これ以上交渉しても効果が薄いようだ（校長同行なら可能）');else if(r==='principalUsed')toast('校長同行は今年度すでに使いました');else if(r.status==='ok'){toast(r.msg);saveGame();render();}};
 /* ================= その他 ================= */
-function viewMore(){const t=UI.moreTab;const chips=[['news','新聞'],['records','記録'],['alumni','卒業生'],['history','履歴'],['abil','特能一覧'],['settings','設定']].map(x=>`<button class="btn sm ${t===x[0]?'on':''}" data-act="moreTab" data-t="${x[0]}">${x[1]}</button>`).join('');
+function viewMore(){const t=UI.moreTab;const chips=[['news','新聞'],['stars','注目選手'],['records','記録'],['alumni','卒業生'],['history','履歴'],['abil','特能一覧'],['settings','設定']].map(x=>`<button class="btn sm ${t===x[0]?'on':''}" data-act="moreTab" data-t="${x[0]}">${x[1]}</button>`).join('');
  let body='';
  if(t==='alumni'){const gs=G.graduates.slice().sort((a,b)=>b.gradYear-a.gradYear||b.rating-a.rating);const effs=[...new Set(G.graduates.filter(g=>g.status==='working'&&g.jobEff).map(g=>g.jobEff))].map(e=>{const j=JOBS.find(x=>x.eff===e);return j?`<span class="badge">${esc(j.name)}：${esc(j.desc)}</span>`:'';}).join(' ');
-  body=`<section class="card"><h3>卒業生の効果</h3>${effs||'<span class="muted small">まだ効果はありません。卒業生が働き始めると職種に応じた効果が得られます。</span>'}</section><div class="list">${gs.map(g=>`<div class="pl" style="grid-template-columns:1fr auto"><div><div class="nm" data-act="alumDetail" data-id="${g.id}">${esc(g.name)} <span class="muted small">${g.gradYear}年卒・${g.pos}手</span></div><div class="sub">${esc(g.path)}／${esc(g.level||'')}${g.team?'・'+esc(g.team):''}${g.titles.length?'・タイトル'+g.titles.length:''}</div></div><div>${rk(g.rating)}</div></div>`).join('')||'<div class="muted">まだ卒業生はいません</div>'}</div>`;}
+  body=`<section class="card"><h3>卒業生の効果</h3>${effs||'<span class="muted small">まだ効果はありません。卒業生が働き始めると職種に応じた効果が得られます。</span>'}</section><div class="list">${gs.map(g=>`<div class="pl" style="grid-template-columns:1fr auto"><div><div class="nm" data-act="alumDetail" data-id="${g.id}">${esc(g.name)} <span class="muted small">${g.gradYear}年卒・${g.pos}手</span></div><div class="sub">${esc(g.path)}／${esc(g.level||'')}${g.team?'・'+esc(g.team):''}${g.titles.length?'・タイトル'+g.titles.length:''}</div></div><div>${rk(ratingLetter(g.rating))}</div></div>`).join('')||'<div class="muted">まだ卒業生はいません</div>'}</div>`;}
  else if(t==='news'){body=viewNewsPaper();}
+ else if(t==='stars'){body=viewStars();}
  else if(t==='records'){body=viewRecords();}
  else if(t==='history'){const rows=G.history.slice().reverse().map(h=>`<tr><td>${h.calYear}</td><td class="l">${Object.keys(h.results).map(k=>`${TOURNEY_DEFS[k].name.replace('○○',G.school.pref).replace('△△',G.school.region)}:${h.results[k]}`).join('<br>')||'-'}</td><td>${h.rep}</td><td class="money">${yen(h.budget)}</td><td class="money ${h.money<0?'neg':''}">${yen(h.money)}</td></tr>`).join('');
   const tl=(G.tourneyLog||[]).slice().reverse().slice(0,20).map((t,i)=>`<div class="row" style="padding:4px 0;border-bottom:1px solid var(--line)"><span>${t.year}年 ${esc(t.name)}</span><span>${esc(t.userLabel)} ${b('詳細','tlog',{i:G.tourneyLog.length-1-i},'sm')}</span></div>`).join('');
@@ -2594,7 +2693,12 @@ ACT.exportSave=()=>{const ta=$('#saveText');ta.value=btoa(unescape(encodeURIComp
 ACT.importSave=()=>{const ta=$('#saveText');try{const g=JSON.parse(decodeURIComponent(escape(atob(ta.value.trim()))));if(!g.players)throw 0;G=g;migrate();saveGame();UI.tab='home';render();toast('読み込みました');}catch(e){toast('読み込みに失敗しました');}};
 ACT.newGameConfirm=()=>{openModal(`<h2>最初からやり直す</h2><p>現在のセーブデータを削除して新しいゲームを始めます。本当によろしいですか？</p><div class="wrap">${b('削除して新規開始','newGameYes',{},'danger')}${b('やめる','closeModal')}</div>`);};
 ACT.newGameYes=()=>{try{localStorage.removeItem(SAVE_KEY);}catch(e){}G=null;closeModal();UI.tab='home';render();};
-/* ================= 新聞（紙面） ================= */
+
+/* 全国の注目選手・強豪校（Sランクは全国でも数人／数校） */
+function viewStars(){const mine=active().filter(p=>'SA'.includes(ratingRank(p))).map(p=>({name:p.name,grade:p.grade,pos:p.pos,throws:p.throws,bats:p.bats,school:G.school.name,pref:G.school.pref,rank:ratingRank(p),q:rating(p),title:p.title||'自校',mine:true}));const stars=(G.stars||[]).concat(mine).sort((a,b)=>(a.rank==='S'?0:1)-(b.rank==='S'?0:1)||b.q-a.q);const elites=allSchools().filter(s=>s.elite).sort((a,b)=>b.strength-a.strength);
+ const sRow=st=>`<div class="pl" style="grid-template-columns:auto 1fr auto"><div>${rk(st.rank)}</div><div><div class="nm">${esc(st.name)} <span class="muted small">${st.grade}年・${esc(st.pos)}手・${esc(st.throws)}投${esc(st.bats)}打</span></div><div class="sub">${esc(st.school)}（${esc(st.pref)}）${st.title?' ・ '+esc(st.title):''}</div></div><div class="small muted">${st.mine?'<span class="badge gold">自校</span>':st.pos==='投'?'投手':'野手'}</div></div>`;
+ return `<section class="card"><h3>全国の注目選手</h3><div class="hint">総合<b>S</b>ランクは全国でも${stars.filter(s=>s.rank==='S').length}人。対戦すると試合前にカットインで紹介されます。毎年4月に入れ替わります。</div><div class="list">${stars.map(sRow).join('')||'<div class="muted">データなし</div>'}</div></section>
+ <section class="card"><h3>全国の強豪校（強さSランク）</h3><div class="hint">強さ90以上は全国で${elites.length}校だけ。</div><div class="list">${elites.map(s=>`<div class="pl" style="grid-template-columns:auto 1fr auto"><div>${rk(s.strength)}</div><div><div class="nm">${esc(s.name)}</div><div class="sub">${esc(s.pref)} ・ 注目選手 ${starsOf(s.name,s.pref).length}人</div></div><div class="small muted">${s.strength}</div></div>`).join('')}</div></section>`;}/* ================= 新聞（紙面） ================= */
 function newsIssues(){const map=new Map();for(const n of G.news){const key=(n.cy||G.calYear)+'-'+(n.mo||G.month);if(!map.has(key))map.set(key,{key,cy:n.cy||G.calYear,mo:n.mo||G.month,items:[]});map.get(key).items.push(n);}
  const issues=[...map.values()].sort((a,b)=>(b.cy-a.cy)||(b.mo-a.mo));for(const is of issues)is.items.sort((a,b)=>(b.imp||1)-(a.imp||1));return issues;}
 function articleBody(n,max){const t=n.body||'';if(!max||t.length<=max)return esc(t);return esc(t.slice(0,max))+'…';}
@@ -2685,11 +2789,11 @@ ACT.tClose=()=>{const t=G.tourney;G.tourneyLog=G.tourneyLog||[];G.tourneyLog.pus
 /* ================= イベント処理 ================= */
 function processQueue(){if(!G.queue.length||UI.modal)return;const ev=G.queue[0];
  switch(ev.type){
-  case 'entrance':{const ps=ev.ids.map(pById).filter(Boolean);openModal(`<h2>入学式・入部</h2><div class="hint">${G.calYear}年度の新入部員 ${ps.length}人（★はスカウトで獲得した選手）</div><div class="list" style="margin-top:8px">${ps.map(p=>`<div class="pl" style="grid-template-columns:auto 1fr auto">${avatarFor({pid:p.id,size:40})}<div><div class="nm" data-act="pdetail" data-id="${p.id}">${p.scouted?'<span class="badge">★</span> ':''}${esc(p.name)} <span class="muted small">${esc(playerPosLabel(p))} ${p.throws}投${p.bats}打 ${p.height}cm</span>${p.title?` <span class="badge gold">${esc(p.title)}</span>`:''}${p.unique.length?` <span class="badge gold">固有：${esc(p.unique[0])}</span>`:''}</div><div class="sub">${esc(p.hometown)}出身・潜在 ${esc(shownPot(p))}</div></div><div>${rk(rating(p))}</div></div>`).join('')}</div><div style="margin-top:10px">${b('入部を確認','qShift',{},'primary big')}</div>`,true);break;}
+  case 'entrance':{const ps=ev.ids.map(pById).filter(Boolean);openModal(`<h2>入学式・入部</h2><div class="hint">${G.calYear}年度の新入部員 ${ps.length}人（★はスカウトで獲得した選手）</div><div class="list" style="margin-top:8px">${ps.map(p=>`<div class="pl" style="grid-template-columns:auto 1fr auto">${avatarFor({pid:p.id,size:40})}<div><div class="nm" data-act="pdetail" data-id="${p.id}">${p.scouted?'<span class="badge">★</span> ':''}${esc(p.name)} <span class="muted small">${esc(playerPosLabel(p))} ${p.throws}投${p.bats}打 ${p.height}cm</span>${p.title?` <span class="badge gold">${esc(p.title)}</span>`:''}${p.unique.length?` <span class="badge gold">固有：${esc(p.unique[0])}</span>`:''}</div><div class="sub">${esc(p.hometown)}出身・潜在 ${esc(shownPot(p))}</div></div><div>${rkR(p)}</div></div>`).join('')}</div><div style="margin-top:10px">${b('入部を確認','qShift',{},'primary big')}</div>`,true);break;}
   case 'tourney':showTourneyModal();break;
   case 'practice':showLineupModal({opp:ev.opp,kind:'practice',label:'練習試合 vs '+ev.opp.name,onDone:res=>{finishPractice(res,ev.opp);G.queue.shift();saveGame();closeModal();render();}});break;
   case 'camp':{openModal(`<h2>${ev.season}合宿</h2><div class="hint">合宿中は成長速度に大きな補正がかかります（最大2週間）。費用は合宿先×週数。残金 ${yen(G.money)}</div>${CAMPS.map(c=>`<div class="card"><div class="row"><div><b>${esc(c.name)}</b> <span class="small muted">成長×${c.mult}・疲労+${c.fat}/週</span><div class="tiny muted">${esc(c.desc)}${c.rep?'（評判'+c.rep+'以上）':''}</div></div></div><div class="wrap" style="margin-top:6px">${[1,2].map(w=>b(w+'週間 '+yen(c.cost*w),'campGo',{id:c.id,w},'sm'+((G.money<c.cost*w||(c.rep&&G.rep<c.rep))?' ':' primary'))).join('')}</div></div>`).join('')}${b('今回は合宿しない','qShift',{},'')}`,true);break;}
-  case 'u18':{const ps=ev.ids.map(pById).filter(Boolean);openModal(`<h2>U-18日本代表 選考</h2><div class="hint">以下の選手が日本代表に選ばれました。出場を許可すると大きな経験値を得られますが、活躍できなかったりチームが惨敗するとマイナス特能を持ち帰ることがあります。MVP級の活躍なら固有特能を獲得します。</div>${ps.map(p=>`<label class="check"><input type="checkbox" class="u18chk" value="${p.id}" checked> <span><b>${esc(p.name)}</b>（${p.grade}年 ${esc(playerPosLabel(p))}）${rk(rating(p))} 疲労${Math.round(p.fatigue)}</span></label>`).join('')}<div style="margin-top:10px">${b('決定','u18Go',{},'primary big')}</div>`,true);break;}
+  case 'u18':{const ps=ev.ids.map(pById).filter(Boolean);openModal(`<h2>U-18日本代表 選考</h2><div class="hint">以下の選手が日本代表に選ばれました。出場を許可すると大きな経験値を得られますが、活躍できなかったりチームが惨敗するとマイナス特能を持ち帰ることがあります。MVP級の活躍なら固有特能を獲得します。</div>${ps.map(p=>`<label class="check"><input type="checkbox" class="u18chk" value="${p.id}" checked> <span><b>${esc(p.name)}</b>（${p.grade}年 ${esc(playerPosLabel(p))}）${rkR(p)} 疲労${Math.round(p.fatigue)}</span></label>`).join('')}<div style="margin-top:10px">${b('決定','u18Go',{},'primary big')}</div>`,true);break;}
   case 'budget':showBudgetModal();break;
   case 'invite':{openModal(`<h2>春の招待大会</h2><div class="hint">選抜高校野球には選ばれなかったため、招待大会で春を戦います。強豪校が揃う大会ほど経験値は大きいですが、大敗が続くとあまり得られません。費用は不要。</div>${b('春季交流招待大会（8校・中堅校中心）','inviteGo',{k:'invite1'},'optbtn')}${b('強豪校招待大会（8校・各地の強豪）','inviteGo',{k:'invite2'},'optbtn')}${b('参加しない','qShift',{},'optbtn ghost')}`,true);break;}
   case 'graduation':showCareerModal('grad');break;
@@ -2724,7 +2828,7 @@ function showCareerModal(mode){const th=careerTargets(mode);if(!th.length){if(mo
  if(!G.gradWish||G.gradWish.year!==G.calYear||G.gradWish.mode!==mode){G.gradWish={year:G.calYear,mode,w:{},i:0,decided:{}};for(const p of th)G.gradWish.w[p.id]=playerWish(p);}
  const gw=G.gradWish;if(gw.i>=th.length){if(mode==='grad')finishGraduation();else finishCareer();return;}
  const p=th[gw.i];const wish=gw.w[p.id];const dec=gw.decided[p.id];const c=p.career;const line=isPitcher(p)?`通算${c.g}試合 ${c.w}勝${c.l}敗 ${c.pk}奪三振 防御率${c.ipo?(c.per*27/c.ipo).toFixed(2):'-'}`:`通算${c.g}試合 打率${c.ab?(c.h/c.ab).toFixed(3):'-'} ${c.h}安打 ${c.hr}本塁打 ${c.rbi}打点 ${c.sb}盗塁`;
- const card=`<div class="row" style="align-items:flex-start;gap:10px">${avatarFor({pid:p.id,size:80})}<div class="kv" style="flex:1"><b>選手</b><span><b>${esc(p.name)}</b>（${esc(playerPosLabel(p))}）</span><b>総合</b><span>${rk(rating(p))} 潜在 ${esc(shownPot(p))}</span><b>学力</b><span>${p.academic}</span><b>成績</b><span class="small">${line}</span><b>特能</b><span>${abilHtml(p)}</span></div></div>`;
+ const card=`<div class="row" style="align-items:flex-start;gap:10px">${avatarFor({pid:p.id,size:80})}<div class="kv" style="flex:1"><b>選手</b><span><b>${esc(p.name)}</b>（${esc(playerPosLabel(p))}）</span><b>総合</b><span>${rkR(p)} 潜在 ${esc(shownPot(p))}</span><b>学力</b><span>${p.academic}</span><b>成績</b><span class="small">${line}</span><b>特能</b><span>${abilHtml(p)}</span></div></div>`;
  let body='';
  if(!dec){const opts=careerOptions(p);body=`<div class="talk"><div class="who">${esc(p.name)}</div>${esc(gradTalk(p,wish))}</div><div class="hint">本人の希望：<b>${esc(wish)}</b>。監督としてどう答えますか？（説得の成功率は監督レベル・卒業生の効果・本人の実力で変わります）</div>${opts.map(o=>b(o===wish?`${esc(o)}で頑張れと背中を押す`:`${esc(o)}の道を勧める<small>${o==='就職'?'野球以外の進路（学力に応じた職業）':o==='MLB'?'海外挑戦':''} 成功率${Math.round(persuadeProb(p,wish,o)*100)}%</small>`,'gradChoose',{id:p.id,t:o},'optbtn'+(o===wish?' primary':''))).join('')}`;}
  else{body=`<div class="talk"><div class="who">${esc(p.name)}</div>${esc(gradTalk(p,wish))}</div><div class="talk me"><div class="who">${esc(G.coach.name)}監督</div>${dec.target===wish?'その道で頑張れ。応援している。':`${esc(dec.target)}の道も考えてみないか。`}</div><div class="talk"><div class="who">${esc(p.name)}</div>${esc(dec.reply)}</div><div class="ev"><span>決定：<b>${esc(dec.path)}</b>${dec.detail?'　'+esc(dec.detail):''}</span></div><div style="margin-top:10px">${b(gw.i+1>=th.length?'面談を終える':'次の選手へ','gradNext',{},'primary big')}</div>`;}
@@ -2743,7 +2847,7 @@ function finishGraduation(){const th=gradList();for(const p of th){if(!G.graduat
 /* ================= ドラフト会議の演出 ================= */
 function startDraftUI(ev){UI.draft={ev,board:ev.board,r:0,i:0,phase:'intro',press:[],pi:0};const ids=ev.ids;for(const id of ids){const p=pById(id);if(p&&p.draft&&(p.draft.status==='指名'||p.draft.status==='MLB'))UI.draft.press.push(p.id);}renderDraft();}
 function renderDraft(){const D=UI.draft;const yr=G.calYear;let html='';
- if(D.phase==='intro'){const ps=D.ev.ids.map(pById).filter(Boolean);html=`<div class="draft"><div class="dtitle">${yr}年 プロ野球ドラフト会議</div><div class="dsub">${esc(G.school.name)}からの志望者</div>${ps.map(p=>`<div class="dcand">${avatarFor({pid:p.id,size:56})}<div><b>${esc(p.name)}</b> ${esc(playerPosLabel(p))} ${rk(rating(p))}<div class="tiny muted">${p.path==='MLB'?'海外挑戦（MLB）':'プロ志望届 提出'}${isPitcher(p)?'・最速'+(p.maxVelo||Math.round(p.pit.velo))+'km/h':'・通算'+p.career.hr+'本塁打'}</div></div></div>`).join('')}<div style="margin-top:12px">${b('会議開始','draftNext',{},'primary big')}</div></div>`;}
+ if(D.phase==='intro'){const ps=D.ev.ids.map(pById).filter(Boolean);html=`<div class="draft"><div class="dtitle">${yr}年 プロ野球ドラフト会議</div><div class="dsub">${esc(G.school.name)}からの志望者</div>${ps.map(p=>`<div class="dcand">${avatarFor({pid:p.id,size:56})}<div><b>${esc(p.name)}</b> ${esc(playerPosLabel(p))} ${rkR(p)}<div class="tiny muted">${p.path==='MLB'?'海外挑戦（MLB）':'プロ志望届 提出'}${isPitcher(p)?'・最速'+(p.maxVelo||Math.round(p.pit.velo))+'km/h':'・通算'+p.career.hr+'本塁打'}</div></div></div>`).join('')}<div style="margin-top:12px">${b('会議開始','draftNext',{},'primary big')}</div></div>`;}
  else if(D.phase==='round'){const rd=D.board[D.r];const n=rd.rd===1?D.i:rd.picks.length;const rows=rd.picks.slice(0,n).map((x,idx)=>`<div class="dpick ${x.pick.ours?'ours':''} ${idx===n-1&&rd.rd===1?'reveal':''}"><span class="dteam">${esc(x.team)}</span><span class="dname">${esc(x.pick.name)}</span><span class="dinfo">${esc(x.pick.pos)}・${esc(x.pick.src)}</span></div>`).join('');
   const last=rd.rd===1&&n>0?rd.picks[n-1].pick:null;const lot=last&&last.ours&&last.lottery&&last.lottery.length>1&&D.lotDone!==n;
   html=`<div class="draft"><div class="dtitle">${yr}年 プロ野球ドラフト会議</div><div class="dsub">${esc(rd.label)}</div><div class="dlist">${rows||'<div class="muted small">発表をお待ちください…</div>'}</div>${lot?`<div class="dlot">${last.lottery.length}球団が競合！ ${last.lottery.map(esc).join('・')}</div><div style="margin-top:10px">${b('抽選へ','draftLottery',{},'primary big')}</div>`:`<div style="margin-top:10px">${b(rd.rd===1&&n<rd.picks.length?'次の指名':'次へ','draftNext',{},'primary big')}${rd.rd===1&&n<rd.picks.length?b('この巡を一気に進める','draftSkipRound',{},'sm ghost'):''}</div>`}</div>`;}
@@ -2791,7 +2895,7 @@ ACT.lineupSave=()=>{const slots=UI.lw.map(s=>({pid:s.pid,pos:s.pos}));const err=
 /* ================= ランダムイベント ================= */
 function showEventModal(ev){const e=eventById(ev.id);if(!e){G.queue.shift();render();return;}const p=ev.pid?pById(ev.pid):null;if(e.p&&!p){G.queue.shift();render();return;}
  const title=typeof e.title==='function'?e.title(p):e.title;const text=typeof e.text==='function'?e.text(p):e.text;
- openModal(`<h2>${esc(title)}</h2>${p?`<div class="row" style="justify-content:flex-start;gap:8px;margin-bottom:6px">${avatarFor({pid:p.id,size:56})}<div><b>${esc(p.name)}</b> <span class="muted small">${p.grade}年 ${esc(playerPosLabel(p))} ${rk(rating(p))}</span><div class="tiny muted">調子：${condLabel(p)}　疲労${Math.round(p.fatigue)}</div></div></div>`:''}<div class="talk" style="margin-top:0">${esc(text)}</div><div class="hint">どうする？</div>${e.choices.map((c,i)=>b(esc(c.label),'eventChoose',{id:e.id,i,pid:ev.pid||''},'optbtn')).join('')}`,true);}
+ openModal(`<h2>${esc(title)}</h2>${p?`<div class="row" style="justify-content:flex-start;gap:8px;margin-bottom:6px">${avatarFor({pid:p.id,size:56})}<div><b>${esc(p.name)}</b> <span class="muted small">${p.grade}年 ${esc(playerPosLabel(p))} ${rkR(p)}</span><div class="tiny muted">調子：${condLabel(p)}　疲労${Math.round(p.fatigue)}</div></div></div>`:''}<div class="talk" style="margin-top:0">${esc(text)}</div><div class="hint">どうする？</div>${e.choices.map((c,i)=>b(esc(c.label),'eventChoose',{id:e.id,i,pid:ev.pid||''},'optbtn')).join('')}`,true);}
 ACT.eventChoose=d=>{const e=eventById(d.id);const p=d.pid?pById(d.pid):null;const c=e.choices[parseInt(d.i)];const res=c.eff(p)||'';if(G.queue[0]&&G.queue[0].type==='event')G.queue.shift();saveGame();openModal(`<h2>${esc(typeof e.title==='function'?e.title(p):e.title)}</h2><div class="talk">${esc(res)}</div>${b('OK','closeQ',{},'primary big')}`,true);};
 /* ================= 選手エディット（カスタムスタート専用） ================= */
 function canEdit(){return G.mode==='custom';}
@@ -2845,11 +2949,11 @@ ACT.peDelPitch=d=>{const p=pById(d.id);if(!p)return;peReadInto(p);const i=parseI
 ACT.peDelete=d=>{const p=pById(d.id);if(!p)return;openModal(`<h2>退部の確認</h2><p>${esc(p.name)}を退部させます（元に戻せません）。</p><div class="wrap">${b('退部させる','peDeleteYes',{id:p.id},'danger')}${b('やめる','closeModal',{})}</div>`);};
 ACT.peDeleteYes=d=>{G.players=G.players.filter(p=>p.id!=d.id);ensurePositions();autoLineup();autoNumbers();saveGame();closeModal();render();toast('退部させました');};
 ACT.peAdd=()=>{if(!canEdit())return;const p=genPlayer({grade:1,q:55});G.players.push(p);saveGame();openModal(playerEditHtml(p));};
-function viewEditList(){if(!canEdit())return '';const list=G.players.slice().sort((a,b)=>a.grade-b.grade||rating(b)-rating(a)).map(p=>`<div class="pl" style="grid-template-columns:1fr auto"><div><div class="nm" data-act="playerEdit" data-id="${p.id}">${esc(p.name)} <span class="muted small">${p.grade}年 ${esc(playerPosLabel(p))} ${rk(rating(p))} 潜在${p.potential}</span></div></div>${b('編集','playerEdit',{id:p.id},'sm')}</div>`).join('');return `<section class="card"><h3>選手エディット <small>カスタムスタート専用</small></h3><div class="hint">名前・体格・守備位置・潜在能力・全能力値・球種・特殊能力を自由に変更できます。</div><div style="margin:6px 0">${b('新しい選手を追加','peAdd',{},'sm primary')}</div><div class="list">${list}</div></section>`;}
+function viewEditList(){if(!canEdit())return '';const list=G.players.slice().sort((a,b)=>a.grade-b.grade||rating(b)-rating(a)).map(p=>`<div class="pl" style="grid-template-columns:1fr auto"><div><div class="nm" data-act="playerEdit" data-id="${p.id}">${esc(p.name)} <span class="muted small">${p.grade}年 ${esc(playerPosLabel(p))} ${rkR(p)} 潜在${p.potential}</span></div></div>${b('編集','playerEdit',{id:p.id},'sm')}</div>`).join('');return `<section class="card"><h3>選手エディット <small>カスタムスタート専用</small></h3><div class="hint">名前・体格・守備位置・潜在能力・全能力値・球種・特殊能力を自由に変更できます。</div><div style="margin:6px 0">${b('新しい選手を追加','peAdd',{},'sm primary')}</div><div class="list">${list}</div></section>`;}
 /* ================= 操作モード（プロスピ風）：試合アリーナ ================= */
 const AR={m:null,ctx:null,el:null,cv:null,g:null,W:0,H:0,dpr:1,phase:'idle',side:'bat',swingType:'meet',panel:null,pitchSel:0,power:'normal',target:null,gauge:null,cursor:{x:0,y:-0.1},cur:null,ev:null,t0:0,swing:null,swung:false,anim:null,dots:[],foot:'',speed:1,field:null,banner:null,raf:0,lastDraw:0,cpuSwingAt:null,windT0:0,resultAt:0,msgT:0,pending:null,ptrDown:false,audio:null};
 function r3on(){return typeof R3!=='undefined'&&R3.on&&!!R3.renderer;}
-function actionSettings(){const S=G.settings.action=G.settings.action||{};if(S.speed==null)S.speed=1;if(S.gauge==null)S.gauge=true;if(!S.meter)S.meter=S.gauge===false?'none':'meter';if(!S.run)S.run='manual';if(S.assist==null)S.assist=false;if(S.sound==null)S.sound=true;if(S.bat==null)S.bat=true;if(S.pit==null)S.pit=true;if(S.autoThrow==null)S.autoThrow=false;if(S.camera==null)S.camera='catcher';if(S.defThrow==null)S.defThrow=true;if(S.replay==null)S.replay=true;if(S.lower==null)S.lower=true;if(S.view3d==null)S.view3d=true;if(!S.cam3d)S.cam3d='std';if(!S.model3d)S.model3d='real';if(!S.batEase)S.batEase='easy';if(!S.ctl2){S.ctl2=true;S.meter='simple';S.gauge=true;S.defThrow=false;S.batEase='easy';}return S;}
+function actionSettings(){const S=G.settings.action=G.settings.action||{};if(S.speed==null)S.speed=1;if(S.gauge==null)S.gauge=true;if(!S.meter)S.meter=S.gauge===false?'none':'meter';if(!S.run)S.run='manual';if(S.assist==null)S.assist=false;if(S.sound==null)S.sound=true;if(S.bat==null)S.bat=true;if(S.pit==null)S.pit=true;if(S.autoThrow==null)S.autoThrow=false;if(S.camera==null)S.camera='catcher';if(S.defThrow==null)S.defThrow=true;if(S.replay==null)S.replay=true;if(S.lower==null)S.lower=true;if(S.view3d==null)S.view3d=true;if(!S.cam3d)S.cam3d='std';if(!S.model3d)S.model3d='real';if(S.intro==null)S.intro=true;if(!S.batEase)S.batEase='easy';if(!S.ctl2){S.ctl2=true;S.meter='simple';S.gauge=true;S.defThrow=false;S.batEase='easy';}return S;}
 /* 打撃アシスト：ヒットゾーン（カーソル）とタイミング許容の倍率 */
 function arEase(){const S=actionSettings();return S.batEase==='hard'?{r:0.85,tw:0.85}:S.batEase==='normal'?{r:1,tw:1}:{r:2.0,tw:1.8};}
 /* ---- 効果音（WebAudio） ---- */
@@ -2866,8 +2970,32 @@ function startActionUI(){const S=actionSettings();AR.speed=S.speed;AR.m=UI.match
  const st=$('#arstage');st.onpointerdown=arPointerDown;st.onpointermove=arPointerMove;st.onpointerup=arPointerUp;st.onpointercancel=e=>{AR.ptrDown=false;AR.hold=false;};
  window.addEventListener('resize',arResize);document.addEventListener('keydown',arKey);
  try{if(window.ResizeObserver){AR.ro=new ResizeObserver(()=>arResize());AR.ro.observe(st);}}catch(e){}
- arResize();if(S.view3d&&typeof r3Start==='function')r3Start(st);arResize();const m=AR.m;AR.banner={title:'PLAY BALL',lines:[`${m.A.name}（先攻）先発 ${m.A.pitcher.name}`,`${m.B.name}（後攻）先発 ${m.B.pitcher.name}`,'',AR.ctx.label||''],until:0,wait:true};arSetPhase('half');arRenderAll();arLoop();}
+ arResize();if(S.view3d&&typeof r3Start==='function')r3Start(st);arResize();arStartIntro();arLoop();}
 function endActionUI(){cancelAnimationFrame(AR.raf);AR.raf=0;if(typeof r3Stop==='function'&&r3on())r3Stop();window.removeEventListener('resize',arResize);document.removeEventListener('keydown',arKey);try{if(AR.ro){AR.ro.disconnect();AR.ro=null;}}catch(e){}clearTimeout(AR.ltT);clearTimeout(AR.velT);clearTimeout(AR.pciT);if(AR.el){AR.el.hidden=true;AR.el.innerHTML='';}AR.phase='idle';AR.replay=null;}
+/* ---- 試合前カットイン：相手チームの注目投手・注目野手を紹介 ---- */
+function arIntroItems(opp){const items=[];const pit=opp.pitcher;if(pit)items.push({p:pit,kind:'pit'});
+ const bats=opp.lineup.map(x=>x.p).filter(p=>p&&(!pit||p.id!==pit.id));
+ if(bats.length){const w=p=>(p.nstar?(p.nstar.rank==='S'?2e3:1e3):0)+batRating(p);const best=bats.slice().sort((a,b)=>w(b)-w(a))[0];items.push({p:best,kind:'bat'});}
+ return items;}
+function arStartIntro(){const m=AR.m;const S=actionSettings();const opp=m.A.isUser?m.B:m.A;const items=(S.intro===false||!opp||opp.isUser||m.inn>1||m.pa)?[]:arIntroItems(opp);
+ if(!items.length){arPlayBall();return;}
+ AR.intro={items,idx:0,t0:performance.now(),dur:4600,team:opp,el:-1};arSetPhase('intro');arOverlayHtml('');arRenderAll();}
+function arPlayBall(){const m=AR.m;AR.intro=null;AR.banner={title:'PLAY BALL',lines:[`${m.A.name}（先攻）先発 ${m.A.pitcher.name}`,`${m.B.name}（後攻）先発 ${m.B.pitcher.name}`,'',AR.ctx.label||''],until:0,wait:true};arSetPhase('half');AR.bannerEl=null;arOverlayHtml('');arRenderAll();}
+function arIntroNext(){const it=AR.intro;if(!it){arPlayBall();return;}it.idx++;if(it.idx>=it.items.length){arPlayBall();return;}it.t0=performance.now();it.el=-1;it.shown=false;it.comp=0;}
+ACT.arIntroSkip=()=>{arPlayBall();};
+function arIntroItem(){const it=AR.intro;return it?it.items[it.idx]:null;}
+function arIntroHtml(it){const item=it.items[it.idx];const p=item.p;const t=it.team;const c=arTeamColors(t);const isP=item.kind==='pit';
+ const hand=`${p.throws}投${p.bats}打`;const order=t.lineup.findIndex(x=>x.p===p);
+ const stats=isP?`<span>最速 <b>${Math.round(p.pit.velo)}</b>km/h</span><span>球種 <b>${p.pit.pitches.length}</b></span><span>${p.pit.pitches.slice(1).map(x=>esc(x.name)).join('・')||'直球のみ'}</span>`
+  :`${order>=0?`<span><b>${order+1}</b>番 ${esc(p.pos)}</span>`:''}<span>${p.height}cm / ${p.weight}kg</span><span>長所 ${esc(arStrength(p))}</span>`;
+ const title=p.title?`<span class="ttl">${esc(p.title)}</span>`:(p.nstar?`<span class="ttl">全国注目</span>`:'');
+ const av=r3on()?'':`<div class="ci-av">${avatarSVG(String(p.id),{cap:c.cap||c.base,brim:c.capBrim||c.cap||c.base,base:c.base,trim:c.trim,emblem:c.mark||'',size:200})}</div>`;
+ /* 帯の色：チームカラーのうち暗い方を帯（さらに暗く）、明るい方を差し色に。文字色は帯の明るさで決める */const lum=h=>{try{const x=h.replace('#','');return parseInt(x.slice(0,2),16)*0.299+parseInt(x.slice(2,4),16)*0.587+parseInt(x.slice(4,6),16)*0.114;}catch(e){return 128;}};const dark=lum(c.trim)<=lum(c.base)?c.trim:c.base,light=dark===c.trim?c.base:c.trim;const band=arDarken(dark,lum(dark)>110?0.45:0.7),stripe=light;
+ return `<div class="ar-cutin ${item.kind}" style="--tb:${band};--tc:${stripe};--tx:${arTextOn(band)}">${av}<div class="ci-band"></div><div class="ci-tag ${item.kind}">${isP?'相手の注目投手':'相手の注目野手'}</div><div class="ci-foot">${it.idx+1}/${it.items.length} ・ タップでスキップ</div>
+  <div class="ci-body"><div class="ci-main"><div class="ci-school">${esc(t.name)}${t.pref?'（'+esc(t.pref)+'）':''}</div><div class="ci-name"><b>${esc(p.name)}</b><small>${p.grade}年 ・ ${esc(isP?'投手':p.pos+'手')} ・ ${hand}${p.number!=null?' ・ 背番号'+p.number:''}</small></div><div class="ci-rank">${rkR(p)}${title}</div><div class="ci-stats">${stats}</div></div><div class="ci-radar">${radarSvg(radarAxes(p,{exact:true,pit:isP}),150,isP?'#5ab0ff':'#ffb347',{num:true})}</div></div></div>`;}
+function arDarken(hex,k){try{const c=hex.replace('#','');const r=parseInt(c.slice(0,2),16),g=parseInt(c.slice(2,4),16),b=parseInt(c.slice(4,6),16);const f=v=>Math.round(v*k).toString(16).padStart(2,'0');return '#'+f(r)+f(g)+f(b);}catch(e){return '#1b2a4a';}}
+function arStrength(p){const b=p.bat;const cand=[['ミート',(b.meetR+b.meetL)/2],['パワー',(b.powR+b.powL)/2],['走力',b.speed],['守備',b.field],['肩',(b.arm+b.thr)/2],['選球眼',b.eye],['勝負強さ',b.clutch]];cand.sort((x,y)=>y[1]-x[1]);return cand.slice(0,2).map(x=>x[0]).join('・');}
+function arDrawIntro(now){const it=AR.intro;if(!it){return;}if(it.el!==it.idx){it.el=it.idx;it.t0=now;it.shown=true;arOverlayHtml(arIntroHtml(it));}}
 /* ---- 中継風の演出パーツ ---- */
 function arAbbr(name){const s=String(name||'').replace(/高等学校|高等学院|高校|学園|学院|工業|商業|附属|付属/g,'');return (s||name||'').slice(0,4);}
 function arTextOn(bg){try{const c=bg.replace('#','');const r=parseInt(c.slice(0,2),16),g=parseInt(c.slice(2,4),16),b=parseInt(c.slice(4,6),16);return (r*299+g*587+b*114)/1000>150?'#111':'#fff';}catch(e){return '#fff';}}
@@ -2937,6 +3065,7 @@ function arPointerUp(e){const was=AR.ptrDown;AR.ptrDown=false;if(!was)return;con
   if(actionSettings().meter!=='none')arStartGauge();else arThrowUser(null);}}
 function arDefaultTarget(){const s=AR.sign;return s?{x:s.tx,y:s.ty}:{x:0,y:0.2};}
 function arTap(sx,sy,e){const m=AR.m;const ph=AR.phase;const q=arS2Z(sx,sy);const zx=q.x,zy=q.y;
+ if(ph==='intro'){arIntroNext();return;}
  if(ph==='half'){arAfterBanner();return;}
  if(ph==='after'||ph==='field'||ph==='replay'){arSkip();return;}
  if(AR.mode==='card'){if((ph==='wind'||ph==='flight')&&AR.cur){AR.windT0-=5000;AR.t0=Math.min(AR.t0,performance.now()-AR.cur.T*AR.speed*1.2);}return;}
@@ -2944,7 +3073,7 @@ function arTap(sx,sy,e){const m=AR.m;const ph=AR.phase;const q=arS2Z(sx,sy);cons
  if(AR.side==='bat'){if(ph==='flight'&&!AR.swung)arSwing();}
  else{if(ph==='gauge')arRelease();}}
 function arKey(e){if(!AR.el||AR.el.hidden)return;const k=e.key;
- if(k===' '||k==='Enter'){e.preventDefault();if(AR.phase==='flight'&&AR.side==='bat'&&!AR.swung)arSwing();else if(AR.phase==='gauge')arRelease();else if(AR.phase==='pre'&&AR.side==='bat'&&!AR.panel)arThrowCpu();else if(AR.phase==='pre'&&AR.side==='pit'&&AR.target){if(actionSettings().meter!=="none")arStartGauge();else arThrowUser(null);}else if(AR.phase==='after'||AR.phase==='field'||AR.phase==='replay')arSkip();else if(AR.phase==='half')arAfterBanner();return;}
+ if(k===' '||k==='Enter'){e.preventDefault();if(AR.phase==='flight'&&AR.side==='bat'&&!AR.swung)arSwing();else if(AR.phase==='gauge')arRelease();else if(AR.phase==='pre'&&AR.side==='bat'&&!AR.panel)arThrowCpu();else if(AR.phase==='pre'&&AR.side==='pit'&&AR.target){if(actionSettings().meter!=="none")arStartGauge();else arThrowUser(null);}else if(AR.phase==='after'||AR.phase==='field'||AR.phase==='replay')arSkip();else if(AR.phase==='half')arAfterBanner();else if(AR.phase==='intro')arIntroNext();return;}
  const dx=k==='ArrowLeft'?-0.15:k==='ArrowRight'?0.15:0,dy=k==='ArrowUp'?-0.15:k==='ArrowDown'?0.15:0;
  if(dx||dy){e.preventDefault();if(AR.side==='bat')AR.cursor={x:clamp(AR.cursor.x+dx,-1.9,1.9),y:clamp(AR.cursor.y+dy,-1.9,1.9)};else if(AR.phase==='pre'){const t=AR.target||{x:0,y:0};AR.target={x:clamp(t.x+dx,-1.9,1.9),y:clamp(t.y+dy,-1.9,1.9)};}}
  if(AR.side==='pit'&&AR.phase==='pre'&&/^[1-9]$/.test(k)){const i=parseInt(k)-1;if(AR.m.pa.p.pit.pitches[i]){AR.pitchSel=i;arRenderCtl();}}}
@@ -3022,6 +3151,8 @@ ACT.arDecide=d=>{const m=AR.m;if(AR.phase!=='decide')return;const old=AR.field;c
  const sc=fwBuildScene(ev.bb,ev.play,{resume:old?old.pauseAt:null,dec:old?old.decision:null});sc.c=ev.bb;sc.ev=ev;sc.t0=performance.now()-(old?old.pauseAt:0)/(sc.rate||1);sc.pauseAt=null;AR.field=sc;arSetPhase('field');arRenderAll();};
 /* ---- メインループ ---- */
 function arLoop(){AR.raf=requestAnimationFrame(arLoop);const now=performance.now();
+ /* 重いフレーム（シェーダー初期化など）の間はカットインのタイマーを進めない（1人あたり最大3秒まで補正） */{const dt=now-(AR.loopT||now);AR.loopT=now;if(dt>400&&AR.intro){const it=AR.intro;it.comp=(it.comp||0);const add=Math.min(dt,3000-it.comp);if(add>0){it.t0+=add;it.comp+=add;}}}
+ if(AR.phase==='intro'){const it=AR.intro;if(!it)arPlayBall();else if(it.shown&&!AR.introHold&&!window.__introHold&&now-it.t0>it.dur)arIntroNext();}
  if(AR.phase==='wind'){const w=arWindDur();if(now-AR.windT0>=w){arSetPhase('flight');AR.t0=now;arSound('ui');}}
  if(AR.phase==='flight'){const P=AR.cur;const T=P.T*AR.speed;const u=(now-AR.t0)/T;
   if((AR.side==='pit'||AR.mode==='card')&&AR.cpuSwingAt!=null&&!AR.swung&&now-AR.t0>=AR.cpuSwingAt*AR.speed){AR.swung=true;AR.swingT=now;arSwingSound(AR.ev);}
@@ -3049,6 +3180,7 @@ function arDraw(now){const g=AR.g;if(!g)return;AR.drawN=(AR.drawN||0)+1;const W=
  if(r3on()){r3Frame(now);if(r3on()){arDrawHud3d(now);return;}}
  if(AR.phase==='replay'&&AR.replay&&AR.field){const rp=AR.replay;fwDrawScene(now,Math.min(rp.until,rp.from+(now-rp.t0)*rp.rate));g.fillStyle='rgba(0,0,0,.85)';g.fillRect(0,0,W,H*0.07);g.fillRect(0,H*0.93,W,H*0.07);return;}
  if(AR.phase==='field'||AR.phase==='decide'||(AR.phase==='after'&&AR.field&&AR.ev&&(AR.ev.kind==='inplay'||AR.ev.runShown||AR.ev.kind==='pickoff'||AR.ev.kind==='pickoffErr'||AR.ev.kind==='pickoffSafe'))){fwDrawScene(now);return;}
+ if(AR.phase==='intro'){arDrawBackdrop();arDrawIntro(now);return;}
  if(AR.phase==='half'){arDrawBackdrop();if(AR.bannerEl!==AR.banner){AR.bannerEl=AR.banner;arOverlayHtml(arBannerHtml());}return;}
  if(AR.phase==='sim'){arDrawBackdrop();arDrawBannerCv();return;}
  if(AR.side==='bat')arDrawCatcherView(now);else arDrawPitcherView(now);}
@@ -3222,6 +3354,7 @@ function arRenderCtl(){const m=AR.m;const el=$('#arctl');if(!el)return;if(AR.mod
   if(dc.kind==='throw'){el.innerHTML=`<div class="ar-dec"><div class="q">${esc(dc.label)}</div><div class="dec thr">${dc.options.map(o=>`<button class="btn tb ${o.t===dc.rec?'primary':''}" data-act="arDecide" data-t="${o.t}"><b>${esc(o.label)}</b><small>${esc(o.sub)}</small><em>${Math.round(o.ok*100)}%</em></button>`).join('')}</div></div>`;return;}
   el.innerHTML=`<div class="ar-dec"><div class="q">${esc(dc.label)}<span class="tiny muted">　成功率 約${Math.round(dc.ok*100)}%</span></div><div class="dec">${b('突入！','arDecide',{v:1},'primary')}${b('自重する','arDecide',{v:0},'')}</div></div>`;return;}
  if(ph==='half'){el.innerHTML=`<div class="dec">${b('続ける','arBannerNext',{},'primary big')}</div>`;return;}
+ if(ph==='intro'){el.innerHTML=`<div class="row"><b class="small">試合前紹介</b><span class="tiny muted">相手の注目選手（タップで次へ）</span>${b('スキップ','arIntroSkip',{},'sm')}</div>`;return;}
  if(ph==='replay'){el.innerHTML=`<div class="row"><b class="small">スローリプレイ</b><span class="tiny muted">タップでスキップ</span></div>`;return;}
  if(!pa||pa.done){el.innerHTML='';return;}
  const t=m.bat(),d=m.def();
@@ -3263,13 +3396,14 @@ ACT.arPinchRunList=()=>{const m=AR.m;const t=m.bat();const bases=[0,1,2].filter(
 ACT.arPinchRun=d=>{const m=AR.m;const t=m.bat();const np=t.bench.find(p=>p.id==d.id);if(!np)return;m.pinchRun(t,parseInt(d.base),np);AR.panel=null;AR.foot=`代走 ${np.name}`;arRenderAll();};
 ACT.arChangeList=()=>{const m=AR.m;const t=m.def();const rel=t.bench.filter(p=>isPitcher(p)||p.sub.includes('投'));AR.panel=`<div class="ar-panel"><b class="small">リリーフを選択</b><div class="wrap">${rel.map(p=>b(esc(p.name)+' '+letter(pitRating(p))+' '+Math.round(p.pit.velo)+'km 疲'+Math.round(p.fatigue),'arChange',{id:p.id},'sm')).join('')}${b('やめる','arPanelClose',{},'sm ghost')}</div></div>`;arRenderCtl();};
 ACT.arChange=d=>{const m=AR.m;const t=m.def();const np=t.bench.find(p=>p.id==d.id);if(!np)return;m.changePitcher(t,np);m.paRefresh();AR.panel=null;AR.pitchSel=0;AR.target=null;AR.sign=m.cpuPitchInput();AR.sign.idx=Math.max(0,p_pitches(np).indexOf(AR.sign.pitch));AR.foot=`投手交代 ${np.name}`;arRenderAll();};
-ACT.arMenu=()=>{if(AR.mode==='card'){cdMenu();return;}const S=actionSettings();AR.panel=`<div class="ar-panel"><b class="small">メニュー</b><div class="wrap" style="margin:6px 0">${b('この打席おまかせ','arAutoPA',{},'sm')}${b('この回おまかせ','arAutoInn',{},'sm')}${b('最後までおまかせ','arAutoEnd',{},'sm danger')}</div><div class="grid2 small"><label class="f">球の速さ<select data-chg="arSet" data-k="speed"><option value="1.3"${S.speed==1.3?' selected':''}>ゆっくり</option><option value="1"${S.speed==1?' selected':''}>普通</option><option value="0.8"${S.speed==0.8?' selected':''}>速い</option></select></label><label class="f">投球の操作<select data-chg="arSet" data-k="meter"><option value="simple"${S.meter==='simple'?' selected':''}>2回押し（開始→リリース）</option><option value="meter"${S.meter==='meter'?' selected':''}>3回押し（開始→パワー→精度）</option><option value="none"${S.meter==='none'?' selected':''}>1回押し（制球は能力任せ）</option></select></label><label class="f">打撃の難易度<select data-chg="arSet" data-k="batEase"><option value="easy"${S.batEase==='easy'?' selected':''}>やさしい（ヒットゾーン大）</option><option value="normal"${S.batEase==='normal'?' selected':''}>ふつう</option><option value="hard"${S.batEase==='hard'?' selected':''}>むずかしい</option></select></label><label class="f">走塁の判断<select data-chg="arSet" data-k="run"><option value="manual"${S.run==='manual'?' selected':''}>自分で決める</option><option value="auto"${S.run==='auto'?' selected':''}>自動</option></select></label><label class="f">守備の送球先<select data-chg="arSet" data-k="defThrow"><option value="1"${S.defThrow?' selected':''}>自分で選ぶ</option><option value="0"${!S.defThrow?' selected':''}>自動</option></select></label><label class="f">本塁打リプレイ<select data-chg="arSet" data-k="replay"><option value="1"${S.replay?' selected':''}>見る</option><option value="0"${!S.replay?' selected':''}>省略</option></select></label><label class="f">選手カード表示<select data-chg="arSet" data-k="lower"><option value="1"${S.lower?' selected':''}>打席ごとに出す</option><option value="0"${!S.lower?' selected':''}>出さない</option></select></label><label class="f">画面表示<select data-chg="arSet" data-k="view3d"><option value="1"${S.view3d?' selected':''}>3D</option><option value="0"${!S.view3d?' selected':''}>2D（軽量）</option></select></label><label class="f">選手モデル<select data-chg="arSet" data-k="model3d"><option value="real"${S.model3d==='real'?' selected':''}>リアル体型</option><option value="chibi"${S.model3d==='chibi'?' selected':''}>パワプロ風（2頭身）</option></select></label><label class="f">3Dカメラ<select data-chg="arSet" data-k="cam3d"><option value="std"${S.cam3d==='std'?' selected':''}>標準</option><option value="zoom"${S.cam3d==='zoom'?' selected':''}>投球ズーム</option><option value="wide"${S.cam3d==='wide'?' selected':''}>打席を引きで</option></select></label><label class="f">到達点アシスト<select data-chg="arSet" data-k="assist"><option value="0"${!S.assist?' selected':''}>なし</option><option value="1"${S.assist?' selected':''}>表示する</option></select></label><label class="f">効果音<select data-chg="arSet" data-k="sound"><option value="1"${S.sound?' selected':''}>あり</option><option value="0"${!S.sound?' selected':''}>なし</option></select></label><label class="f">打撃時の投球<select data-chg="arSet" data-k="autoThrow"><option value="0"${!S.autoThrow?' selected':''}>ボタンで開始</option><option value="1"${S.autoThrow?' selected':''}>自動で投げてくる</option></select></label></div><div class="wrap" style="margin-top:6px">${b('試合経過を見る','arLog',{},'sm')}${b('閉じる','arPanelClose',{},'sm primary')}</div></div>`;arRenderCtl();};
+ACT.arMenu=()=>{if(AR.mode==='card'){cdMenu();return;}const S=actionSettings();AR.panel=`<div class="ar-panel"><b class="small">メニュー</b><div class="wrap" style="margin:6px 0">${b('この打席おまかせ','arAutoPA',{},'sm')}${b('この回おまかせ','arAutoInn',{},'sm')}${b('最後までおまかせ','arAutoEnd',{},'sm danger')}</div><div class="grid2 small"><label class="f">球の速さ<select data-chg="arSet" data-k="speed"><option value="1.3"${S.speed==1.3?' selected':''}>ゆっくり</option><option value="1"${S.speed==1?' selected':''}>普通</option><option value="0.8"${S.speed==0.8?' selected':''}>速い</option></select></label><label class="f">投球の操作<select data-chg="arSet" data-k="meter"><option value="simple"${S.meter==='simple'?' selected':''}>2回押し（開始→リリース）</option><option value="meter"${S.meter==='meter'?' selected':''}>3回押し（開始→パワー→精度）</option><option value="none"${S.meter==='none'?' selected':''}>1回押し（制球は能力任せ）</option></select></label><label class="f">打撃の難易度<select data-chg="arSet" data-k="batEase"><option value="easy"${S.batEase==='easy'?' selected':''}>やさしい（ヒットゾーン大）</option><option value="normal"${S.batEase==='normal'?' selected':''}>ふつう</option><option value="hard"${S.batEase==='hard'?' selected':''}>むずかしい</option></select></label><label class="f">走塁の判断<select data-chg="arSet" data-k="run"><option value="manual"${S.run==='manual'?' selected':''}>自分で決める</option><option value="auto"${S.run==='auto'?' selected':''}>自動</option></select></label><label class="f">守備の送球先<select data-chg="arSet" data-k="defThrow"><option value="1"${S.defThrow?' selected':''}>自分で選ぶ</option><option value="0"${!S.defThrow?' selected':''}>自動</option></select></label><label class="f">本塁打リプレイ<select data-chg="arSet" data-k="replay"><option value="1"${S.replay?' selected':''}>見る</option><option value="0"${!S.replay?' selected':''}>省略</option></select></label><label class="f">選手カード表示<select data-chg="arSet" data-k="lower"><option value="1"${S.lower?' selected':''}>打席ごとに出す</option><option value="0"${!S.lower?' selected':''}>出さない</option></select></label><label class="f">画面表示<select data-chg="arSet" data-k="view3d"><option value="1"${S.view3d?' selected':''}>3D</option><option value="0"${!S.view3d?' selected':''}>2D（軽量）</option></select></label><label class="f">選手モデル<select data-chg="arSet" data-k="model3d"><option value="real"${S.model3d==='real'?' selected':''}>リアル体型</option><option value="chibi"${S.model3d==='chibi'?' selected':''}>パワプロ風（2頭身）</option></select></label><label class="f">試合前カットイン<select data-chg="arSet" data-k="intro"><option value="1"${S.intro!==false?' selected':''}>あり</option><option value="0"${S.intro===false?' selected':''}>なし</option></select></label><label class="f">3Dカメラ<select data-chg="arSet" data-k="cam3d"><option value="std"${S.cam3d==='std'?' selected':''}>標準</option><option value="zoom"${S.cam3d==='zoom'?' selected':''}>投球ズーム</option><option value="wide"${S.cam3d==='wide'?' selected':''}>打席を引きで</option></select></label><label class="f">到達点アシスト<select data-chg="arSet" data-k="assist"><option value="0"${!S.assist?' selected':''}>なし</option><option value="1"${S.assist?' selected':''}>表示する</option></select></label><label class="f">効果音<select data-chg="arSet" data-k="sound"><option value="1"${S.sound?' selected':''}>あり</option><option value="0"${!S.sound?' selected':''}>なし</option></select></label><label class="f">打撃時の投球<select data-chg="arSet" data-k="autoThrow"><option value="0"${!S.autoThrow?' selected':''}>ボタンで開始</option><option value="1"${S.autoThrow?' selected':''}>自動で投げてくる</option></select></label></div><div class="wrap" style="margin-top:6px">${b('試合経過を見る','arLog',{},'sm')}${b('閉じる','arPanelClose',{},'sm primary')}</div></div>`;arRenderCtl();};
 CHG.arSet=(d,el)=>{const S=actionSettings();const v=el.value;if(d.k==='speed'){S.speed=parseFloat(v);AR.speed=S.speed;}else if(d.k==='run'||d.k==='cardAnim'||d.k==='meter'||d.k==='cam3d'||d.k==='batEase'||d.k==='model3d')S[d.k]=v;else S[d.k]=v==='1';if(d.k==='meter')S.gauge=v!=='none';if(d.k==='defThrow'&&AR.m)AR.m.askDef=S.pit&&S.defThrow;if(d.k==='view3d')arApplyView();if(d.k==='model3d'&&typeof r3RebuildRigs==='function')try{r3RebuildRigs();}catch(e){console.warn(e);}saveGame();};
 function arApplyView(){const S=actionSettings();const st=$('#arstage');if(!st)return;if(S.view3d&&!r3on()&&typeof r3Start==='function'){if(!r3Start(st))toast('この端末では3D表示を使えません');}else if(!S.view3d&&r3on())r3Stop();arResize();}
 /* 3D時のHUD（2Dキャンバスにゾーン・カーソル・吹き出しだけを描く） */
 function arDrawHud3d(now){const g=AR.g,W=AR.W,H=AR.H;const ph=AR.phase;const m=AR.m;
  if(ph==='replay'&&AR.replay&&AR.field){const rp=AR.replay;const t=Math.min(rp.until,rp.from+(now-rp.t0)*rp.rate);fwDrawScene(now,t);g.fillStyle='rgba(0,0,0,.85)';g.fillRect(0,0,W,H*0.07);g.fillRect(0,H*0.93,W,H*0.07);return;}
  if(ph==='field'||ph==='decide'||(ph==='after'&&AR.field&&AR.ev&&(AR.ev.kind==='inplay'||AR.ev.runShown||/^pickoff/.test(AR.ev.kind)))){fwDrawScene(now);return;}
+ if(ph==='intro'){arDrawIntro(now);return;}
  if(ph==='half'){if(AR.bannerEl!==AR.banner){AR.bannerEl=AR.banner;arOverlayHtml(arBannerHtml());}return;}
  if(ph==='sim'||ph==='idle')return;
  const pa=m.pa;const P=AR.cur;const S=actionSettings();const z=arZone();const bat=AR.side==='bat';
@@ -3576,6 +3710,7 @@ function cdCardTile(card,m,p){const def=CARD_BY_ID[card.id];const ok=cardApplica
 function cdRenderCtl(){const m=AR.m;const el=$('#arctl');if(!el)return;el.classList.add('card');const ph=AR.phase;
  const sh=$('#arsheet');if(sh){if(AR.panel){sh.hidden=false;sh.style.top=($('#artop')?$('#artop').offsetHeight:44)+'px';sh.innerHTML=AR.panel;}else{sh.hidden=true;sh.innerHTML='';}}
  if(ph==='half'){el.innerHTML=`<div class="dec">${b('続ける','arBannerNext',{},'primary big')}</div>`;return;}
+ if(ph==='intro'){el.innerHTML=`<div class="row"><b class="small">試合前紹介</b><span class="tiny muted">相手の注目選手（タップで次へ）</span>${b('スキップ','arIntroSkip',{},'sm')}</div>`;return;}
  if(ph!=='pre'){const r=CD.last;let seqHtml='';if(r&&r.seq&&r.seq.length){seqHtml=`<div class="cseq">${r.seq.map((x,i)=>{const k=x.ev.kind;const lab=k==='ball'?'ボール':k==='strike'?'見逃し':k==='miss'?'空振り':k==='foul'?'ファウル':k==='kLook'?'見逃し三振':k==='kSwing'?'空振り三振':k==='kBunt'?'バント失敗':k==='bb'?'四球':k==='hbp'?'死球':k==='inplay'?(x.ev.text||'打った'):'';return `<span class="${k==='inplay'||k==='bb'||k==='hbp'?'hl':''}">${i+1}球目 ${esc(x.P.name)} ${x.P.v}km ${esc(x.P.label.replace('（ボール）',''))}→${esc(lab)}${x.ev.runText?'／'+esc(x.ev.runText):''}</span>`;}).join('')}</div>`;}
   el.innerHTML=`<div class="row"><b class="small">${ph==='field'||ph==='decide'?'プレー中…':ph==='flight'||ph==='wind'?'最終球をリプレイ中…':(r&&r.ev&&(r.ev.text||arKindText(r.ev)))||'結果'}</b><span class="tiny muted">タップでスキップ</span></div>${r?`<div class="tiny" style="margin:2px 0 4px">${esc(cdInfoText(r))}</div>`:''}${seqHtml}`;return;}
  const side=cdSide();const hand=CD.hand[side];const t=m.bat(),d=m.def();const bt=t.lineup[t.batIdx].p,pt=d.pitcher;const who=side==='off'?bt:pt;
@@ -3900,7 +4035,8 @@ function r3Frame(now){if(!r3on())return;const m=AR.m;if(!m)return;try{
  const night=arNight();if(night!==R3.night)r3SetNight(night);
  const ph=AR.phase;const cut=(R3.lastPhase!==ph&&(ph==='field'||ph==='replay'||R3.lastPhase==='field'||R3.lastPhase==='replay'||R3.lastPhase==='half'||R3.lastPhase==='decide'||R3.lastPhase==null))||R3.lastSide!==AR.side;R3.lastSide=AR.side;
  const fieldPh=ph==='field'||ph==='decide'||ph==='replay'||(ph==='after'&&AR.field&&AR.ev&&(AR.ev.kind==='inplay'||AR.ev.runShown||/^pickoff/.test(AR.ev.kind)));
- if(ph==='half'||ph==='sim'||ph==='idle'){r3IdleScene(now);r3OrbitCam(now);}
+ if(ph==='intro'&&AR.intro){r3IntroScene(now);}
+ else if(ph==='half'||ph==='sim'||ph==='idle'){r3IdleScene(now);r3OrbitCam(now);}
  else if(fieldPh&&AR.field){const sc=AR.field;let t;if(ph==='replay'&&AR.replay){const rp=AR.replay;t=Math.min(rp.until,rp.from+(now-rp.t0)*rp.rate);}else t=Math.min(sc.T,fwTime(sc,now));
   r3FieldScene(sc,t,now);if(ph==='replay')r3ReplayCam(sc,t,cut);else r3FieldCam(sc,t,cut,now);}
  else{r3PitchScene(now);const ev=AR.ev;const react=ph==='after'&&ev&&(ev.kind==='kSwing'||ev.kind==='kLook'||ev.kind==='kBunt')&&AR.resultAt&&now-AR.resultAt>350;if(react)r3ReactCam(R3.batter,R3.lastReact!==ev);R3.lastReact=react?ev:null;if(!react){if(AR.side==='bat')r3BatCam(cut||!!R3.lastPhaseReact);else r3PitCam(cut||!!R3.lastPhaseReact);}R3.lastPhaseReact=react;}
@@ -3911,6 +4047,29 @@ function r3Frame(now){if(!r3on())return;const m=AR.m;if(!m)return;try{
  /* 歓声（観客がはねる） */{const ch=R3.cheerUntil&&now<R3.cheerUntil;const dy=ch?Math.abs(Math.sin(now/110))*0.3:0;R3.crowd.position.y=dy;R3.crowdH.position.y=dy;}
  R3.renderer.render(R3.scene,R3.cam);
  }catch(e){console.warn('3D frame error',e);r3Fail();}}
+/* 試合前カットイン：相手の注目投手（マウンド）／注目野手（打席）に寄るカメラ */
+function r3IntroScene(now){const m=AR.m;const it=AR.intro;const item=it.items[it.idx];const p=item.p;const opp=it.team;const other=opp===m.A?m.B:m.A;const co=arTeamColors(opp),cu=arTeamColors(other);
+ const u=clamp((now-it.t0)/it.dur,0,1);const key=it.idx+':'+it.t0;const cut=R3.introKey!==key;R3.introKey=key;const e=1-Math.pow(1-u,2.2);
+ const numOf=(team,k)=>{const sl=team.lineup.find(x=>x.pos===k);return sl?(sl.p.number!=null?sl.p.number:POS_NUM[k]):POS_NUM[k];};
+ R3.ball.visible=false;R3.mitt.visible=false;for(const r of R3.runners)r.g.visible=false;for(const r of R3.umps)r.g.visible=false;
+ if(item.kind==='pit'){const DP=fwDefPos(opp);const hs=p.throws==='左'?-1:1;const z0=-R3C.RUBBER+0.15;
+  for(const k in R3.fielders){const r=R3.fielders[k];r.g.visible=true;r.setColors(co,false);r.setNumber(k==='投'?(p.number!=null?p.number:1):numOf(opp,k),co.trim);r.setGear(k==='捕'?'catcher':null);r.glove.visible=k!=='捕';r3Dress(r,k==='投'?p:r3PlayerOf(opp,k));r.setExpression(null);
+   if(k==='投'){r.at(0,0,z0);r.g.scale.x=hs<0?-1:1;r.face(0,1);r.setExpression(u<0.45?null:'focus');const w=Math.sin(now/1100);
+    /* 前半：マウンドで立って一息（胸を張る）→後半：セットポジションで構える */const k2=clamp((u-0.42)/0.22,0,1);const kk=k2*k2*(3-2*k2);const st=Object.assign({},RP.stand);st.head=[0.0+w*0.03,0,0];st.torso=[-0.04+w*0.015,0,0];st.rSh=[0.12,0,-0.16];st.lSh=[0.12,0,0.16];const sp={rSh:[-0.62,0,-0.25],lSh:[-0.66,0,0.3],rEl:[-1.25,0,0],lEl:[-1.2,0,0],head:[0.02+w*0.04,0,0],torso:[-0.02,0,0]};/* グラブを胸の前で合わせる（顔が隠れない高さ） */const pose=kk<=0?st:kk>=1?sp:r3MixPose(st,sp,kk);pose.dy=w*0.012;r.apply(pose);continue;}
+   if(k==='捕'){r.at(0,0,1.6);r.g.scale.x=1;r.face(0,-1);r.apply(RP.crouch);r.glove.visible=false;continue;}
+   const q=DP[k];r.g.scale.x=1;r.at(q[0],0,-q[1]);r.face(-q[0],q[1]);r.apply(RP.ready);}
+  R3.batter.g.visible=false;
+  /* 投げる腕側の斜め前から寄る（グラブで顔が隠れない）。頭が画面上1/4に来るよう胸より少し上を注視 */const pos=new THREE.Vector3(-hs*(2.4-0.7*e),1.78-0.18*e,z0+3.8-1.2*e);const look=new THREE.Vector3(-hs*0.06,1.32-0.02*e,z0);r3SetCam(pos,look,31-5*e,cut,0.25);}
+ else{const DP=fwDefPos(other);const op=other.pitcher;
+  for(const k in R3.fielders){const r=R3.fielders[k];r.g.visible=true;r.setColors(cu,false);r.setNumber(numOf(other,k),cu.trim);r.setGear(k==='捕'?'catcher':null);r.glove.visible=k!=='捕';r3Dress(r,k==='投'?op:r3PlayerOf(other,k));r.setExpression(null);
+   if(k==='投'){r.at(0,0,-R3C.RUBBER+0.15);r.g.scale.x=(op&&op.throws==='左')?-1:1;r.face(0,1);r.apply(RP.pset);continue;}
+   if(k==='捕'){r.g.visible=false;continue;}
+   const q=DP[k];r.g.scale.x=1;r.at(q[0],0,-q[1]);r.face(-q[0],q[1]);r.apply(RP.ready);}
+  const b=R3.batter;b.g.visible=true;b.setColors(co,true);b.setNumber(p.number!=null?p.number:null,co.trim);r3Dress(b,p);b.setGear(null);b.setExpression(u<0.4?null:'focus');b.bat.visible=true;
+  const hand=p.bats==='両'?'左':p.bats;const sg=hand==='左'?-1:1;b.g.scale.x=sg<0?-1:1;b.at(-sg*0.86,0,0.1);b.face(sg,0);
+  const w=Math.sin(now/420),w2=Math.sin(now/650);const pose=Object.assign({},RP.stance);pose.batDir=[-0.55+w*0.08,0.8,-0.3+w*0.12];pose.dy=RP.stance.dy+w2*0.015;pose.head=[0.05+w2*0.03,1.0,0];b.apply(pose);
+  const pos=new THREE.Vector3(sg*(2.5-0.75*e),1.55-0.12*e,-3.2+1.05*e);const look=new THREE.Vector3(-sg*0.5,1.18-0.03*e,0.1);r3SetCam(pos,look,31-6*e,cut,0.25);}
+ R3.trailP.length=0;}
 /* 全員を定位置へ（ベンチ中の俯瞰など） */
 function r3IdleScene(now){const m=AR.m;const d=m.def(),t=m.bat();const cd=arTeamColors(d),cb=arTeamColors(t);const DP=fwDefPos(d);
  for(const k in R3.fielders){const r=R3.fielders[k];r.g.visible=true;r.setColors(cd,false);r.setGear(k==='捕'?'catcher':null);r.glove.visible=k!=='捕';r3Dress(r,r3PlayerOf(d,k));r.setExpression(null);const p=DP[k];r.at(p[0],0,-p[1]);r.face(-p[0],p[1]);r.apply(k==='捕'?RP.crouch:RP.stand);}

@@ -72,11 +72,11 @@ function makeCandidate(o){const rank=o.rank;const q=clamp(Math.round(RANK_Q[rank
  return c;}
 function genCandidates(){const sl=G.scout?G.scout.level:0;const ss=G.scout?G.scout.spec:'';const list=[];
  const champPref=pick(PREF_DATA).name,runPref=pick(PREF_DATA).name;const champSch=genSchoolName(champPref).replace(/高校|学園|学院|高等学校/,'中学'),runSch=genSchoolName(runPref).replace(/高校|学園|学院|高等学校/,'中学');
- for(const t of TITLES_NATIONAL){const isChamp=['全国大会優勝投手','全国大会MVP'].includes(t);const isRun=t==='全国準優勝投手';const pr=isChamp?champPref:isRun?runPref:pick(PREF_DATA).name;list.push(makeCandidate({rank:isChamp?(R()<0.5?'S':'A'):(R()<0.15?'S':'A'),title:t,pref:pr,national:true,msch:isChamp?champSch:isRun?runSch:undefined}));}
+ for(const t of TITLES_NATIONAL){const isChamp=['全国大会優勝投手','全国大会MVP'].includes(t);const isRun=t==='全国準優勝投手';const pr=isChamp?champPref:isRun?runPref:pick(PREF_DATA).name;list.push(makeCandidate({rank:isChamp?(R()<0.25?'S':'A'):(R()<0.06?'S':'A'),title:t,pref:pr,national:true,msch:isChamp?champSch:isRun?runSch:undefined}));}
  for(const t of TITLES_PREF)list.push(makeCandidate({rank:R()<0.3?'A':'B',title:t,pref:G.school.pref}));
  const n=8+Math.round(sl*1.5)+(ss==='中学野球に精通'?4:0);
  for(let i=0;i<n;i++){const local=R()<(sl>=3?0.6:0.95);const pr=local?G.school.pref:pick(PREF_DATA).name;let rank=rankFromP();if(sl>=5&&R()<0.25&&RANKS.indexOf(rank)>2)rank=RANKS[RANKS.indexOf(rank)-1];const title=R()<0.25?pick(TITLES_MISC):null;list.push(makeCandidate({rank,title,pref:pr}));}
- if(R()<0.15){list.push(makeCandidate({rank:R()<0.4?'S':'A',title:null,pref:pick(PREF_DATA).name}));}
+ if(R()<0.15){list.push(makeCandidate({rank:R()<0.12?'S':'A',title:null,pref:pick(PREF_DATA).name}));}
  if(ss==='若手発掘'){for(let i=0;i<2;i++)list.push(makeCandidate({rank:R()<0.3?'A':'B',title:null,pref:R()<0.6?G.school.pref:pick(PREF_DATA).name,potential:ri(8,10)}));}
  G.candidatesAll=list;G.candidates=list;G.candidatesYear=G.year;G.mschNationals={champ:champSch,champPref,run:runSch,runPref};
  const star=list.find(c=>c.title==='全国大会優勝投手');if(star)addNews('中学野球',`全国制覇の${star.name}投手、進路に注目`,`中学の全国大会で優勝投手となった${star.pref}・${star.msch}の${star.name}君（15）。各地の強豪校がすでに動き始めているという。`,{imp:2,avatar:{seed:star.pid,pref:star.pref}});}
