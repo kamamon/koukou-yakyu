@@ -121,31 +121,33 @@ Match.prototype.contact=function(be,pe,P,sw,bHand){const meet=be.meet,pow=be.pow
  const posF=1-0.18*Math.max(0,Math.hypot(P.x,P.y)-0.8);
  const q=(1-d*0.6)*tf;res.q=q;
  /* 打球速度（km/h）：高校生の上限は160前後。完璧な当たり×パワーで伸び、投手の被弾性・被安打性で少し落ちる */
- let ev=91+q*posF*36+(pow-50)*0.30+Math.pow(clamp(pow-75,0,25),2)/110-(pe.hit-50)*0.15-(pe.hr-50)*0.15+(sw.type==='power'?8:0)+gauss(0,9);
+ /* パワーは加速度的に効く（S級は150km/h超が当たり前で、年間100本塁打も狙える） */
+ const pw=Math.min(pow,105);const powX=(pw-50)*0.2+Math.pow(clamp(pw-70,0,30),2)/80;/* 本塁打用のパワー上積み（安打判定には使わない） */
+ let ev=97+q*posF*30+(pw-50)*0.25+powX-(pe.hit-50)*0.06-(pe.hr-50)*0.08+(sw.type==='power'?8:0)+gauss(0,8);
  const bmc=(this.pa&&this.pa.bm)||{},pmc=(this.pa&&this.pa.pm)||{};
- let la=10+clamp((sw.cy-P.y)/ry,-1,1)*30+(sw.type==='power'?5:0)+gauss(0,9)+(bmc.laBias||0)-(pmc.gb||0);
+ let la=10+clamp((sw.cy-P.y)/ry,-1,1)*30+(sw.type==='power'?5:0)+clamp(pow-50,0,50)*0.1+gauss(0,9)+(bmc.laBias||0)-(pmc.gb||0);/* 強打者はやや打ち上げる */
  const hs=bHand==='左'?-1:1;
  let a=clamp(sw.dt,-3.2*tw,3.2*tw)/(2.5*tw)*35*hs+gauss(0,13)+(bmc.aBias||0)*(-hs);
- Object.assign(res,{ev:Math.round(ev),la:Math.round(la),a:Math.round(a)});
+ Object.assign(res,{ev:Math.round(ev),la:Math.round(la),a:Math.round(a),powX:Math.round(powX)});
  const pFoul=clamp(0.08+d*0.3+(1-tf)*0.45+(Math.hypot(P.x,P.y)>1?0.15:0),0,0.92);
  if(Math.abs(a)>45||(la>62&&R()<0.5)||R()<pFoul){res.kind='foul';return res;}
  res.kind='inplay';return res;};
 /* 打球の行方（安打／アウトの種類） */
 Match.prototype.battedBall=function(c,be,pe){const d=this.def();const bHand=this.pa.bHand;const pm=this.pa.pm||{};const dm=d.demon&&d.demon.inn===this.inn&&d.demon.top===this.top?d.demon.lv:0;const def=(bHand==='右'?d.defR:d.defL)+(pm.def||0)-(dm?4+2*dm:0);
- const ev=c.ev,la=c.la,a=c.a;const type=la<8?'ground':la<22?'line':la<48?'fly':'pop';c.type=type;
- const lar=la*Math.PI/180;let f=Math.pow(Math.max(0,Math.sin(2*lar)),1.3);if(la>45)f*=Math.max(0,1-(la-45)/50);
- let dist=0.0056*ev*ev*f;if(type==='ground')dist=clamp((ev-60)*0.6,8,70);if(type==='pop')dist=Math.min(dist,60);c.dist=Math.round(dist);
+ const ev=c.ev,la=c.la,a=c.a;const evc=ev-(c.powX||0);/* 安打判定用（パワー上積みを除いた打球速度） */const type=la<8?'ground':la<22?'line':la<48?'fly':'pop';c.type=type;
+ /* 飛距離：20〜45度でよく飛ぶ（実測に近い形）。150km/h・30度で約115m */const lar=(Math.min(la,60)+8)*Math.PI/180;let f=Math.pow(Math.max(0,Math.sin(2*lar)),0.8);if(la>45)f*=Math.max(0,1-(la-45)/50);
+ let dist=0.0052*ev*ev*f;if(type==='ground')dist=clamp((ev-60)*0.6,8,70);if(type==='pop')dist=Math.min(dist,60);c.dist=Math.round(dist);
  const fence=FENCE(a);c.fence=Math.round(fence);
  const gap=Math.abs(a)>12&&Math.abs(a)<32;const line=Math.abs(a)>38;
  /* フェンス際はぎりぎり越える／越えないの確率的な判定 */
  if((type==='fly'||type==='line')&&dist>=fence-10&&R()<clamp((dist-(fence-10))/16,0,1)){c.res='HR';c.dist=Math.max(c.dist,Math.round(fence+1));c.fpos=fielderOf(c);return c;}
  let hp,xb=0,tr=0;const ofDeep=d.ofDeep?1:0,ofIn=d.ofIn?1:0;
  /* 格下投手に対する上積み（ミート−被安打性の二乗）：強打者が弱い相手を打ち込む */const edge=Math.pow(clamp(be.meet-pe.hit,0,60),2)/50000+(be.meet-50)/900;
- if(type==='ground'){hp=0.17+(ev-110)/500+(be.speed-50)/450-(def-50)/600+(d.infieldIn?0.07:0)+(line?0.08:0)+edge;xb=line&&ev>115?0.5:0.04;tr=line&&be.speed>=70?0.1:0;}
- else if(type==='line'){hp=0.57+(ev-120)/350-(def-50)/700+edge;xb=0.22+(dist-80)/150+(gap?0.15:0)+(be.speed-50)/400+ofIn*0.12-ofDeep*0.08;tr=(dist>80&&Math.abs(a)>25?0.1+(be.speed-50)/250:0.01);}
+ if(type==='ground'){hp=0.17+(evc-110)/500+(be.speed-50)/450-(def-50)/600+(d.infieldIn?0.07:0)+(line?0.08:0)+edge;xb=line&&evc>115?0.5:0.04;tr=line&&be.speed>=70?0.1:0;}
+ else if(type==='line'){hp=0.57+(evc-120)/350-(def-50)/700+edge;xb=0.22+(dist-80)/150+(gap?0.15:0)+(be.speed-50)/400+ofIn*0.12-ofDeep*0.08;tr=(dist>80&&Math.abs(a)>25?0.1+(be.speed-50)/250:0.01);}
  else if(type==='fly'){if(dist<45){hp=0.04;xb=0;}else if(dist<62){hp=0.32-(def-50)/300+ofDeep*0.12-ofIn*0.12;xb=0.15;}else if(dist<82){hp=0.10-(def-50)/500+ofDeep*0.05-ofIn*0.04;xb=0.3;}else if(dist<fence-12){hp=0.16+(gap?0.14:0)-(def-50)/600-ofDeep*0.04;xb=0.55;}else{hp=0.45-ofDeep*0.12+ofIn*0.1;xb=0.75;tr=0.14+(be.speed-50)/250;}}
  else{hp=0.03;xb=0;}
- hp=clamp(hp*(1+pe.tired*0.15),0.02,0.92);
+ hp=clamp(hp*(1+pe.tired*0.15),0.02,0.72);
  const ep=clamp((0.02-(def-50)/3000)*(1-d.errRes),0.004,0.05)*(type==='ground'?1.6:type==='fly'?0.7:0.4)*(dm?1.5+0.8*dm:1);
  const r=R();
  if(r<hp){const x=R();c.res=x<clamp(tr,0,0.3)?'3B':x<clamp(tr+xb,0,0.9)?'2B':'1B';}

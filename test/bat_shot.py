@@ -10,7 +10,7 @@ with sync_playwright() as p:
     if pg.query_selector('[data-act="qShift"]'): pg.click('[data-act="qShift"]')
     pg.evaluate("enqueue({type:'practice',opp:{name:'横浜学院',strength:60,pref:'神奈川'}});render();");pg.wait_for_timeout(100)
     pg.select_option('#modeSel','action');pg.click('[data-act="lineupSave"]');pg.wait_for_timeout(400)
-    pg.click('[data-act="arBannerNext"]');pg.wait_for_timeout(300)
+    pg.evaluate("if(AR.phase==='intro')ACT.arIntroSkip()");pg.wait_for_timeout(200);pg.click('[data-act="arBannerNext"]');pg.wait_for_timeout(300)
     for i in range(60):
         st=pg.evaluate("[AR.phase,AR.side]")
         if st[0]=='pre' and st[1]=='bat':break

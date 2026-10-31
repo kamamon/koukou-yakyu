@@ -241,9 +241,8 @@ function r3HomeTex(night){const N=1024;const c=document.createElement('canvas');
  for(const sg of [-1,1]){const a=T(sg*0.23,-0.05),b=T(sg*8,7.72);g.beginPath();g.moveTo(a[0],a[1]);g.lineTo(b[0],b[1]);g.stroke();}
  const tex=new THREE.CanvasTexture(c);tex.colorSpace=THREE.SRGBColorSpace;tex.anisotropy=R3.renderer?R3.renderer.capabilities.getMaxAnisotropy():4;tex.wrapS=tex.wrapT=THREE.ClampToEdgeWrapping;return tex;}
 function r3SetNight(night,force){if(R3.night===night&&!force)return;R3.night=night;
- const g=R3.skyCv.getContext('2d');const gr=g.createLinearGradient(0,0,0,256);if(night){gr.addColorStop(0,'#050b14');gr.addColorStop(0.55,'#0f1d31');gr.addColorStop(1,'#223a56');}else{gr.addColorStop(0,'#2f7fd0');gr.addColorStop(0.5,'#86bdeb');gr.addColorStop(1,'#dcecf8');}g.fillStyle=gr;g.fillRect(0,0,1024,256);
- if(!night){/* 夏の雲 */let sd=19;const rnd=()=>{sd=(sd*1103515245+12345)&0x7fffffff;return sd/0x7fffffff;};for(let i=0;i<34;i++){const x=rnd()*1024,y=95+rnd()*70,w=30+rnd()*90,h=8+rnd()*18;for(let k=0;k<6;k++){const gx=x+(rnd()-0.5)*w,gy=y+(rnd()-0.5)*h;const rr=8+rnd()*22;const rg=g.createRadialGradient(gx,gy,0,gx,gy,rr);rg.addColorStop(0,'rgba(255,255,255,.85)');rg.addColorStop(0.6,'rgba(255,255,255,.35)');rg.addColorStop(1,'rgba(255,255,255,0)');g.fillStyle=rg;g.beginPath();g.ellipse(gx,gy,rr*1.6,rr*0.8,0,0,Math.PI*2);g.fill();}}}
- else{for(let i=0;i<120;i++){g.fillStyle='rgba(255,255,255,'+(0.3+Math.random()*0.6)+')';g.fillRect(Math.random()*1024,Math.random()*120,1.2,1.2);}}
+ const g=R3.skyCv.getContext('2d');const gr=g.createLinearGradient(0,0,0,256);if(night){gr.addColorStop(0,'#050b14');gr.addColorStop(0.55,'#0f1d31');gr.addColorStop(1,'#223a56');}else{/* 雲やモヤのない澄んだ青空（地平線近くも白くしない） */gr.addColorStop(0,'#2b78cc');gr.addColorStop(0.55,'#5ea4e4');gr.addColorStop(1,'#8fc3ec');}g.fillStyle=gr;g.fillRect(0,0,1024,256);
+ if(night){for(let i=0;i<120;i++){g.fillStyle='rgba(255,255,255,'+(0.3+Math.random()*0.6)+')';g.fillRect(Math.random()*1024,Math.random()*120,1.2,1.2);}}
  R3.skyTex.needsUpdate=true;
  R3.fog.color.set(night?0x0e1620:0xc9dcea);R3.hemi.intensity=night?0.22:0.78;R3.hemi.color.set(night?0x8fa8cf:0xcfe3ff);R3.hemi.groundColor.set(night?0x1a2a1a:0x4a6b3a);
  R3.sun.intensity=night?0.95:1.25;R3.sun.color.set(night?0xdbe6ff:0xfff1dc);R3.sun.position.set(night?40:-70,night?120:120,night?-70:-30);

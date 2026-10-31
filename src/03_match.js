@@ -55,7 +55,7 @@ class Match{
   const boost=this.teamBoost(t,ctx)+condOf(b)*4;meet+=boost;pow+=boost;
   meet*=1+mult;pow*=1+mult;
   const f=1-clamp((b.fatigue-50)/100,0,0.3);
-  return {meet:meet*f,pow:pow*f,eye,kRes:acc.kRes||0,bunt:b.bat.bunt+(acc.bunt||0),speed:b.bat.speed+(acc.speed||0),steal:b.bat.steal+(acc.steal||0),hrp:acc.hrp||0,xb:acc.xb||0,dpRes:acc.dpRes||0,safeBunt:acc.safeBunt||0};}
+  return {meet:meet*f,pow:pow*f,powRaw:(vsR?b.bat.powR:b.bat.powL)+(acc.pow||0),eye,kRes:acc.kRes||0,bunt:b.bat.bunt+(acc.bunt||0),speed:b.bat.speed+(acc.speed||0),steal:b.bat.steal+(acc.steal||0),hrp:acc.hrp||0,xb:acc.xb||0,dpRes:acc.dpRes||0,safeBunt:acc.safeBunt||0};}
  pitchingEff(p,b,pitch){const d=this.def();const ctx=this.pitCtx(p,b,pitch);const acc=abilAcc(p,ctx);const vsR=ctx.pR;
   let hit=(vsR?p.pit.hitR:p.pit.hitL)+(acc.hit||0),hr=(vsR?p.pit.hrR:p.pit.hrL)+(acc.hr||0),k=(vsR?p.pit.kR:p.pit.kL)+(acc.k||0),velo=p.pit.velo+(acc.velo||0);
   const boost=this.teamBoost(d,ctx)+condOf(p)*4;hit+=boost;k+=boost;
@@ -104,9 +104,11 @@ class Match{
    /* 打者と投手の力関係（ミート−被安打性）。格下投手に対しては二乗で効き、強打者が弱い相手を打ち込む */
    const dpos=clamp(be.meet-pe.hit,0,60);const edge=dpos*dpos/150000;/* 格下投手を打ち込む上積み */
    const cv=Math.pow(Math.max(0,be.meet-65),2)/26000;/* ミートが高いほど加速度的に打つ */
-   /* 本塁打：パワーで加速度的に増え、投手の被弾性は高いほど強く効く（弱い投手でも凡打者は簡単には打てない） */
-   let hrp=0.002+(be.pow-50)/3500+Math.pow(Math.max(0,be.pow-65),2)/40000-(pe.hr>50?(pe.hr-50)/800:(pe.hr-50)/2500)-(sharp-50)/4000+be.hrp+dpos*dpos/450000*(0.5+clamp((be.pow-50)/80,0,1));hrp=clamp(hrp,0.002,0.12);
-   let hp=0.28+(be.meet-50)/1400+cv+edge-(pe.hit-50)/900-(def-50)/1300-(move-50)/2000+(be.pow-50)/2200-(pe.velo-120)/1800+(d.infieldIn?0.05:0);hp=clamp(hp*(1+pe.tired*0.1),0.14,0.58);
+   /* 本塁打：パワーで指数的に増える（S級は格下相手なら1試合1本以上、年間100本も）。投手の被弾性が低い（弱い）ほど増え、高いほど減る */
+   const pw=0.5*be.pow+0.5*(be.powRaw!=null?be.powRaw:be.pow);/* 得点圏などの一時的な上昇は本塁打には半分だけ効く */const hrBase=pw>=60?Math.min(0.36,0.004*Math.exp((pw-60)/8.3)):Math.max(0.001,0.004*(pw-30)/30);
+   const hrPit=(pe.hr<55?1+(55-pe.hr)/120:Math.exp(-(pe.hr-55)/32))*(1-(sharp-50)/400);
+   let hrp=hrBase*hrPit+be.hrp;hrp=clamp(hrp,0.001,0.45);
+   let hp=0.28+(be.meet-50)/1400+cv+edge-(pe.hit-50)/900-(def-50)/1300-(move-50)/2000+(be.pow-50)/2200-(pe.velo-120)/1800+(d.infieldIn?0.05:0);hp=clamp(hp*(1+pe.tired*0.1),0.14,0.58);hp*=1-hrp*0.8;/* 本塁打になる分は単打等から差し引く */if(hp+hrp>0.72){const kk=0.72/(hp+hrp);hp*=kk;hrp*=kk;}
    let ep=clamp((0.02-(def-50)/3000)*(1-d.errRes),0.004,0.05);
    const r2=R();
    if(r2<hrp){bs.h++;bs.hr++;ps.h++;ps.hr++;const nOn=this.bases.filter(Boolean).length;this.advanceAll(3,b,true);this.scoreRun(b,b,true);this.addLog(`${pre}${name} ${nOn+1}ラン本塁打！！`,'hr');ev='HR';}
