@@ -11,7 +11,7 @@ const TOURNEY_DEFS={
  invite2:{name:'強豪校招待大会',imp:1.4,mercy:true},
  invite3:{name:'全国選抜招待大会',imp:1.8,mercy:false},
  senbatsu:{name:'選抜高校野球大会（春の甲子園）',imp:1.9,mercy:false},
- practice:{name:'練習試合',imp:0.6,mercy:true},
+ practice:{name:'練習試合',imp:0.6,mercy:{inn:7,runs:10}},/* 練習試合は7回以降10点差でコールド（最低7回は打席が回る） */
 };
 function userTeamRef(){return {name:G.school.name,strength:teamStrength(),isUser:true,pref:G.school.pref};}
 function champOf(pr){const pw=G.schools.powers[pr.name];if(R()<0.7){const s=pick(pw);return {name:s.name,strength:Math.round(clamp(s.strength+gauss(0,3),40,s.elite?96:89)),pref:pr.name,elite:!!s.elite};}return {name:genSchoolNameU(pr.name),strength:Math.round(clamp(52+pr.pw*5+gauss(0,6),40,86)),pref:pr.name};}

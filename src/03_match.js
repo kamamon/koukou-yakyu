@@ -60,7 +60,7 @@ class Match{
   let hit=(vsR?p.pit.hitR:p.pit.hitL)+(acc.hit||0),hr=(vsR?p.pit.hrR:p.pit.hrL)+(acc.hr||0),k=(vsR?p.pit.kR:p.pit.kL)+(acc.k||0),velo=p.pit.velo+(acc.velo||0);
   const boost=this.teamBoost(d,ctx)+condOf(p)*4;hit+=boost;k+=boost;
   let tired=this.tired(d,p,acc);if(d.compose>0)tired=Math.max(0,tired-0.12);
-  const f=1-tired;
+  const f=1-tired*0.6;/* 疲労で能力は最大3割強落ちる（以前は半減して打ち込まれすぎた） */
   let ctrlMod=(acc.ctrl||0)+(d.compose>0?5:0);
   return {hit:hit*f,hr:hr*f,k:k*f,velo:velo-tired*8,tired,ctrlMod,sharpMod:acc.sharp||0,moveMod:acc.move||0,stealDef:acc.stealDef||0};}
  pickPitch(p){const ps=p.pit.pitches;if(!ps.length)return {name:'ストレート',velo:p.pit.velo,move:40,sharp:40,ctrl:40};const w=ps.map(x=>Math.max(5,(x.move+x.sharp+x.ctrl)/3)*(x.name==='ストレート'?1.5:1));let r=R()*sum(w);for(let i=0;i<ps.length;i++){r-=w[i];if(r<=0)return ps[i];}return ps[0];}
@@ -88,7 +88,8 @@ class Match{
   if(cmd==='steal'){this.trySteal(pe);if(this.outs>=3){this.endHalf();return 'steal';}}
   if(cmd==='bunt'&&(this.bases[0]||this.bases[1])&&this.outs<2){return this.doBunt(b,be,pe);}
   const sharp=pitch.sharp+pe.sharpMod,ctrl=pitch.ctrl+pe.ctrlMod,move=pitch.move+pe.moveMod;
-  let kp=0.16+(pe.k-50)/750+(sharp-50)/850+(pe.velo-120)/400-(be.meet-50)/750-(be.eye-50)/1100-be.kRes/300;kp=clamp(kp,0.04,0.45);
+  /* 三振率：打者のミートが高いほど下がる。格上投手でも極端にはならない */
+  let kp=0.15+(pe.k-50)/800+(sharp-50)/1000+(pe.velo-120)/500-(be.meet-50)/600-(be.eye-50)/1100-be.kRes/300;kp=clamp(kp,0.03,0.42);
   let bbp=0.085+(be.eye-50)/700-(ctrl-50)/600+pe.tired*0.08;bbp=clamp(bbp,0.02,0.28);
   const hbp=0.008;
   let r=R();let np=0;
@@ -100,8 +101,12 @@ class Match{
   else if(r<kp+bbp+hbp){np=ri(2,5);bs.pa++;ps.bb++;this.forceAdvance(b);this.addLog(`${pre}${name} 死球`,'bb');ev='HBP';}
   else{np=ri(1,5);bs.pa++;bs.ab++;
    const bHand=b.bats==='両'?(p.throws==='右'?'左':'右'):b.bats;const def=bHand==='右'?d.defR:d.defL;
-   let hrp=0.013+(be.pow-50)/1000-(pe.hr-50)/1200-(sharp-50)/3000+be.hrp;hrp=clamp(hrp,0.002,0.1);
-   let hp=0.31+(be.meet-50)/850-(pe.hit-50)/850-(def-50)/1200-(move-50)/1800+(be.pow-50)/1400-(pe.velo-120)/1600+(d.infieldIn?0.05:0);hp=clamp(hp*(1+pe.tired*0.2),0.16,0.46);
+   /* 打者と投手の力関係（ミート−被安打性）。格下投手に対しては二乗で効き、強打者が弱い相手を打ち込む */
+   const dpos=clamp(be.meet-pe.hit,0,60);const edge=dpos*dpos/150000;/* 格下投手を打ち込む上積み */
+   const cv=Math.pow(Math.max(0,be.meet-65),2)/26000;/* ミートが高いほど加速度的に打つ */
+   /* 本塁打：パワーで加速度的に増え、投手の被弾性は高いほど強く効く（弱い投手でも凡打者は簡単には打てない） */
+   let hrp=0.002+(be.pow-50)/3500+Math.pow(Math.max(0,be.pow-65),2)/40000-(pe.hr>50?(pe.hr-50)/800:(pe.hr-50)/2500)-(sharp-50)/4000+be.hrp+dpos*dpos/450000*(0.5+clamp((be.pow-50)/80,0,1));hrp=clamp(hrp,0.002,0.12);
+   let hp=0.28+(be.meet-50)/1400+cv+edge-(pe.hit-50)/900-(def-50)/1300-(move-50)/2000+(be.pow-50)/2200-(pe.velo-120)/1800+(d.infieldIn?0.05:0);hp=clamp(hp*(1+pe.tired*0.1),0.14,0.58);
    let ep=clamp((0.02-(def-50)/3000)*(1-d.errRes),0.004,0.05);
    const r2=R();
    if(r2<hrp){bs.h++;bs.hr++;ps.h++;ps.hr++;const nOn=this.bases.filter(Boolean).length;this.advanceAll(3,b,true);this.scoreRun(b,b,true);this.addLog(`${pre}${name} ${nOn+1}ラン本塁打！！`,'hr');ev='HR';}
@@ -136,14 +141,16 @@ class Match{
   else if(x<pr+0.2){bs.ab++;this.outsUp(1);this.addLog(`${b.name} バント失敗（小フライ）`,'out');}
   else{bs.ab++;const lead=this.bases[1]&&!this.bases[2]?1:0;this.bases[lead]=null;this.outsUp(1);if(!this.bases[0])this.bases[0]=b;else if(!this.bases[1])this.bases[1]=b;this.addLog(`${b.name} バント失敗、走者が封殺される`,'out');}
   this.nextBatter();return 'BUNT';}
+ /* コールド条件：true=5回10点差/7回7点差、{inn,runs}=その回以降runs点差（練習試合は7回10点差） */
+ mercyHit(diff){const mr=this.opt.mercy;if(!mr)return false;if(mr===true)return this.inn>=5&&diff>=(this.inn>=7?7:10);return this.inn>=mr.inn&&diff>=mr.runs;}
  endHalf(){
   const home=this.score[1],away=this.score[0];
   if(this.top){
    if(this.inn>=9&&home>away){this.finish(1,'');return;}
-   if(this.opt.mercy&&this.inn>=5&&home-away>=(this.inn>=7?7:10)){this.finish(1,'コールド');return;}
+   if(this.mercyHit(home-away)){this.finish(1,'コールド');return;}
    this.top=false;this.startHalf();return;}
   if(this.inn>=9&&home!==away){this.finish(home>away?1:0,'');return;}
-  if(this.opt.mercy&&this.inn>=5&&Math.abs(home-away)>=(this.inn>=7?7:10)){this.finish(home>away?1:0,'コールド');return;}
+  if(this.mercyHit(Math.abs(home-away))){this.finish(home>away?1:0,'コールド');return;}
   if(this.inn>=15){this.finish(R()<0.5?0:1,'延長打ち切り(抽選)');return;}
   this.inn++;this.top=true;this.startHalf();}
  finish(w,reason){this.done=true;this.winner=w;this.endReason=reason;const W=w?this.B:this.A,L=w?this.A:this.B;this.addLog(`試合終了 ${W.name} ${this.score[w]}-${this.score[1-w]} ${L.name}${reason?'（'+reason+'）':''}`,'end');

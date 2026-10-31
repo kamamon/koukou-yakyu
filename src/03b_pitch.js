@@ -89,7 +89,7 @@ Match.prototype.cpuSwingInput=function(P){const pa=this.pa;const be=pa.be,b=pa.b
  if(pa.cmd==='take')return null;
  const eyeF=clamp((be.eye-30)/80,0,0.85);const brk=Math.hypot(P.bx,P.by);
  const pe=pa.pe;const r0=clamp(0.30+(be.meet-50)/330,0.12,0.5);
- const nsg=clamp(0.44+(pe.k-be.meet)/300+Math.max(0,P.v-125)/300+(P.sharp-50)/900,0.22,1.3);
+ const nsg=clamp(0.46+(pe.k-be.meet)/450+Math.max(0,P.v-125)/450+(P.sharp-50)/1100,0.20,1.05);
  const sp=clamp(0.3*r0-(be.eye-50)/900+(pe.k-50)/1200,0.03,0.25)+brk*0.12*(1-eyeF)*P.late;
  const px=P.x+gauss(0,sp),py=P.y+gauss(0,sp);
  const dz=Math.max(Math.abs(px),Math.abs(py));
@@ -106,8 +106,8 @@ Match.prototype.cpuSwingInput=function(P){const pa=this.pa;const be=pa.be,b=pa.b
  if(pa.cmd==='hitrun')swingP=dz<=1.5?0.97:0.6;
  if(R()>=swingP)return null;
  const sc=clamp(nsg*r0*(bm.noiseMul||1),0.05,0.5);
- const expV=pa.p.pit.velo;let st=64+(pe.k-be.meet)*0.5+Math.max(0,P.v-125)*0.6+Math.abs(P.v-expV)*2.2*(1-eyeF*0.7)+(P.name!=='ストレート'?P.late*35*(1-eyeF):0)+(pm.stBias||0);
- let type=(strikes<2&&be.pow>=62&&R()<0.5+(be.pow-62)/60)?'power':'meet';if(bm.swing&&R()<(bm.swingProb==null?1:bm.swingProb)&&!(strikes===2&&bm.swing==='power'&&R()<0.3))type=bm.swing;
+ const expV=pa.p.pit.velo;let st=63+(pe.k-be.meet)*0.35+Math.max(0,P.v-125)*0.45+Math.abs(P.v-expV)*2.0*(1-eyeF*0.7)+(P.name!=='ストレート'?P.late*30*(1-eyeF):0)+(pm.stBias||0);
+ let type=(strikes<2&&be.pow>=55&&R()<0.35+(be.pow-55)/80)?'power':'meet';if(bm.swing&&R()<(bm.swingProb==null?1:bm.swingProb)&&!(strikes===2&&bm.swing==='power'&&R()<0.3))type=bm.swing;
  return {type,cx:px+gauss(0,sc),cy:py+gauss(0,sc)-(bm.cyUp||0),dt:gauss(0,st)+(bm.dtBias||0)};};
 /* スイングと球の接触判定 */
 Match.prototype.contact=function(be,pe,P,sw,bHand){const meet=be.meet,pow=be.pow;
@@ -120,7 +120,8 @@ Match.prototype.contact=function(be,pe,P,sw,bHand){const meet=be.meet,pow=be.pow
  if(d>1){if(R()<0.6){res.kind='foul';res.tip=true;}return res;}
  const posF=1-0.18*Math.max(0,Math.hypot(P.x,P.y)-0.8);
  const q=(1-d*0.6)*tf;res.q=q;
- let ev=75+q*posF*70+(pow-50)*0.3-(pe.hit-50)*0.3-(pe.hr-50)*0.15+(sw.type==='power'?14:0)+gauss(0,6);
+ /* 打球速度（km/h）：高校生の上限は160前後。完璧な当たり×パワーで伸び、投手の被弾性・被安打性で少し落ちる */
+ let ev=91+q*posF*36+(pow-50)*0.30+Math.pow(clamp(pow-75,0,25),2)/110-(pe.hit-50)*0.15-(pe.hr-50)*0.15+(sw.type==='power'?8:0)+gauss(0,9);
  const bmc=(this.pa&&this.pa.bm)||{},pmc=(this.pa&&this.pa.pm)||{};
  let la=10+clamp((sw.cy-P.y)/ry,-1,1)*30+(sw.type==='power'?5:0)+gauss(0,9)+(bmc.laBias||0)-(pmc.gb||0);
  const hs=bHand==='左'?-1:1;
@@ -132,15 +133,17 @@ Match.prototype.contact=function(be,pe,P,sw,bHand){const meet=be.meet,pow=be.pow
 /* 打球の行方（安打／アウトの種類） */
 Match.prototype.battedBall=function(c,be,pe){const d=this.def();const bHand=this.pa.bHand;const pm=this.pa.pm||{};const dm=d.demon&&d.demon.inn===this.inn&&d.demon.top===this.top?d.demon.lv:0;const def=(bHand==='右'?d.defR:d.defL)+(pm.def||0)-(dm?4+2*dm:0);
  const ev=c.ev,la=c.la,a=c.a;const type=la<8?'ground':la<22?'line':la<48?'fly':'pop';c.type=type;
- const lar=la*Math.PI/180;let f=Math.pow(Math.max(0,Math.sin(2*lar)),0.8);if(la>45)f*=Math.max(0,1-(la-45)/50);
- let dist=0.0067*ev*ev*f;if(type==='ground')dist=clamp((ev-60)*0.6,8,70);if(type==='pop')dist=Math.min(dist,60);c.dist=Math.round(dist);
+ const lar=la*Math.PI/180;let f=Math.pow(Math.max(0,Math.sin(2*lar)),1.3);if(la>45)f*=Math.max(0,1-(la-45)/50);
+ let dist=0.0056*ev*ev*f;if(type==='ground')dist=clamp((ev-60)*0.6,8,70);if(type==='pop')dist=Math.min(dist,60);c.dist=Math.round(dist);
  const fence=FENCE(a);c.fence=Math.round(fence);
  const gap=Math.abs(a)>12&&Math.abs(a)<32;const line=Math.abs(a)>38;
- if((type==='fly'||type==='line')&&dist>=fence){c.res='HR';c.fpos=fielderOf(c);return c;}
+ /* フェンス際はぎりぎり越える／越えないの確率的な判定 */
+ if((type==='fly'||type==='line')&&dist>=fence-10&&R()<clamp((dist-(fence-10))/16,0,1)){c.res='HR';c.dist=Math.max(c.dist,Math.round(fence+1));c.fpos=fielderOf(c);return c;}
  let hp,xb=0,tr=0;const ofDeep=d.ofDeep?1:0,ofIn=d.ofIn?1:0;
- if(type==='ground'){hp=0.19+(ev-110)/500+(be.speed-50)/450-(def-50)/450+(d.infieldIn?0.07:0)+(line?0.08:0);xb=line&&ev>115?0.5:0.04;tr=line&&be.speed>=70?0.1:0;}
- else if(type==='line'){hp=0.60+(ev-120)/350-(def-50)/500;xb=0.22+(dist-80)/150+(gap?0.15:0)+(be.speed-50)/400+ofIn*0.12-ofDeep*0.08;tr=(dist>80&&Math.abs(a)>25?0.1+(be.speed-50)/250:0.01);}
- else if(type==='fly'){if(dist<50){hp=0.05;xb=0;}else if(dist<80){hp=0.3-(def-50)/300+ofDeep*0.12-ofIn*0.12;xb=0.15;}else if(dist<fence-15){hp=0.08+(gap?0.12:0)-ofDeep*0.03;xb=0.5;}else{hp=0.45-ofDeep*0.12+ofIn*0.1;xb=0.75;tr=0.14+(be.speed-50)/250;}}
+ /* 格下投手に対する上積み（ミート−被安打性の二乗）：強打者が弱い相手を打ち込む */const edge=Math.pow(clamp(be.meet-pe.hit,0,60),2)/50000+(be.meet-50)/900;
+ if(type==='ground'){hp=0.17+(ev-110)/500+(be.speed-50)/450-(def-50)/600+(d.infieldIn?0.07:0)+(line?0.08:0)+edge;xb=line&&ev>115?0.5:0.04;tr=line&&be.speed>=70?0.1:0;}
+ else if(type==='line'){hp=0.57+(ev-120)/350-(def-50)/700+edge;xb=0.22+(dist-80)/150+(gap?0.15:0)+(be.speed-50)/400+ofIn*0.12-ofDeep*0.08;tr=(dist>80&&Math.abs(a)>25?0.1+(be.speed-50)/250:0.01);}
+ else if(type==='fly'){if(dist<45){hp=0.04;xb=0;}else if(dist<62){hp=0.32-(def-50)/300+ofDeep*0.12-ofIn*0.12;xb=0.15;}else if(dist<82){hp=0.10-(def-50)/500+ofDeep*0.05-ofIn*0.04;xb=0.3;}else if(dist<fence-12){hp=0.16+(gap?0.14:0)-(def-50)/600-ofDeep*0.04;xb=0.55;}else{hp=0.45-ofDeep*0.12+ofIn*0.1;xb=0.75;tr=0.14+(be.speed-50)/250;}}
  else{hp=0.03;xb=0;}
  hp=clamp(hp*(1+pe.tired*0.15),0.02,0.92);
  const ep=clamp((0.02-(def-50)/3000)*(1-d.errRes),0.004,0.05)*(type==='ground'?1.6:type==='fly'?0.7:0.4)*(dm?1.5+0.8*dm:1);
