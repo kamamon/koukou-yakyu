@@ -7,10 +7,10 @@
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="高校野球">
 <meta name="theme-color" content="#1e6b43">
 <title>高校野球シミュレーション</title>
+<script>const APP_VER='22',APP_BUILD='20261031220516';</script>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=BIZ+UDPGothic:wght@400;700&family=Zen+Antique&family=Oswald:wght@500;700&family=Anton&family=Bebas+Neue&family=Graduate&family=Rye&family=Alfa+Slab+One&family=Black+Ops+One&family=Permanent+Marker&family=Bungee&family=Russo+One&family=Dela+Gothic+One&family=Reggae+One&family=Yuji+Syuku&family=Kaisei+Decol&family=RocknRoll+One&family=Shippori+Mincho:wght@700&family=Rampart+One&family=Mochiy+Pop+One&family=Noto+Sans+JP:wght@400;700&display=swap">
 <style>
@@ -36,6 +36,7 @@ a{color:var(--accent)}
 [hidden]{display:none!important}
 .top{position:sticky;top:env(safe-area-inset-top,0px);z-index:25;background:var(--accent);color:#fff;padding-block:8px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;justify-content:space-between;align-items:center;gap:10px}
 .top .ttl{display:flex;align-items:center;gap:8px;min-width:0}
+.top .ver{display:inline-block;margin-left:6px;font-size:10px;font-weight:600;letter-spacing:.04em;opacity:.75;vertical-align:middle;background:rgba(255,255,255,.16);border-radius:999px;padding:1px 6px;font-family:var(--font-num)}
 .top .school{font-family:var(--font-display);font-size:17px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .top .meta{font-size:12px;text-align:right;line-height:1.35;white-space:nowrap;font-variant-numeric:tabular-nums}
 .top .meta b{font-family:var(--font-num);font-size:14px;letter-spacing:.02em}
@@ -2540,7 +2541,13 @@ function capSVG(u,e,w){return `<svg viewBox="0 0 160 110" width="${w||110}" role
 function uniformPreview(u,e,opt){opt=opt||{};return `<div class="uni-prev">${jerseySVG(u,e,{view:'front',width:opt.w||130,number:opt.number})}${jerseySVG(u,e,{view:'back',width:opt.w||130,number:opt.number==null?1:opt.number})}<div class="col center">${capSVG(u,e,100)}${emblemSVG(e,64)}</div></div>`;}
 /* ================= 画面描画 ================= */
 function render(){if(!G){showSetup();return;}$('#setup').hidden=true;$('#game').hidden=false;renderTop();renderNav();renderTab();if(!UI.modal)processQueue();}
-function renderTop(){const el=$('#topbar');const pend=G.queue.length?'<span class="badge gold">イベント</span>':'';el.innerHTML=`<div class="ttl">${emblemSVG(G.emblem,30)}<div class="school">${esc(G.school.name)}</div>${pend}</div><div class="meta"><div>${dateStr()}（${G.year}年目）</div><div><b class="${G.money<0?'neg':''}">${yen(G.money)}</b> ・ 評判 <b>${G.rep}</b></div></div>`;}
+/* バージョン表記（ビルド時に埋め込み） */
+function appVer(){return typeof APP_VER!=='undefined'?APP_VER:'?';}
+function appBuild(){const b=typeof APP_BUILD!=='undefined'?APP_BUILD:'';return b?`${b.slice(0,4)}-${b.slice(4,6)}-${b.slice(6,8)} ${b.slice(8,10)}:${b.slice(10,12)}`:'';}
+/* ステータスバー／ブラウザUIの色（ホーム画面アプリでは上部のステータスバーがこの色で塗られる） */
+function setThemeColor(c){try{let m=document.querySelector('meta[name="theme-color"]');if(!m){m=document.createElement('meta');m.name='theme-color';document.head.appendChild(m);}if(!c){const dark=document.documentElement.dataset.theme==='dark'||(document.documentElement.dataset.theme!=='light'&&window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches);c=dark?'#3fa36b':'#1e6b43';}if(m.content!==c)m.content=c;}catch(e){}}
+try{if(window.matchMedia)window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>{if(!(typeof AR!=='undefined'&&AR.el&&!AR.el.hidden))setThemeColor();});}catch(e){}
+function renderTop(){const el=$('#topbar');setThemeColor();const pend=G.queue.length?'<span class="badge gold">イベント</span>':'';el.innerHTML=`<div class="ttl">${emblemSVG(G.emblem,30)}<div class="school">${esc(G.school.name)}<span class="ver" title="ビルド ${appBuild()}">v${appVer()}</span></div>${pend}</div><div class="meta"><div>${dateStr()}（${G.year}年目）</div><div><b class="${G.money<0?'neg':''}">${yen(G.money)}</b> ・ 評判 <b>${G.rep}</b></div></div>`;}
 const TABS=[['home','🏠','ホーム'],['players','👥','部員'],['mgmt','🏫','経営'],['match','⚾','試合'],['scout','🔍','スカウト'],['more','📰','その他']];
 function renderNav(){$('#nav').innerHTML=TABS.map(t=>`<button class="${UI.tab===t[0]?'on':''}" data-act="tab" data-tab="${t[0]}"><span class="ic">${t[1]}</span>${t[2]}</button>`).join('');}
 ACT.tab=d=>{UI.tab=d.tab;render();window.scrollTo(0,0);};
@@ -2694,6 +2701,7 @@ function viewMore(){const t=UI.moreTab;const chips=[['news','新聞'],['stars','
  <section class="card"><h3>ユニフォーム・校章</h3>${uniformPreview(G.uniform,G.emblem,{w:110})}<div style="margin-top:8px">${b('ユニフォームと校章を編集','uniformEditor',{},'primary')}</div></section>
  ${viewEditList()}
  <section class="card"><h3>セーブデータ</h3><div class="small muted">この端末のブラウザに自動保存されます（週を進めるたびに保存）。別の端末に移す場合は書き出してください。</div><div class="wrap" style="margin-top:8px">${b('今すぐ保存','saveNow',{},'')}${b('書き出し','exportSave',{},'')}${b('読み込み','importSave',{},'')}</div><textarea id="saveText" rows="4" style="width:100%;margin-top:8px;font-size:11px" placeholder="書き出したデータがここに表示されます／読み込む場合はここに貼り付けて「読み込み」"></textarea></section>
+ <section class="card"><h3>バージョン</h3><div class="row" style="justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap"><div><b>v${appVer()}</b> <span class="small muted">ビルド ${appBuild()}</span></div>${b('更新を確認して再読み込み','appReload',{},'sm')}</div><div class="hint">ホーム画面のアプリは、新しい版が公開されると次回起動時に自動で入れ替わります。画面上部の「v番号」で今動いている版を確認できます。</div></section>
  <section class="card"><h3>新しいゲーム</h3><div class="small muted">現在のデータは消えます。</div><div style="margin-top:8px">${b('最初からやり直す','newGameConfirm',{},'danger')}</div></section>
  <section class="card"><h3>遊び方</h3><div class="small">毎週、部員の練習メニューとグラウンド整備を決めて「週を進める」。5月地区大会→7月甲子園予選→8月甲子園→9月秋季予選→10月地区大会→11月神宮大会→3月招待大会の流れで1年が進みます。設備・監督・スカウトに投資し、2月の予算委員会で予算を勝ち取り、スカウトで有望な中学生を獲得しましょう。卒業生の進路は引退まで追跡でき、プロで活躍すると評判が大きく上がります。</div></section>`;}
  return `<div class="hd">その他</div><div class="subtabs">${chips}</div>${body}`;}
@@ -2702,6 +2710,7 @@ ACT.newsCat=d=>{UI.newsCat=d.c;render();};
 ACT.alumDetail=d=>{const g=G.graduates.find(x=>x.id==d.id);if(!g)return;openModal(`<h2>${esc(g.name)}</h2><div class="kv"><b>卒業</b><span>${g.gradYear}年（${g.pos}手）</span><b>現在</b><span>${esc(g.path)}／${esc(g.level||'')}${g.team?'・'+esc(g.team):''}（${g.age}歳）</span><b>能力</b><span>${rk(g.rating)} ${Math.round(g.rating)}</span><b>タイトル</b><span>${g.titles.map(esc).join('、')||'なし'}</span>${g.unique.length?`<b>固有特能</b><span>${g.unique.map(esc).join('、')}</span>`:''}</div><div class="sep"></div><b class="small">軌跡</b><div class="timeline">${g.timeline.map(t=>`<div><span class="y">${t.y}</span>${esc(t.t)}</div>`).join('')}</div>`);};
 ACT.tlog=d=>{const t=G.tourneyLog[parseInt(d.i)];if(!t)return;openModal(`<h2>${esc(t.name)} <span class="muted small">${t.year}年</span></h2>${tourneyRoundsHtml(t)}<div class="sep"></div><b class="small">自チームの試合</b>${t.userGames.map(g=>`<div class="small">${esc(g.round)} vs ${esc(g.opp)}：${g.won?'○':'●'} ${g.score[0]}-${g.score[1]}${g.mvp?'（活躍：'+esc(g.mvp)+'）':''}</div>`).join('')||'<div class="muted small">なし</div>'}`);};
 CHG.simMode=(d,el)=>{G.settings.mode=el.value;saveGame();};
+ACT.appReload=()=>{saveGame();toast('更新を確認しています…');const go=()=>location.reload();try{if('serviceWorker' in navigator){navigator.serviceWorker.getRegistrations().then(rs=>Promise.all(rs.map(r=>r.update().catch(()=>{})))).then(()=>setTimeout(go,600)).catch(go);}else go();}catch(e){go();}};
 ACT.saveNow=()=>{saveGame();toast('保存しました');};
 ACT.exportSave=()=>{const ta=$('#saveText');ta.value=btoa(unescape(encodeURIComponent(serialize())));ta.select();toast('書き出しました。テキストをコピーして保管してください');};
 ACT.importSave=()=>{const ta=$('#saveText');try{const g=JSON.parse(decodeURIComponent(escape(atob(ta.value.trim()))));if(!g.players)throw 0;G=g;migrate();saveGame();UI.tab='home';render();toast('読み込みました');}catch(e){toast('読み込みに失敗しました');}};
@@ -2984,8 +2993,8 @@ function startActionUI(){const S=actionSettings();AR.speed=S.speed;AR.m=UI.match
  const st=$('#arstage');st.onpointerdown=arPointerDown;st.onpointermove=arPointerMove;st.onpointerup=arPointerUp;st.onpointercancel=e=>{AR.ptrDown=false;AR.hold=false;};
  window.addEventListener('resize',arResize);document.addEventListener('keydown',arKey);
  try{if(window.ResizeObserver){AR.ro=new ResizeObserver(()=>arResize());AR.ro.observe(st);}}catch(e){}
- arResize();if(S.view3d&&typeof r3Start==='function')r3Start(st);arResize();arStartIntro();arLoop();}
-function endActionUI(){cancelAnimationFrame(AR.raf);AR.raf=0;if(typeof r3Stop==='function'&&r3on())r3Stop();window.removeEventListener('resize',arResize);document.removeEventListener('keydown',arKey);try{if(AR.ro){AR.ro.disconnect();AR.ro=null;}}catch(e){}clearTimeout(AR.ltT);clearTimeout(AR.velT);clearTimeout(AR.pciT);if(AR.el){AR.el.hidden=true;AR.el.innerHTML='';}AR.phase='idle';AR.replay=null;}
+ arResize();if(S.view3d&&typeof r3Start==='function')r3Start(st);arResize();if(typeof setThemeColor==='function')setThemeColor('#1b2430');arStartIntro();arLoop();}
+function endActionUI(){cancelAnimationFrame(AR.raf);AR.raf=0;if(typeof r3Stop==='function'&&r3on())r3Stop();window.removeEventListener('resize',arResize);document.removeEventListener('keydown',arKey);try{if(AR.ro){AR.ro.disconnect();AR.ro=null;}}catch(e){}clearTimeout(AR.ltT);clearTimeout(AR.velT);clearTimeout(AR.pciT);if(AR.el){AR.el.hidden=true;AR.el.innerHTML='';}AR.phase='idle';AR.replay=null;if(typeof setThemeColor==='function')setThemeColor();}
 /* ---- 試合前カットイン：相手チームの注目投手・注目野手を紹介 ---- */
 function arIntroItems(opp){const items=[];const pit=opp.pitcher;if(pit)items.push({p:pit,kind:'pit'});
  const bats=opp.lineup.map(x=>x.p).filter(p=>p&&(!pit||p.id!==pit.id));
@@ -4639,7 +4648,7 @@ function showSetup(){$('#game').hidden=true;const s=$('#setup');s.hidden=false;
  if(!UI.setup)UI.setup={name:'青葉高校',pref:'神奈川',type:'公立',size:'中',hensachi:52,mode:'normal',custom:{money:1000,budgetMult:1,rep:40,q:55,coachLevel:3,scoutLevel:2,facLevel:1,ground:2,dorm:1,goals:false,goalLevel:2,trust:60,uniq:5,stars:0,starQ:80,starPot:10},u:defaultUniform(),e:defaultEmblem()};
  UI.uniDraft={u:UI.setup.u,e:UI.setup.e};const st=UI.setup;
  const prefOpts=REGIONS.map(r=>`<optgroup label="${r}">${PREF_DATA.filter(p=>p.region===r).map(p=>`<option value="${esc(p.name)}"${st.pref===p.name?' selected':''}>${esc(p.name)}（激戦度${'★'.repeat(p.pw)}）</option>`).join('')}</optgroup>`).join('');
- s.innerHTML=`<div class="hero"><h1>高校野球シミュレーション</h1><p>ひとつの高校を率いて、育成・経営・スカウト・そして甲子園へ。</p></div>
+ s.innerHTML=`<div class="hero"><h1>高校野球シミュレーション <span class="ver" style="font-size:11px;font-weight:600;opacity:.7;vertical-align:middle;font-family:var(--font-num)">v${appVer()}</span></h1><p>ひとつの高校を率いて、育成・経営・スカウト・そして甲子園へ。</p></div>
  ${hasSave()?`<section class="card"><div class="row"><span>前回のセーブデータがあります</span>${b('続きから','continueGame',{},'primary')}</div></section>`:''}
  <section class="card"><h3>1. ゲームモード</h3><div class="col">
  <label class="check" style="border:1px solid var(--line);border-radius:10px;padding:8px"><input type="radio" name="suMode" value="normal" ${st.mode!=='elite'?'checked':''}><span><b>弱小校から甲子園を目指す</b><br><span class="small muted">予算も選手も平凡。設備・監督・スカウトに投資しながら少しずつ強くなる王道モード。</span></span></label>

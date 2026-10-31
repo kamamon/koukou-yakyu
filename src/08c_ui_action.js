@@ -18,8 +18,8 @@ function startActionUI(){const S=actionSettings();AR.speed=S.speed;AR.m=UI.match
  const st=$('#arstage');st.onpointerdown=arPointerDown;st.onpointermove=arPointerMove;st.onpointerup=arPointerUp;st.onpointercancel=e=>{AR.ptrDown=false;AR.hold=false;};
  window.addEventListener('resize',arResize);document.addEventListener('keydown',arKey);
  try{if(window.ResizeObserver){AR.ro=new ResizeObserver(()=>arResize());AR.ro.observe(st);}}catch(e){}
- arResize();if(S.view3d&&typeof r3Start==='function')r3Start(st);arResize();arStartIntro();arLoop();}
-function endActionUI(){cancelAnimationFrame(AR.raf);AR.raf=0;if(typeof r3Stop==='function'&&r3on())r3Stop();window.removeEventListener('resize',arResize);document.removeEventListener('keydown',arKey);try{if(AR.ro){AR.ro.disconnect();AR.ro=null;}}catch(e){}clearTimeout(AR.ltT);clearTimeout(AR.velT);clearTimeout(AR.pciT);if(AR.el){AR.el.hidden=true;AR.el.innerHTML='';}AR.phase='idle';AR.replay=null;}
+ arResize();if(S.view3d&&typeof r3Start==='function')r3Start(st);arResize();if(typeof setThemeColor==='function')setThemeColor('#1b2430');arStartIntro();arLoop();}
+function endActionUI(){cancelAnimationFrame(AR.raf);AR.raf=0;if(typeof r3Stop==='function'&&r3on())r3Stop();window.removeEventListener('resize',arResize);document.removeEventListener('keydown',arKey);try{if(AR.ro){AR.ro.disconnect();AR.ro=null;}}catch(e){}clearTimeout(AR.ltT);clearTimeout(AR.velT);clearTimeout(AR.pciT);if(AR.el){AR.el.hidden=true;AR.el.innerHTML='';}AR.phase='idle';AR.replay=null;if(typeof setThemeColor==='function')setThemeColor();}
 /* ---- 試合前カットイン：相手チームの注目投手・注目野手を紹介 ---- */
 function arIntroItems(opp){const items=[];const pit=opp.pitcher;if(pit)items.push({p:pit,kind:'pit'});
  const bats=opp.lineup.map(x=>x.p).filter(p=>p&&(!pit||p.id!==pit.id));

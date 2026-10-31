@@ -76,7 +76,13 @@ function capSVG(u,e,w){return `<svg viewBox="0 0 160 110" width="${w||110}" role
 function uniformPreview(u,e,opt){opt=opt||{};return `<div class="uni-prev">${jerseySVG(u,e,{view:'front',width:opt.w||130,number:opt.number})}${jerseySVG(u,e,{view:'back',width:opt.w||130,number:opt.number==null?1:opt.number})}<div class="col center">${capSVG(u,e,100)}${emblemSVG(e,64)}</div></div>`;}
 /* ================= 画面描画 ================= */
 function render(){if(!G){showSetup();return;}$('#setup').hidden=true;$('#game').hidden=false;renderTop();renderNav();renderTab();if(!UI.modal)processQueue();}
-function renderTop(){const el=$('#topbar');const pend=G.queue.length?'<span class="badge gold">イベント</span>':'';el.innerHTML=`<div class="ttl">${emblemSVG(G.emblem,30)}<div class="school">${esc(G.school.name)}</div>${pend}</div><div class="meta"><div>${dateStr()}（${G.year}年目）</div><div><b class="${G.money<0?'neg':''}">${yen(G.money)}</b> ・ 評判 <b>${G.rep}</b></div></div>`;}
+/* バージョン表記（ビルド時に埋め込み） */
+function appVer(){return typeof APP_VER!=='undefined'?APP_VER:'?';}
+function appBuild(){const b=typeof APP_BUILD!=='undefined'?APP_BUILD:'';return b?`${b.slice(0,4)}-${b.slice(4,6)}-${b.slice(6,8)} ${b.slice(8,10)}:${b.slice(10,12)}`:'';}
+/* ステータスバー／ブラウザUIの色（ホーム画面アプリでは上部のステータスバーがこの色で塗られる） */
+function setThemeColor(c){try{let m=document.querySelector('meta[name="theme-color"]');if(!m){m=document.createElement('meta');m.name='theme-color';document.head.appendChild(m);}if(!c){const dark=document.documentElement.dataset.theme==='dark'||(document.documentElement.dataset.theme!=='light'&&window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches);c=dark?'#3fa36b':'#1e6b43';}if(m.content!==c)m.content=c;}catch(e){}}
+try{if(window.matchMedia)window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>{if(!(typeof AR!=='undefined'&&AR.el&&!AR.el.hidden))setThemeColor();});}catch(e){}
+function renderTop(){const el=$('#topbar');setThemeColor();const pend=G.queue.length?'<span class="badge gold">イベント</span>':'';el.innerHTML=`<div class="ttl">${emblemSVG(G.emblem,30)}<div class="school">${esc(G.school.name)}<span class="ver" title="ビルド ${appBuild()}">v${appVer()}</span></div>${pend}</div><div class="meta"><div>${dateStr()}（${G.year}年目）</div><div><b class="${G.money<0?'neg':''}">${yen(G.money)}</b> ・ 評判 <b>${G.rep}</b></div></div>`;}
 const TABS=[['home','🏠','ホーム'],['players','👥','部員'],['mgmt','🏫','経営'],['match','⚾','試合'],['scout','🔍','スカウト'],['more','📰','その他']];
 function renderNav(){$('#nav').innerHTML=TABS.map(t=>`<button class="${UI.tab===t[0]?'on':''}" data-act="tab" data-tab="${t[0]}"><span class="ic">${t[1]}</span>${t[2]}</button>`).join('');}
 ACT.tab=d=>{UI.tab=d.tab;render();window.scrollTo(0,0);};

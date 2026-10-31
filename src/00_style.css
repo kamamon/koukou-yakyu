@@ -20,6 +20,7 @@ a{color:var(--accent)}
 [hidden]{display:none!important}
 .top{position:sticky;top:env(safe-area-inset-top,0px);z-index:25;background:var(--accent);color:#fff;padding-block:8px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;justify-content:space-between;align-items:center;gap:10px}
 .top .ttl{display:flex;align-items:center;gap:8px;min-width:0}
+.top .ver{display:inline-block;margin-left:6px;font-size:10px;font-weight:600;letter-spacing:.04em;opacity:.75;vertical-align:middle;background:rgba(255,255,255,.16);border-radius:999px;padding:1px 6px;font-family:var(--font-num)}
 .top .school{font-family:var(--font-display);font-size:17px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .top .meta{font-size:12px;text-align:right;line-height:1.35;white-space:nowrap;font-variant-numeric:tabular-nums}
 .top .meta b{font-family:var(--font-num);font-size:14px;letter-spacing:.02em}

@@ -2,7 +2,11 @@
 set -e
 cd "$(dirname "$0")"
 FONTS='https://fonts.googleapis.com/css2?family=BIZ+UDPGothic:wght@400;700&family=Zen+Antique&family=Oswald:wght@500;700&family=Anton&family=Bebas+Neue&family=Graduate&family=Rye&family=Alfa+Slab+One&family=Black+Ops+One&family=Permanent+Marker&family=Bungee&family=Russo+One&family=Dela+Gothic+One&family=Reggae+One&family=Yuji+Syuku&family=Kaisei+Decol&family=RocknRoll+One&family=Shippori+Mincho:wght@700&family=Rampart+One&family=Mochiy+Pop+One&family=Noto+Sans+JP:wght@400;700&display=swap'
+APPVER=$(cat VERSION)
+VER=$(date +%Y%m%d%H%M%S)
+VERJS="<script>const APP_VER='${APPVER}',APP_BUILD='${VER}';</script>"
 HEAD="<title>高校野球シミュレーション</title>
+$VERJS
 <meta name=\"claude:viewport-fit-sides\" content=\"cover\">
 <link rel=\"stylesheet\" href=\"$FONTS\">
 <style>
@@ -27,15 +31,14 @@ printf '%s\n%s\n%s\n<script>\n%s\n</script>\n<script>\n%s\n</script>\n' "$HEAD" 
 # 単体ファイル版
 printf '<!doctype html>\n<html lang="ja">\n<head>\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">\n%s\n</head>\n<body>\n%s\n%s\n<script>\n%s\n</script>\n<script>\n%s\n</script>\n</body>\n</html>\n' "$HEAD" "$DOM" "$PAGES_ASSETS" "$THREE" "$JS" > "dist/高校野球シミュレーション.html"
 # PWA版（ホスティングしてSafariの「ホーム画面に追加」でアプリ化）
-VER=$(date +%Y%m%d%H%M%S)
 mkdir -p dist/pwa
 PWAHEAD='<link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="高校野球">
 <meta name="theme-color" content="#1e6b43">'
+# ステータスバーは black-translucent を使わない（iOS 26.1以降はコンテンツの上にグラデーションのモヤが描かれるため）。theme-color の色で塗りつぶす
 SWREG='<script>if("serviceWorker" in navigator){window.addEventListener("load",()=>{navigator.serviceWorker.register("./sw.js").catch(()=>{});});}</script>'
 printf '<!doctype html>\n<html lang="ja">\n<head>\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">\n%s\n%s\n</head>\n<body>\n%s\n%s\n<script>\n%s\n</script>\n<script>\n%s\n</script>\n%s\n</body>\n</html>\n' "$PWAHEAD" "$HEAD" "$DOM" "$LOCAL_ASSETS" "$THREE" "$JS" "$SWREG" > dist/pwa/index.html
 cp pwa_src/manifest.webmanifest pwa_src/apple-touch-icon.png pwa_src/icon-192.png pwa_src/icon-512.png dist/pwa/

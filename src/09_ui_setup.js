@@ -28,7 +28,7 @@ function showSetup(){$('#game').hidden=true;const s=$('#setup');s.hidden=false;
  if(!UI.setup)UI.setup={name:'青葉高校',pref:'神奈川',type:'公立',size:'中',hensachi:52,mode:'normal',custom:{money:1000,budgetMult:1,rep:40,q:55,coachLevel:3,scoutLevel:2,facLevel:1,ground:2,dorm:1,goals:false,goalLevel:2,trust:60,uniq:5,stars:0,starQ:80,starPot:10},u:defaultUniform(),e:defaultEmblem()};
  UI.uniDraft={u:UI.setup.u,e:UI.setup.e};const st=UI.setup;
  const prefOpts=REGIONS.map(r=>`<optgroup label="${r}">${PREF_DATA.filter(p=>p.region===r).map(p=>`<option value="${esc(p.name)}"${st.pref===p.name?' selected':''}>${esc(p.name)}（激戦度${'★'.repeat(p.pw)}）</option>`).join('')}</optgroup>`).join('');
- s.innerHTML=`<div class="hero"><h1>高校野球シミュレーション</h1><p>ひとつの高校を率いて、育成・経営・スカウト・そして甲子園へ。</p></div>
+ s.innerHTML=`<div class="hero"><h1>高校野球シミュレーション <span class="ver" style="font-size:11px;font-weight:600;opacity:.7;vertical-align:middle;font-family:var(--font-num)">v${appVer()}</span></h1><p>ひとつの高校を率いて、育成・経営・スカウト・そして甲子園へ。</p></div>
  ${hasSave()?`<section class="card"><div class="row"><span>前回のセーブデータがあります</span>${b('続きから','continueGame',{},'primary')}</div></section>`:''}
  <section class="card"><h3>1. ゲームモード</h3><div class="col">
  <label class="check" style="border:1px solid var(--line);border-radius:10px;padding:8px"><input type="radio" name="suMode" value="normal" ${st.mode!=='elite'?'checked':''}><span><b>弱小校から甲子園を目指す</b><br><span class="small muted">予算も選手も平凡。設備・監督・スカウトに投資しながら少しずつ強くなる王道モード。</span></span></label>
