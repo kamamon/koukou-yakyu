@@ -149,7 +149,7 @@ function r3BuildEnv(){if(R3.env||!R3.renderer)return;try{const pm=new THREE.PMRE
  const t=new THREE.CanvasTexture(cv);t.colorSpace=THREE.SRGBColorSpace;const sky=new THREE.Mesh(new THREE.SphereGeometry(50,16,12),new THREE.MeshBasicMaterial({map:t,side:THREE.BackSide}));es.add(sky);
  const sun=new THREE.Mesh(new THREE.SphereGeometry(4,8,6),new THREE.MeshBasicMaterial({color:0xfff2d0}));sun.position.set(-20,28,-10);es.add(sun);
  R3.env=pm.fromScene(es,0.05).texture;pm.dispose();}catch(e){console.warn('env map failed',e);R3.env=null;}}
-function r3BuildWorld(){const S=R3.scene=new THREE.Scene();R3.cam=new THREE.PerspectiveCamera(40,1,0.15,1200);r3BuildEnv();
+function r3BuildWorld(){R3.schoolFlag=null;const S=R3.scene=new THREE.Scene();R3.cam=new THREE.PerspectiveCamera(40,1,0.15,1200);r3BuildEnv();
  /* 空 */const sk=document.createElement('canvas');sk.width=1024;sk.height=256;R3.skyCv=sk;R3.skyTex=new THREE.CanvasTexture(sk);R3.skyTex.colorSpace=THREE.SRGBColorSpace;R3.sky=new THREE.Mesh(new THREE.SphereGeometry(900,24,16),new THREE.MeshBasicMaterial({map:R3.skyTex,side:THREE.BackSide,fog:false,toneMapped:false}));S.add(R3.sky);
  R3.fog=new THREE.Fog(0xc9dcea,180,900);S.fog=R3.fog;
  /* 光 */R3.hemi=new THREE.HemisphereLight(0xcfe3ff,0x4a6b3a,0.75);S.add(R3.hemi);
@@ -310,7 +310,9 @@ function r3Frame(now){if(!r3on())return;const m=AR.m;if(!m)return;try{
  const night=arNight();if(night!==R3.night)r3SetNight(night);
  const ph=AR.phase;const cut=(R3.lastPhase!==ph&&(ph==='field'||ph==='replay'||R3.lastPhase==='field'||R3.lastPhase==='replay'||R3.lastPhase==='half'||R3.lastPhase==='decide'||R3.lastPhase==null))||R3.lastSide!==AR.side;R3.lastSide=AR.side;
  const fieldPh=ph==='field'||ph==='decide'||ph==='replay'||(ph==='after'&&AR.field&&AR.ev&&(AR.ev.kind==='inplay'||AR.ev.runShown||/^pickoff/.test(AR.ev.kind)));
- if(ph==='intro'&&AR.intro){r3IntroScene(now);}
+ if(R3.schoolFlag&&ph!=='cer')R3.schoolFlag.visible=false;
+ if(ph==='cer'&&AR.cer){r3CeremonyScene(now);}
+ else if(ph==='intro'&&AR.intro){r3IntroScene(now);}
  else if(ph==='half'||ph==='sim'||ph==='idle'){r3IdleScene(now);r3OrbitCam(now);}
  else if(fieldPh&&AR.field){const sc=AR.field;let t;if(ph==='replay'&&AR.replay){const rp=AR.replay;t=Math.min(rp.until,rp.from+(now-rp.t0)*rp.rate);}else t=Math.min(sc.T,fwTime(sc,now));
   r3FieldScene(sc,t,now);if(ph==='replay')r3ReplayCam(sc,t,cut);else r3FieldCam(sc,t,cut,now);}
@@ -321,11 +323,12 @@ function r3Frame(now){if(!r3on())return;const m=AR.m;if(!m)return;try{
   R3.trailM.forEach((m,i)=>{const p=R3.trailP[i+1];m.visible=!!p&&b.visible;if(p){m.position.copy(p);const d=R3.cam.position.distanceTo(p);m.scale.setScalar(Math.max(0.6,d*0.03));}});}
  /* 歓声（観客がはねる） */{const ch=R3.cheerUntil&&now<R3.cheerUntil;const dy=ch?Math.abs(Math.sin(now/110))*0.3:0;R3.crowd.position.y=dy;R3.crowdH.position.y=dy;}
  R3.renderer.render(R3.scene,R3.cam);
+ if(R3.snapReq){const cb=R3.snapReq;R3.snapReq=null;try{cb(imGrab());}catch(e){}}
  }catch(e){console.warn('3D frame error',e);r3Fail();}}
 /* 試合前カットイン：相手の注目投手（マウンド）／注目野手（打席）に寄るカメラ */
 function r3IntroScene(now){const m=AR.m;const it=AR.intro;const item=it.items[it.idx];const p=item.p;const opp=it.team;const other=opp===m.A?m.B:m.A;const co=arTeamColors(opp),cu=arTeamColors(other);
  const u=clamp((now-it.t0)/it.dur,0,1);const key=it.idx+':'+it.t0;const cut=R3.introKey!==key;R3.introKey=key;const e=1-Math.pow(1-u,2.2);
- const numOf=(team,k)=>{const sl=team.lineup.find(x=>x.pos===k);return sl?(sl.p.number!=null?sl.p.number:POS_NUM[k]):POS_NUM[k];};
+ const numOf=(team,k)=>{if(k==='投'&&team.pitcher)return team.pitcher.number!=null?team.pitcher.number:1;const sl=team.lineup.find(x=>x.pos===k);return sl?(sl.p.number!=null?sl.p.number:POS_NUM[k]):POS_NUM[k];};
  R3.ball.visible=false;R3.mitt.visible=false;for(const r of R3.runners)r.g.visible=false;for(const r of R3.umps)r.g.visible=false;
  if(item.kind==='pit'){const DP=fwDefPos(opp);const hs=p.throws==='左'?-1:1;const z0=-R3C.RUBBER+0.15;
   for(const k in R3.fielders){const r=R3.fielders[k];r.g.visible=true;r.setColors(co,false);r.setNumber(k==='投'?(p.number!=null?p.number:1):numOf(opp,k),co.trim);r.setGear(k==='捕'?'catcher':null);r.glove.visible=k!=='捕';r3Dress(r,k==='投'?p:r3PlayerOf(opp,k));r.setExpression(null);
@@ -355,12 +358,12 @@ function r3Seed(p){if(!p)return 0;const s=String(p.id||p.name||'');let h=7;for(c
 function r3Dirt(p){if(!p)return 0;AR.dirt=AR.dirt||{};const k=p.id||p.name;if(AR.dirt[k]==null){AR.dirt[k]=0.08+(r3Seed(p)%100)/100*0.22;}return AR.dirt[k];}
 function r3AddDirt(pid,amt){AR.dirt=AR.dirt||{};AR.dirt[pid]=Math.min(1,(AR.dirt[pid]==null?0.15:AR.dirt[pid])+amt);}
 function r3Dress(r,p,gear){r.setPerson(r3Seed(p));r.setDirt(r3Dirt(p));}
-function r3PlayerOf(team,k){const sl=team.lineup.find(x=>x.pos===k);return sl?sl.p:null;}
+function r3PlayerOf(team,k){if(k==='投'&&team.pitcher)return team.pitcher;const sl=team.lineup.find(x=>x.pos===k);return sl?sl.p:null;}
 /* 投球／打撃のシーン */
 function r3PitchScene(now){const m=AR.m;const d=m.def(),t=m.bat();const cd=arTeamColors(d),cb=arTeamColors(t);const pa=m.pa;const P=AR.cur;const ph=AR.phase;const S=actionSettings();
  const hand=pa&&(AR.mode!=='card'||ph!=='pre')?pa.bHand:(AR.preHand||'右');const sg=hand==='左'?-1:1;const hs=pa?(pa.p.throws==='左'?-1:1):(P?P.hs:1);
  const DP=fwDefPos(d);
- /* 野手 */const numOf=(team,k)=>{const sl=team.lineup.find(x=>x.pos===k);return sl?(sl.p.number!=null?sl.p.number:POS_NUM[k]):POS_NUM[k];};const pidNum=(team,pid)=>{const pl=team.lineup.map(x=>x.p).concat(team.bench||[]).find(x=>x.id===pid);return pl?(pl.number!=null?pl.number:null):null;};
+ /* 野手 */const numOf=(team,k)=>{if(k==='投'&&team.pitcher)return team.pitcher.number!=null?team.pitcher.number:1;const sl=team.lineup.find(x=>x.pos===k);return sl?(sl.p.number!=null?sl.p.number:POS_NUM[k]):POS_NUM[k];};const pidNum=(team,pid)=>{const pl=team.lineup.map(x=>x.p).concat(team.bench||[]).find(x=>x.id===pid);return pl?(pl.number!=null?pl.number:null):null;};
  const ev0=AR.ev;const kOut=ph==='after'&&ev0&&(ev0.kind==='kSwing'||ev0.kind==='kLook'||ev0.kind==='kBunt');
  for(const k in R3.fielders){const r=R3.fielders[k];r.setColors(cd,false);r.setNumber(numOf(d,k),cd.trim);r.setGear(k==='捕'?'catcher':null);r.glove.visible=k!=='捕';const p=DP[k];r3Dress(r,k==='投'?(pa?pa.p:d.pitcher):r3PlayerOf(d,k));
   r.setExpression(k==='投'?(kOut?((r3Seed(pa?pa.p:d.pitcher)%2)?'smile':'grit'):(ph==='wind'||ph==='flight'||ph==='gauge')?'focus':null):(k==='捕'&&(ph==='wind'||ph==='flight'))?'focus':null);
@@ -391,7 +394,7 @@ function r3PitchScene(now){const m=AR.m;const d=m.def(),t=m.bat();const cd=arTea
  else{ball.visible=false;R3.hit=null;R3.mitt.position.lerp(mittT,0.1);}}
 /* フィールドプレーのシーン */
 function r3FieldScene(sc,t,now){const m=AR.m;const cd=sc.colDef||arTeamColors(m.def()),cb=sc.colBat||arTeamColors(m.bat());const b=fwAt(sc.ball,t);const dT=sc.defTeam||m.def(),bT=sc.batTeam||m.bat();
- const numOf=(team,k)=>{const sl=team.lineup.find(x=>x.pos===k);return sl?(sl.p.number!=null?sl.p.number:POS_NUM[k]):POS_NUM[k];};const pidNum=(team,pid)=>{const pl=team.lineup.map(x=>x.p).concat(team.bench||[]).find(x=>x.id===pid);return pl&&pl.number!=null?pl.number:null;};
+ const numOf=(team,k)=>{if(k==='投'&&team.pitcher)return team.pitcher.number!=null?team.pitcher.number:1;const sl=team.lineup.find(x=>x.pos===k);return sl?(sl.p.number!=null?sl.p.number:POS_NUM[k]):POS_NUM[k];};const pidNum=(team,pid)=>{const pl=team.lineup.map(x=>x.p).concat(team.bench||[]).find(x=>x.id===pid);return pl&&pl.number!=null?pl.number:null;};
  for(const k in R3.fielders){const r=R3.fielders[k];const f=sc.fielders[k];r.setColors(cd,false);r.setNumber(numOf(dT,k),cd.trim);r.setGear(k==='捕'?'catcher':null);r.glove.visible=k!=='捕';r.g.scale.x=1;r.bat.visible=false;if(!f){r.g.visible=false;continue;}r.g.visible=true;r3Dress(r,r3PlayerOf(dT,k));r.setExpression(null);
   const p=fwAt(f.path,t);const prev=fwAt(f.path,t-80);r.at(p.x,0,-p.y);
   let pose=fwPoseAt(f,t);const moving=p.moving&&(Math.abs(p.x-prev.x)>0.02||Math.abs(p.y-prev.y)>0.02);

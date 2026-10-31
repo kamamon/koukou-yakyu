@@ -1,6 +1,6 @@
 /* 強豪校で数年回し、選抜の選考・大会・春夏連覇の流れを検証 */
 const fs=require('fs');const path=require('path');
-const src=['01_data.js','01b_abil.js','01c_fac.js','01d_cards.js','02_core.js','03_match.js','04_tourney.js','05_people.js','05b_events.js'].map(f=>fs.readFileSync(path.join(__dirname,'../src',f),'utf8')).join('\n');
+const src=['01_data.js','01b_abil.js','01c_fac.js','01d_cards.js','02_core.js','03_match.js','04_tourney.js','05_people.js','05b_events.js','05c_story.js'].map(f=>fs.readFileSync(path.join(__dirname,'../src',f),'utf8')).join('\n');
 const code=src+`;function saveGame(){};module.exports={eventById,newGame,advanceWeek,G:()=>G,createMatch,applyMatchResult,tourneyUserResult,userMatch,setCamp,u18Resolve,committeeStart,committeeOptions,committeeChoose,committeeRequest,startTourney,graduate,playerWish,active,isPitcher,startPractice,finishPractice};`;
 const m={exports:{}};new Function('module','require',code)(m,require);const L=m.exports;
 L.newGame({name:'強豪学園',pref:'大阪',type:'私立',size:'大',hensachi:55,mode:'elite'});const G=L.G();

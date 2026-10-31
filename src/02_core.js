@@ -96,6 +96,7 @@ function shownVelo(p){return Math.round(p.pit.velo+(p.noise.velo||0)*fogLevel()*
 function dispStat(p,g,k){const f=fogLevel();const v=shown(p,g,k);return f<0.15?`${letter(v)} ${Math.round(v)}`:(f<0.5?`${letter(v)} ${Math.round(v/5)*5}±`:`${letter(v)}?`);}
 const POS_NAME={投:'投手',捕:'捕手',一:'一塁手',二:'二塁手',三:'三塁手',遊:'遊撃手',左:'左翼手',中:'中堅手',右:'右翼手'};
 function posName(pos){return POS_NAME[pos]||pos;}
+/* 新聞の見出し用の校名略称（青葉高校→青葉） */function schoolShort(name){const s=String(name||'').replace(/高等学校|高等学院|高校|学園|学院|工業|商業|附属|付属|総合|実業/g,'');return (s||name||'').slice(0,4);}
 function playerPosLabel(p){return p.pos+(p.sub.length?'('+p.sub.join('')+')':'');}
 function active(){return G.players.filter(p=>!p.retired);}
 function healthy(){return G.players.filter(p=>!p.retired&&p.injury===0);}
@@ -140,46 +141,106 @@ function newGame(cfg){
  applyEliteSchools();refreshStars(true);
  for(let g=1;g<=3;g++){const n=elite?ri(13,16):ri(10,13);for(let i=0;i<n;i++){const q=custom?clamp(gauss(custom.q+(g-1)*4,6),20,95):elite?clamp(gauss(68+(g-1)*4,6),50,92):clamp(gauss(40+G.rep*0.12+(g-1)*5,7),25,75);G.players.push(genPlayer({grade:g,q,uniqProb:custom?clamp(custom.uniq,0,100)/100:elite?0.12:0.03}));}}
  if(custom&&custom.stars>0){const n=clamp(Math.round(custom.stars),0,9);for(let i=0;i<n;i++){const pos=i%3===0?'投':i%3===1?pick(['遊','中','捕']):pick(['一','三','左','右','二']);const p=genPlayer({grade:1,q:clamp(custom.starQ||80,50,95),pos,potential:clamp(custom.starPot||10,1,10),uniqProb:1,forceUnique:true,scouted:true,rank:'S',title:pick(TITLES_NATIONAL)});if(pos==='投'){p.pit.velo=Math.max(p.pit.velo,veloFromQ(custom.starQ||80)+ri(0,4));p.pit.pitches[0].velo=Math.round(p.pit.velo);p.caps.velo=veloCapFor(p.potential,p.pit.velo);}G.players.push(p);}}
- ensurePositions();
+ ensurePositions(true);
  G.budget=calcBudget();G.money=custom?Math.round(custom.money):G.budget;G.fin={income:G.money,expense:0,items:{[custom?'初期資金':'学校予算']:G.money}};
  autoLineup();autoNumbers();
- G.practiceList=genPracticeList();
+ G.practiceList=genPracticeList();if(typeof ensureRival==='function')ensureRival();
  addNews('お知らせ',`${G.school.name}野球部、新体制でスタート`,`${G.calYear}年、${G.school.pref}の${G.school.name}野球部は新しい監督体制のもと${G.players.length}人でスタートを切った。学校からの予算は${yen(G.budget)}。`);
  notice('新しい年度が始まった。まずは部員の練習メニューを設定しよう。');
  if(G.goal)announceGoal();
  return G;
 }
-function ensurePositions(){const need={投:3,捕:2,一:1,二:1,三:1,遊:1,左:1,中:1,右:1};const a=active();
- for(const pos in need){let have=a.filter(p=>p.pos===pos).length;
-  while(have<need[pos]){const surplus=a.filter(p=>p.pos!==pos&&!p.posChange&&a.filter(x=>x.pos===p.pos).length>(need[p.pos]||1)).sort((x,y)=>rating(x)-rating(y));const cand=surplus[0];if(!cand)break;
-   cand.pos=pos;cand.sub=cand.sub.filter(s=>s!==pos);if(pos==='投'){cand.pit.velo=Math.max(cand.pit.velo,106);cand.caps.velo=Math.max(cand.caps.velo,cand.pit.velo+6);cand.pit.pitches[0].velo=Math.round(cand.pit.velo);}have++;}}}
+function ensurePositions(quiet){const a=active();const msgs=[];
+ /* 投手が2人未満：投手適性のある選手（才能が判明していれば優先）を転向 */
+ let pc=a.filter(p=>p.pos==='投').length;
+ while(pc<2){const cand=a.filter(p=>p.pos!=='投'&&!p.posChange&&a.filter(x=>x.pos===p.pos).length>1).sort((x,y)=>(y.revealed.P?100:0)+y.talentP-((x.revealed.P?100:0)+x.talentP))[0];if(!cand)break;
+  cand.pos='投';cand.sub=cand.sub.filter(s=>s!=='投');cand.pit.velo=Math.max(cand.pit.velo,106);cand.caps.velo=Math.max(cand.caps.velo,cand.pit.velo+6);cand.pit.pitches[0].velo=Math.round(cand.pit.velo);pc++;msgs.push(`${cand.name}を投手に転向`);}
+ /* 本職のいない守備位置：主ポジションは変えず、近い選手にサブポジションとして練習させる */
+ for(const pos of FIELD_POS){if(a.some(p=>p.pos===pos||p.sub.includes(pos)))continue;const cand=a.filter(p=>p.pos!=='投'&&p.sub.length<4).sort((x,y)=>defScore(y,pos)-defScore(x,pos))[0];if(cand){cand.sub.push(pos);msgs.push(`${cand.name}が${pos}を練習（サブポジションに追加）`);}}
+ if(msgs.length&&!quiet)notice(`本職のいない守備位置があったため：${msgs.join('、')}。`);}
 function calcBudget(){const s=G.school;const base={公立:{小:420,中:620,大:900},私立:{小:950,中:1500,大:2400}}[s.type][s.size];return Math.round(base*(0.6+G.rep/100*0.9)*(G.budgetMult||1)*(G.baseBudgetMult||1)*(G.mode==='elite'?1.6:1));}
 function notice(msg){G.notices.unshift({t:dateStr(),m:msg});if(G.notices.length>40)G.notices.length=40;}
 function dateStr(){return `${G.calYear}年${G.month}月${G.week}週`;}
 function enqueue(ev){G.queue.push(ev);}
 function spend(amt,label){amt=Math.round(amt);G.money-=amt;G.fin.expense+=amt;G.fin.items[label]=(G.fin.items[label]||0)+amt;}
 function income(amt,label){amt=Math.round(amt);G.money+=amt;G.fin.income+=amt;G.fin.items[label]=(G.fin.items[label]||0)-amt;}
-function addNews(cat,title,body,extra){G.news.unshift(Object.assign({cat,title,body,t:dateStr(),y:G.year,cy:G.calYear,mo:G.month,wk:G.week,imp:1},extra||{}));if(G.news.length>600)G.news.length=600;}
+function addNews(cat,title,body,extra){G.news.unshift(Object.assign({cat,title,body,t:dateStr(),y:G.year,cy:G.calYear,mo:G.month,wk:G.week,d:G.npDay||0,imp:1},extra||{}));if(G.news.length>600)G.news.length=600;}
 
-/* ================= 背番号・オーダー ================= */
-function autoNumbers(){const used=new Set();const a=active();if(G.lineup){for(const s of G.lineup){const p=a.find(x=>x.id===s.pid);if(p){p.number=POS_NUM[s.pos];used.add(p.number);}}}
- const rest=a.filter(p=>!G.lineup||!G.lineup.some(s=>s.pid===p.id)).sort((x,y)=>rating(y)-rating(x));let n=10;for(const p of rest){while(used.has(n))n++;p.number=n;used.add(n);n++;}
+/* ================= 背番号・オーダー =================
+ G.lineup は監督（ユーザー）が決めたオーダー（計画）。打順9人 {pid,pos}。
+ DH制を使うときは pos に '指' が入り、先発投手（G.sp）は打順に入らない（2026年春から高校野球でもDH制が導入された）。
+ ケガで出られない選手がいても計画は書き換えず、その試合だけ代役が入る（effectiveLineup）。回復すれば元に戻る。
+ 卒業・引退などで選手がいなくなったときだけ、その穴を埋める（repairLineup）。 */
+const FIELD_POS=['捕','一','二','三','遊','左','中','右'];
+function autoNumbers(){const a=active();const used=new Set();const fixed=new Set();
+ if(G.lineup){for(const s of G.lineup){const p=a.find(x=>x.id===s.pid);const n=POS_NUM[s.pos];if(p&&n&&!used.has(n)){p.number=n;used.add(n);fixed.add(p.id);}}
+  if(lineupHasDH()){const sp=a.find(x=>x.id===G.sp);if(sp&&!used.has(1)){sp.number=1;used.add(1);fixed.add(sp.id);}}}
+ const rest=a.filter(p=>!fixed.has(p.id)).sort((x,y)=>rating(y)-rating(x));let n=10;for(const p of rest){while(used.has(n))n++;p.number=n;used.add(n);n++;}
  G.players.filter(p=>p.retired).forEach(p=>{p.number=null;});}
-function posFit(p,pos){if(p.pos===pos)return 1;if(p.sub.includes(pos))return 0.85;if(pos==='投')return 0.3;if(pos==='捕')return 0.55;return 0.7;}
-function autoLineup(){const hs=healthy().filter(p=>!p.posChange||p.posChange.kind!=='main');const pool=hs.length>=9?hs:active();
- const ps=pool.filter(isPitcher).sort((a,b)=>pitRating(b)*(1-a.fatigue/400)-pitRating(a)*(1-b.fatigue/400));
- let sp=ps[0]||pool.slice().sort((a,b)=>pitRating(b)-pitRating(a))[0];
+function posFit(p,pos){if(pos==='指')return 1;if(p.pos===pos)return 1;if(p.sub.includes(pos))return 0.85;if(pos==='投')return 0.3;if(pos==='捕')return 0.55;return 0.7;}
+function avgBat(p,k){return k==='meet'?(p.bat.meetR+p.bat.meetL)/2:k==='pow'?(p.bat.powR+p.bat.powL)/2:p.bat[k];}
+/* 守備の上手さ（その位置の適性込み） */
+function defScore(p,pos){const b=p.bat;let v;if(pos==='捕')v=b.field*0.35+b.arm*0.35+b.thr*0.3;else if(pos==='中'||pos==='遊'||pos==='二')v=b.field*0.4+b.speed*0.25+b.thr*0.15+b.arm*0.2;else v=b.field*0.45+b.thr*0.2+b.arm*0.2+b.speed*0.15;return v*posFit(p,pos);}
+/* その位置に置いたときの価値：打撃＋守備。適性のない位置は大きく減点（どうしても足りないときだけ使う） */
+/* 守備の重み：捕手・遊撃・二塁・中堅は守備重視、一塁・左翼は打撃重視 */const DEF_W={捕:0.8,遊:0.8,二:0.7,中:0.7,三:0.55,右:0.5,左:0.4,一:0.35};
+function slotValue(p,pos){if(pos==='指')return batRating(p);if(pos==='投')return pitRating(p);const f=posFit(p,pos);return batRating(p)+defScore(p,pos)*(DEF_W[pos]||0.6)-(f<0.85?150:0)-(f<0.6?100:0);}/* 不慣れな位置は、適性のある選手がいないときだけ（大きな減点） */
+/* 8つの守備位置への割り当て（適性の少ない位置から埋め、入れ替えで改善） */
+function assignFielders(pool,positions){const pos=positions.slice();const asg={};const used=new Set();
+ const good=q=>pool.filter(p=>posFit(p,q)>=0.85).length;
+ for(const q of pos.slice().sort((a,b)=>good(a)-good(b))){let best=null,bv=-1e9;for(const p of pool){if(used.has(p.id))continue;const v=slotValue(p,q);if(v>bv){bv=v;best=p;}}if(best){asg[q]=best;used.add(best.id);}}
+ for(let it=0;it<8;it++){let imp=false;
+  for(let i=0;i<pos.length;i++)for(let j=i+1;j<pos.length;j++){const a=pos[i],b=pos[j];const pa=asg[a],pb=asg[b];if(!pa||!pb)continue;if(slotValue(pb,a)+slotValue(pa,b)>slotValue(pa,a)+slotValue(pb,b)+0.01){asg[a]=pb;asg[b]=pa;imp=true;}}
+  for(const q of pos){const cur=asg[q];let best=null,bv=cur?slotValue(cur,q)+0.01:-1e9;for(const p of pool){if(used.has(p.id))continue;const v=slotValue(p,q);if(v>bv){bv=v;best=p;}}if(best){if(cur)used.delete(cur.id);asg[q]=best;used.add(best.id);imp=true;}}
+  if(!imp)break;}
+ return asg;}
+/* 打順：4番は長打力、3番は総合力、1番は出塁と足、5番は長打、2番はつなぎ。投手も打撃力で並べる（強制9番にしない） */
+function orderBatters(slots){const rest=slots.slice();/* 投手は打撃が本当に良いときだけ上位に（1・2番は負担が大きいので避ける） */const pk=[0.75,0.75,0.93,0.95,0.93];let k=0;const take=f=>{const w=pk[k++]||0.9;let bi=0,bv=-1e9;rest.forEach((s,i)=>{const v=f(s.p)*(s.pos==='投'?w:1);if(v>bv){bv=v;bi=i;}});return rest.splice(bi,1)[0];};
+ const m=p=>avgBat(p,'meet'),w=p=>avgBat(p,'pow');
+ const s4=take(p=>w(p)*0.65+m(p)*0.35+p.bat.clutch*0.05);const s3=take(p=>m(p)*0.5+w(p)*0.45+p.bat.clutch*0.05);
+ const s1=take(p=>m(p)*0.4+p.bat.speed*0.35+p.bat.eye*0.25);const s5=take(p=>w(p)*0.6+m(p)*0.4);
+ const s2=take(p=>m(p)*0.4+p.bat.bunt*0.3+p.bat.speed*0.3);
+ const br=s=>batRating(s.p)*(s.pos==='投'?0.9:1);rest.sort((a,b)=>br(b)-br(a));return [s1,s2,s3,s4,s5].concat(rest).filter(Boolean);}
+function bestStarter(pool,exclude){return pool.filter(p=>isPitcher(p)&&!exclude.has(p.id)).sort((a,b)=>pitRating(b)*(1-a.fatigue/400)-pitRating(a)*(1-b.fatigue/400))[0]||pool.filter(p=>!exclude.has(p.id)).sort((a,b)=>pitRating(b)-pitRating(a))[0];}
+function autoLineup(){const hs=healthy().filter(p=>!p.posChange||p.posChange.kind!=='main');const pool=hs.length>=(G.dh?10:9)?hs:active();
+ const sp=bestStarter(pool,new Set());
  if(!sp){G.lineup=null;G.sp=null;return;}
- const used=new Set([sp.id]);const slots=[];
- for(const pos of ['捕','遊','二','中','三','一','右','左']){const c=pool.filter(p=>!used.has(p.id)).sort((a,b)=>batRating(b)*posFit(b,pos)-batRating(a)*posFit(a,pos))[0];if(!c)break;used.add(c.id);slots.push({pid:c.id,pos});}
- if(slots.length<8){G.lineup=null;G.sp=sp.id;return;}
- const byP=id=>pool.find(p=>p.id===id);
- const s=slots.slice().sort((a,b)=>batRating(byP(b.pid))-batRating(byP(a.pid)));
- const rest=s.slice(3).sort((a,b)=>byP(b.pid).bat.speed-byP(a.pid).bat.speed);
- const order=[rest[0],rest[1],s[0],s[1],s[2]].concat(rest.slice(2),[{pid:sp.id,pos:'投'}]);
- G.lineup=order.filter(Boolean);G.sp=sp.id;}
-function ensureLineup(){const a=active();const ok=G.lineup&&G.lineup.length===9&&G.lineup.every(s=>{const p=a.find(x=>x.id===s.pid);return p&&p.injury===0;})&&new Set(G.lineup.map(s=>s.pid)).size===9&&G.lineup.some(s=>s.pos==='投');if(!ok)autoLineup();}
-function benchPlayers(){const ids=new Set((G.lineup||[]).map(s=>s.pid));return healthy().filter(p=>!ids.has(p.id)).sort((a,b)=>rating(b)-rating(a)).slice(0,11);}
+ const rest=pool.filter(p=>p.id!==sp.id);const asg=assignFielders(rest,FIELD_POS);
+ if(Object.keys(asg).length<8){G.lineup=null;G.sp=sp.id;return;}
+ const slots=FIELD_POS.map(q=>({p:asg[q],pos:q}));const used=new Set(slots.map(s=>s.p.id));
+ const dh=G.dh?rest.filter(p=>!used.has(p.id)).sort((a,b)=>batRating(b)-batRating(a))[0]:null;
+ slots.push(dh?{p:dh,pos:'指'}:{p:sp,pos:'投'});
+ G.lineup=orderBatters(slots).map(s=>({pid:s.p.id,pos:s.pos}));G.sp=sp.id;}
+/* 打順だけ並べ直す（選手と守備位置はそのまま） */
+function reorderLineup(lw){const a=active();const slots=lw.map(s=>({p:a.find(x=>x.id===s.pid),pos:s.pos})).filter(s=>s.p);if(slots.length!==lw.length)return lw;return orderBatters(slots).map(s=>({pid:s.p.id,pos:s.pos}));}
+function lineupHasDH(L){L=L||G.lineup;return !!(L&&L.some(s=>s.pos==='指'));}
+function lineupValid(L,sp){L=L||G.lineup;if(!L||L.length!==9)return false;const ids=new Set(L.map(s=>s.pid));if(ids.size!==9)return false;const ps=new Set(L.map(s=>s.pos));if(ps.size!==9||!FIELD_POS.every(q=>ps.has(q)))return false;if(ps.has('投'))return true;if(!ps.has('指'))return false;sp=sp===undefined?G.sp:sp;return !!sp&&!ids.has(sp);}
+/* 卒業・引退などでいなくなった選手の穴だけを埋める（ケガ人は計画に残す）。穴が多いときは新チームとして組み直す */
+function repairLineup(silent){if(!G.lineup||!lineupValid()){autoLineup();return 'auto';}
+ const a=active();const has=id=>a.some(p=>p.id===id);const holes=G.lineup.filter(s=>!has(s.pid));const spGone=lineupHasDH()&&!has(G.sp);
+ if(!holes.length&&!spGone)return 'ok';
+ if(holes.length>=4){autoLineup();autoNumbers();if(!silent)notice('メンバーが大きく入れ替わったため、新チームのオーダーを自動で組みました（試合タブで変更できます）。');return 'auto';}
+ const pool=a.filter(p=>p.injury===0).length>=9?a.filter(p=>p.injury===0):a;const used=new Set(G.lineup.filter(s=>has(s.pid)).map(s=>s.pid));if(lineupHasDH()&&has(G.sp))used.add(G.sp);const msgs=[];
+ if(spGone){const sp=bestStarter(pool,used);if(sp){G.sp=sp.id;used.add(sp.id);msgs.push(`先発投手に${sp.name}`);}}
+ const order=['投','捕','遊','二','中','三','一','右','左','指'];
+ for(const q of order){G.lineup.forEach((s,i)=>{if(s.pos!==q||has(s.pid))return;const c=pool.filter(p=>!used.has(p.id)).sort((x,y)=>slotValue(y,q)-slotValue(x,q))[0];if(c){s.pid=c.id;used.add(c.id);msgs.push(`${i+1}番${q==='指'?'DH':q}に${c.name}`);}});}
+ if(!lineupValid())autoLineup();
+ autoNumbers();if(!silent&&msgs.length)notice(`オーダー：いなくなった選手の代わりに ${msgs.join('、')} を入れました（試合タブで変更できます）。`);return 'repaired';}
+function ensureLineup(){if(!G.lineup||!lineupValid()){if(G.lineup&&G.lineup.length===9)repairLineup(true);else autoLineup();}else repairLineup(true);}
+/* 試合で実際に使うオーダー：ケガ人はその試合だけ代役（計画は変えない） */
+function effectiveLineup(){ensureLineup();if(!G.lineup)return null;const a=active();const byId=id=>a.find(x=>x.id===id);
+ const slots=G.lineup.map(s=>({p:byId(s.pid),pos:s.pos,orig:null}));const inUse=new Set(slots.filter(s=>s.p&&s.p.injury===0).map(s=>s.p.id));
+ const pool=a.filter(p=>p.injury===0);let sp,spOrig=null;
+ const pSlot=slots.find(s=>s.pos==='投');
+ if(pSlot){if(!pSlot.p||pSlot.p.injury>0){const alt=bestStarter(pool,inUse);if(alt){pSlot.orig=pSlot.p;pSlot.p=alt;inUse.add(alt.id);}}sp=pSlot.p;}
+ else{sp=byId(G.sp);if(!sp||sp.injury>0){const alt=bestStarter(pool,inUse);spOrig=sp;sp=alt||sp;}if(sp)inUse.add(sp.id);}
+ for(const q of ['捕','遊','二','中','三','一','右','左','指'])for(const s of slots){if(s.pos!==q||(s.p&&s.p.injury===0))continue;const c=pool.filter(p=>!inUse.has(p.id)).sort((x,y)=>slotValue(y,q)-slotValue(x,q))[0];if(c){s.orig=s.p;s.p=c;inUse.add(c.id);}}
+ return {slots,sp,spOrig,dh:!pSlot};}
+function benchPlayers(ef){ef=ef||effectiveLineup();const ids=new Set(ef?ef.slots.map(s=>s.p&&s.p.id):[]);if(ef&&ef.sp)ids.add(ef.sp.id);return healthy().filter(p=>!ids.has(p.id)).sort((a,b)=>rating(b)-rating(a)).slice(0,11);}
+/* DH制の切り替え（打順の枠はそのまま：投手の枠⇔DHの枠） */
+function setDH(on,L){L=L||G.lineup;if(!L)return L;const a=active();
+ if(on&&!lineupHasDH(L)){const i=L.findIndex(s=>s.pos==='投');if(i<0)return L;const spId=L[i].pid;const used=new Set(L.map(s=>s.pid));const dh=a.filter(p=>!used.has(p.id)&&p.injury===0).sort((x,y)=>batRating(y)-batRating(x))[0];if(!dh)return L;L[i]={pid:dh.id,pos:'指'};return {L,sp:spId};}
+ if(!on&&lineupHasDH(L)){const i=L.findIndex(s=>s.pos==='指');L[i]={pid:G.sp,pos:'投'};return {L,sp:G.sp};}
+ return {L,sp:G.sp};}
 
 /* ================= 成長 ================= */
 function facEff(key){const f=G.fac[key];if(!f||f.broken)return 1.0;const m=FAC[key].models[f.model];let e=m.eff;if(teamKnow()<m.know)e=1+(e-1)*0.4;if(f.dur<f.maxDur*0.25)e=1+(e-1)*0.7;return e;}
@@ -259,7 +320,8 @@ function weekTick(){
  applyMaintenance();decayFacilities();
  if(G.camp){G.camp.weeks--;if(G.camp.weeks<=0){G.camp=null;notice('合宿が終了した。');}}
  G.practiceList=genPracticeList();G.practicedThisWeek=false;
- G.week++;if(G.week>4){G.week=1;G.month=G.month===12?1:G.month+1;if(G.month===1)G.calYear++;if(G.month===4)G.year++;monthlyCosts();candidateMonthly();}
+ if(typeof worldNews==='function')worldNews();
+ G.npDay=0;G.week++;if(G.week>4){G.week=1;G.month=G.month===12?1:G.month+1;if(G.month===1)G.calYear++;if(G.month===4)G.year++;monthlyCosts();candidateMonthly();}
  if(G.week===3)featureArticles();
  G.turn++;
  fireEvents();
@@ -282,7 +344,8 @@ function refreshStars(init){G.stars=G.stars||[];
  const arr=allSchools();const elites=arr.filter(s=>s.elite);const strong=arr.filter(s=>!s.elite&&s.strength>=84);
  const mk=(school,rank,grade)=>{const taken=G.stars.filter(x=>x.school===school.name).map(x=>x.pos);const isP=!taken.includes('投')&&R()<0.45;const pos=isP?'投':(pick(shuffle(['遊','中','捕','三','一','右','左','二']).filter(x=>!taken.includes(x)))||'一');const q=rank==='S'?ri(95,97):ri(90,92);const name=genName();
   let title=pick(isP?STAR_TITLES_P:STAR_TITLES_B);title=title.replace('{v}',String(ri(0,4))).replace('{hr}',String(ri(30,55)));
-  return {id:'star'+Math.random().toString(36).slice(2,8),name,pos,school:school.name,pref:school.pref,grade:grade||ri(1,3),q,rank,title,throws:isP&&R()<0.3?'左':'右',bats:R()<0.35?'左':'右'};};
+  const velo=isP?(rank==='S'?ri(147,156):ri(141,149)):0,hrTotal=isP?0:(rank==='S'?ri(32,62):ri(18,38));if(isP)title=title.replace(/最速15\d/,'最速'+velo);else title=title.replace(/通算\d+本/,'通算'+hrTotal+'本');
+  return {id:'star'+Math.random().toString(36).slice(2,8),name,pos,school:school.name,pref:school.pref,grade:grade||ri(1,3),q,rank,title,velo,hrTotal,throws:isP&&R()<0.3?'左':'右',bats:R()<0.35?'左':'右'};};
  const sCount=()=>G.stars.filter(x=>x.rank==='S').length,aCount=()=>G.stars.filter(x=>x.rank==='A').length;
  const sTarget=init?ri(3,5):ri(3,5),aTarget=12+ri(0,6);
  let guard=0;while(sCount()<sTarget&&elites.length&&guard++<40){const sc=pick(elites);if(G.stars.filter(x=>x.school===sc.name).length>=3)continue;G.stars.push(mk(sc,'S',init?ri(1,3):ri(1,2)));}
@@ -336,7 +399,7 @@ function newFiscalYear(){
  G.school.principalUsed=false;G.flags={};G.results={};
  bodyGrowth();
  const newbies=makeNewMembers();
- ensurePositions();autoLineup();autoNumbers();
+ ensurePositions();repairLineup();autoNumbers();
  G.rep=clamp(G.rep-1+Math.round(Object.values(G.fac).filter(f=>f&&!f.broken).length*0.3+catSum('rep')),0,100);
  if(G.goal)announceGoal();
  enqueue({type:'entrance',ids:newbies.map(p=>p.id)});
@@ -346,7 +409,7 @@ function makeNewMembers(){const newbies=[];for(const r of G.recruits){let p;if(r
  G.recruits=[];const nWalk=clamp(ri(10,14)-Math.max(0,newbies.length-4),4,14);
  for(let i=0;i<nWalk;i++){const q=clamp(gauss(37+G.rep*0.16-Math.max(0,G.school.hensachi-60)*0.35,7),22,70);G.players.push(genPlayer({grade:1,q}));newbies.push(G.players[G.players.length-1]);}
  return newbies;}
-function retireThirdYears(reason){const t=G.players.filter(p=>p.grade===3&&!p.retired);if(!t.length)return;t.forEach(p=>{p.retired=true;p.training='rest';p.mentor=null;p.posChange=null;});G.players.forEach(p=>{if(p.mentor&&t.some(x=>x.id===p.mentor.seniorId)){p.mentor=null;p.training='bat';}});notice(`3年生${t.length}人が引退した（${reason}）。新チームが始動する。`);autoLineup();autoNumbers();}
+function retireThirdYears(reason){const t=G.players.filter(p=>p.grade===3&&!p.retired);if(!t.length)return;t.forEach(p=>{p.retired=true;p.training='rest';p.mentor=null;p.posChange=null;});G.players.forEach(p=>{if(p.mentor&&t.some(x=>x.id===p.mentor.seniorId)){p.mentor=null;p.training='bat';}});notice(`3年生${t.length}人が引退した（${reason}）。新チームが始動する。`);repairLineup();autoNumbers();}
 
 /* ================= 強豪校モード：理事会の目標 ================= */
 const GOALS=[

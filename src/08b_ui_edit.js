@@ -1,28 +1,49 @@
-/* ================= オーダー編集（タップで入れ替え） ================= */
-function lineupWorkInit(){ensureLineup();UI.lw=(G.lineup||[]).map(s=>({pid:s.pid,pos:s.pos}));UI.lsel=null;}
-function fitMark(p,pos){const f=posFit(p,pos);return f>=1?'':f>=0.85?'<span class="tiny muted">(サブ)</span>':'<span class="tiny err">(不慣れ)</span>';}
+/* ================= オーダー編集（タップで入れ替え） =================
+ 監督が決めたオーダーは自動で書き換えない。ケガ人は計画に残したまま、その試合だけ代役が入る（回復すれば元に戻る） */
+function lineupWorkInit(){ensureLineup();UI.lw=(G.lineup||[]).map(s=>({pid:s.pid,pos:s.pos}));UI.lsp=G.sp;UI.lsel=null;}
+function fitMark(p,pos){const f=posFit(p,pos);return pos==='指'||f>=1?'':f>=0.85?'<span class="tiny muted">(サブ)</span>':'<span class="tiny err">(不慣れ)</span>';}
 function slotRating(p,pos){return pos==='投'?pitRating(p):batRating(p);}
 function showLineupModal(ctx){UI.lineupCtx=ctx;lineupWorkInit();renderLineupEditor();}
-function renderLineupEditor(){const ctx=UI.lineupCtx;const lw=UI.lw;const sel=UI.lsel;const inL=new Set(lw.map(s=>s.pid));
- const rows=lw.map((s,i)=>{const p=pById(s.pid);const isSel=sel===i;return `<div class="lrow ${isSel?'sel':''}"><span class="num muted">${i+1}</span><select data-chg="lpos" data-i="${i}" class="lpos">${POS.map(x=>`<option value="${x}"${s.pos===x?' selected':''}>${x}</option>`).join('')}</select><span class="lname" data-act="lsel" data-i="${i}">${p?`<b>${esc(p.name)}</b> <span class="muted small">${p.grade}年 ${esc(playerPosLabel(p))}</span> ${rk(slotRating(p,s.pos))} ${fitMark(p,s.pos)}${p.fatigue>=60?'<span class="tiny err"> 疲</span>':''}${condIcon(p)?'<span class="tiny"> '+condIcon(p)+'</span>':''}`:'<span class="err">未設定</span>'}</span><span class="larrows">${b('▲','lmove',{i,d:-1},'sm ghost')}${b('▼','lmove',{i,d:1},'sm ghost')}</span></div>`;}).join('');
- const selPos=sel!=null?lw[sel].pos:null;
- const bench=healthy().filter(p=>!inL.has(p.id)).sort((a,b)=>{if(selPos){const fa=posFit(a,selPos),fb=posFit(b,selPos);if(fa!==fb)return fb-fa;return slotRating(b,selPos)-slotRating(a,selPos);}return rating(b)-rating(a);});
+function lwDH(){return UI.lw.some(s=>s.pos==='指');}
+/* 編集中のオーダーで、ケガ人の代役を試算（表示用） */
+function lwStandIns(){const a=active();const inUse=new Set(UI.lw.map(s=>s.pid).filter(id=>{const p=a.find(x=>x.id===id);return p&&p.injury===0;}));const pool=a.filter(p=>p.injury===0);const res={};
+ if(lwDH()){const sp=a.find(x=>x.id===UI.lsp);if(sp&&sp.injury===0)inUse.add(sp.id);else{const alt=bestStarter(pool,inUse);if(alt){res.sp=alt;inUse.add(alt.id);}}}
+ for(const q of ['投','捕','遊','二','中','三','一','右','左','指'])UI.lw.forEach((s,i)=>{if(s.pos!==q)return;const p=a.find(x=>x.id===s.pid);if(p&&p.injury===0)return;const c=q==='投'?bestStarter(pool,inUse):pool.filter(x=>!inUse.has(x.id)).sort((x,y)=>slotValue(y,q)-slotValue(x,q))[0];if(c){res[i]=c;inUse.add(c.id);}});return res;}
+function renderLineupEditor(){const ctx=UI.lineupCtx;const lw=UI.lw;const sel=UI.lsel;const dh=lwDH();const inL=new Set(lw.map(s=>s.pid));if(dh&&UI.lsp)inL.add(UI.lsp);const stand=lwStandIns();
+ const posOpts=dh?FIELD_POS.concat(['指']):['投'].concat(FIELD_POS);
+ const pLabel=q=>q==='指'?'DH':q;
+ const pinfo=(p,pos)=>`<b>${esc(p.name)}</b> <span class="muted small">${p.grade}年 ${esc(playerPosLabel(p))}</span> ${rk(slotRating(p,pos))} ${fitMark(p,pos)}${p.fatigue>=60?'<span class="tiny err"> 疲</span>':''}${condIcon(p)?'<span class="tiny"> '+condIcon(p)+'</span>':''}`;
+ const injTag=(p,alt)=>p&&p.injury>0?`<div class="tiny err">ケガ（あと${p.injury}週）→ この間は${alt?`<b>${esc(alt.name)}</b>が代役`:'代役なし'}。回復すれば元に戻ります</div>`:'';
+ const rows=lw.map((s,i)=>{const p=pById(s.pid);const isSel=sel===i;return `<div class="lrow ${isSel?'sel':''}${p&&p.injury>0?' inj':''}"><span class="num muted">${i+1}</span><select data-chg="lpos" data-i="${i}" class="lpos">${posOpts.map(x=>`<option value="${x}"${s.pos===x?' selected':''}>${pLabel(x)}</option>`).join('')}</select><span class="lname" data-act="lsel" data-i="${i}">${p?pinfo(p,s.pos)+injTag(p,stand[i]):'<span class="err">未設定</span>'}</span><span class="larrows">${b('▲','lmove',{i,d:-1},'sm ghost')}${b('▼','lmove',{i,d:1},'sm ghost')}</span></div>`;}).join('');
+ const spP=dh?pById(UI.lsp):null;
+ const spRow=dh?`<div class="lrow sp ${sel==='sp'?'sel':''}${spP&&spP.injury>0?' inj':''}"><span class="num muted">先</span><span class="lpos fixed">投</span><span class="lname" data-act="lsel" data-i="sp">${spP?pinfo(spP,'投')+injTag(spP,stand.sp):'<span class="err">先発投手を選んでください</span>'}</span><span class="larrows"></span></div>`:'';
+ const selPos=sel==='sp'?'投':sel!=null?lw[sel].pos:null;
+ const bench=healthy().filter(p=>!inL.has(p.id)).sort((x,y)=>{if(selPos){const fa=posFit(x,selPos),fb=posFit(y,selPos);if(fa!==fb)return fb-fa;return slotRating(y,selPos)-slotRating(x,selPos);}return rating(y)-rating(x);});
  const benchHtml=bench.map(p=>`<button class="btn sm bpl" data-act="lbench" data-id="${p.id}">${esc(p.name)} <span class="muted">${p.grade}年 ${esc(playerPosLabel(p))}</span> ${rk(selPos?slotRating(p,selPos):rating(p))}${selPos?fitMark(p,selPos):''}${p.fatigue>=60?'<span class="tiny err"> 疲</span>':''}</button>`).join('');
+ const warn=lw.map((s,i)=>{const p=pById(s.pid);return p&&s.pos!=='指'&&posFit(p,s.pos)<0.85?`${i+1}番 ${esc(p.name)}（${s.pos}は不慣れ）`:'';}).filter(Boolean);
  const mode=ctx?`<label class="f">試合の進め方<select id="modeSel">${SIM_MODES.map(m=>`<option value="${m.id}"${G.settings.mode===m.id?' selected':''}>${m.name}</option>`).join('')}</select></label>`:'';
  const head=ctx?`<h2>${esc(ctx.label)}</h2><div class="ev"><span>対戦相手：<b>${esc(ctx.opp.name)}</b>（${esc(ctx.opp.pref||'')}）</span><span>強さ ${rk(ctx.opp.strength)}</span></div>`:'<h2>オーダー編集</h2>';
+ const dhSw=`<div class="seg" role="group" aria-label="DH制"><span class="small">DH制</span>${b('使わない','lDH',{v:0},'sm '+(dh?'':'primary'))}${b('使う','lDH',{v:1},'sm '+(dh?'primary':''))}<span class="tiny muted">2026年春から高校野球でも採用。使うと投手は打席に立たず、指名打者が打つ</span></div>`;
  const st=$('#modal')?$('#modal').scrollTop:0;
- openModal(`${head}<div class="hint">選手名をタップ→別の選手名をタップで<b>入れ替え</b>。選手名をタップしてから下の控え選手をタップすると<b>その打順に入ります</b>。▲▼で打順の移動、左の守備位置は直接変更（重複すると自動で入れ替わります）。</div><div id="lineupForm" style="margin-top:8px">${rows}</div>
- <div class="row" style="margin-top:8px"><b class="small">控え選手${selPos?'（'+selPos+'の適性順）':''}</b><span class="tiny muted">${sel!=null?(lw[sel].pos+'の枠に入れる選手をタップ'):'打順をタップすると入替候補を表示'}</span></div><div class="wrap" style="margin-top:4px">${benchHtml||'<span class="muted small">控えなし</span>'}</div>
- <div id="lineupErr" class="err"></div>${mode}<div class="wrap" style="margin-top:8px">${b('自動編成','lineupAutoModal',{},'')}${b(ctx?'決定して試合へ':'決定','lineupSave',{},'primary')}${ctx?'':b('キャンセル','closeModal',{})}</div>`,!!ctx);
+ openModal(`${head}${dhSw}<div class="hint">選手名をタップ→別の選手名をタップで<b>入れ替え</b>。選手名をタップしてから下の控え選手をタップすると<b>その打順に入ります</b>。▲▼で打順の移動、左の守備位置は直接変更（重複すると入れ替わります）。投手も好きな打順に置けます。<b>決めたオーダーは自動で書き換わりません</b>（ケガ人はその試合だけ代役）。</div>${spRow?`<div id="spRow" style="margin-top:8px">${spRow}</div>`:''}<div id="lineupForm" style="margin-top:8px">${rows}</div>
+ ${warn.length?`<div class="tiny err" style="margin-top:4px">守備が不慣れ：${warn.join('、')}</div>`:''}
+ <div class="row" style="margin-top:8px"><b class="small">控え選手${selPos?'（'+pLabel(selPos)+'の適性順）':''}</b><span class="tiny muted">${sel!=null?(pLabel(selPos)+'の枠に入れる選手をタップ'):'打順をタップすると入替候補を表示'}</span></div><div class="wrap" style="margin-top:4px">${benchHtml||'<span class="muted small">控えなし</span>'}</div>
+ <div id="lineupErr" class="err"></div>${mode}<div class="wrap" style="margin-top:8px">${b('自動編成','lineupAutoModal',{},'')}${b('打順だけ自動','lineupOrderAuto',{},'')}${b(ctx?'決定して試合へ':'決定','lineupSave',{},'primary')}${ctx?'':b('キャンセル','closeModal',{})}</div>`,!!ctx);
  if($('#modal'))$('#modal').scrollTop=st;}
-ACT.lsel=d=>{const i=parseInt(d.i);if(UI.lsel==null){UI.lsel=i;}else if(UI.lsel===i){UI.lsel=null;}else{const a=UI.lw[UI.lsel],bb=UI.lw[i];const t=a.pid;a.pid=bb.pid;bb.pid=t;UI.lsel=null;}renderLineupEditor();};
+ACT.lsel=d=>{const i=d.i==='sp'?'sp':parseInt(d.i);if(UI.lsel==null){UI.lsel=i;}else if(UI.lsel===i){UI.lsel=null;}else if(i==='sp'||UI.lsel==='sp'){/* 先発投手と打順の選手を入れ替え */const k=i==='sp'?UI.lsel:i;const t=UI.lw[k].pid;UI.lw[k].pid=UI.lsp;UI.lsp=t;UI.lsel=null;}else{const a=UI.lw[UI.lsel],bb=UI.lw[i];const t=a.pid;a.pid=bb.pid;bb.pid=t;UI.lsel=null;}renderLineupEditor();};
 ACT.lmove=d=>{const i=parseInt(d.i),j=i+parseInt(d.d);if(j<0||j>=UI.lw.length)return;const t=UI.lw[i];UI.lw[i]=UI.lw[j];UI.lw[j]=t;if(UI.lsel===i)UI.lsel=j;else if(UI.lsel===j)UI.lsel=i;renderLineupEditor();};
-ACT.lbench=d=>{const id=parseInt(d.id);if(UI.lsel==null){toast('先に入れ替えたい打順の選手名をタップしてください');return;}UI.lw[UI.lsel].pid=id;UI.lsel=null;renderLineupEditor();};
+ACT.lbench=d=>{const id=parseInt(d.id);if(UI.lsel==null){toast('先に入れ替えたい打順の選手名をタップしてください');return;}if(UI.lsel==='sp')UI.lsp=id;else UI.lw[UI.lsel].pid=id;UI.lsel=null;renderLineupEditor();};
 CHG.lpos=(d,el)=>{const i=parseInt(d.i);const np=el.value;const other=UI.lw.findIndex((s,k)=>k!==i&&s.pos===np);const old=UI.lw[i].pos;UI.lw[i].pos=np;if(other>=0)UI.lw[other].pos=old;renderLineupEditor();};
-ACT.lineupAutoModal=()=>{autoLineup();autoNumbers();lineupWorkInit();renderLineupEditor();};
-ACT.lineupSave=()=>{const slots=UI.lw.map(s=>({pid:s.pid,pos:s.pos}));const err=[];if(slots.length!==9||new Set(slots.map(s=>s.pid)).size!==9)err.push('同じ選手が複数の打順にいます。');const posSet=new Set(slots.map(s=>s.pos));if(posSet.size!==9)err.push('守備位置が重複しています。');if(slots.some(s=>!pById(s.pid)||pById(s.pid).injury>0))err.push('ケガ人は出場できません。');
+ACT.lDH=d=>{const on=d.v==='1'||d.v===1;if(on===lwDH())return;const keep=G.sp;G.sp=UI.lsp;const r=setDH(on,UI.lw);G.sp=keep;if(!r||!r.L){toast('控え選手が足りないためDH制にできません');return;}UI.lw=r.L;UI.lsp=r.sp;UI.lsel=null;renderLineupEditor();};
+/* 自動編成は編集中の下書きだけを書き換える（決定を押すまで保存中のオーダーは変えない） */
+ACT.lineupAutoModal=()=>{const keep={lineup:G.lineup,sp:G.sp,dh:G.dh};G.dh=lwDH();G.lineup=null;autoLineup();const L=(G.lineup||[]).map(s=>({pid:s.pid,pos:s.pos})),sp=G.sp;G.lineup=keep.lineup;G.sp=keep.sp;G.dh=keep.dh;if(L.length!==9){toast('選手が足りず自動で組めませんでした');return;}UI.lw=L;UI.lsp=sp;UI.lsel=null;renderLineupEditor();toast('オーダーを自動で組みました（決定を押すまで保存されません）');};
+ACT.lineupOrderAuto=()=>{UI.lw=reorderLineup(UI.lw);UI.lsel=null;renderLineupEditor();toast('打順を能力順に並べ直しました');};
+ACT.lineupSave=()=>{const slots=UI.lw.map(s=>({pid:s.pid,pos:s.pos}));const dh=slots.some(s=>s.pos==='指');const err=[];
+ if(slots.length!==9||new Set(slots.map(s=>s.pid)).size!==9)err.push('同じ選手が複数の打順にいます。');const posSet=new Set(slots.map(s=>s.pos));if(posSet.size!==9)err.push('守備位置が重複しています。');
+ if(dh&&(!UI.lsp||slots.some(s=>s.pid===UI.lsp)))err.push('先発投手を打順以外から選んでください。');if(slots.some(s=>!pById(s.pid)))err.push('いない選手が含まれています。');
+ /* ケガ人の代役はその試合だけ自動で入る。出られる選手が9人未満でも試合はできる（ケガ人も出場）ので止めない */
  if(err.length){const e=$('#lineupErr');if(e)e.textContent=err.join(' ');return;}
- G.lineup=slots;G.sp=slots.find(s=>s.pos==='投').pid;autoNumbers();saveGame();
+ G.lineup=slots;G.dh=dh;G.sp=dh?UI.lsp:slots.find(s=>s.pos==='投').pid;autoNumbers();saveGame();
  const ctx=UI.lineupCtx;if(ctx){const mode=$('#modeSel').value;G.settings.mode=mode;startMatchUI(ctx,mode);}else{closeModal();render();toast('オーダーを保存しました');}};
 /* ================= ランダムイベント ================= */
 function showEventModal(ev){const e=eventById(ev.id);if(!e){G.queue.shift();render();return;}const p=ev.pid?pById(ev.pid):null;if(e.p&&!p){G.queue.shift();render();return;}
@@ -75,10 +96,10 @@ function peReadInto(p){const get=k=>{const el=document.querySelector(`[data-pe="
  const q=Math.round(rating(p));const capBase=q+p.potential*4.5;for(const k of ALL_BAT)p.caps['bat'+k]=Math.round(clamp(Math.max(p.bat[k]+3,capBase+6),20,100));for(const k of ALL_PIT)p.caps['pit'+k]=Math.round(clamp(Math.max(p.pit[k]+3,capBase+6),20,100));p.caps.velo=veloCapFor(p.potential,p.pit.velo);p.caps.pitch=Math.round(clamp(capBase+8,40,100));
  p.training=isPitcher(p)?'pitch':'bat';}
 ACT.playerEdit=d=>{if(!canEdit()){toast('選手エディットはカスタムスタート専用です');return;}const p=pById(d.id);if(!p)return;openModal(playerEditHtml(p));};
-ACT.peSave=d=>{const p=pById(d.id);if(!p)return;peReadInto(p);ensurePositions();autoLineup();autoNumbers();saveGame();closeModal();render();toast('選手を更新しました');};
+ACT.peSave=d=>{const p=pById(d.id);if(!p)return;peReadInto(p);repairLineup(true);autoNumbers();saveGame();closeModal();render();toast('選手を更新しました');};
 ACT.peAddPitch=d=>{const p=pById(d.id);if(!p)return;peReadInto(p);const n=pick(PITCH_NAMES);const off=PITCH_SPEED_OFF[n]||[-10,-20];p.pit.pitches.push({name:n,velo:Math.round(p.pit.velo)+ri(off[1],off[0]),move:50,sharp:50,ctrl:50});openModal(playerEditHtml(p));};
 ACT.peDelPitch=d=>{const p=pById(d.id);if(!p)return;peReadInto(p);const i=parseInt(d.i);if(i>0)p.pit.pitches.splice(i,1);openModal(playerEditHtml(p));};
 ACT.peDelete=d=>{const p=pById(d.id);if(!p)return;openModal(`<h2>退部の確認</h2><p>${esc(p.name)}を退部させます（元に戻せません）。</p><div class="wrap">${b('退部させる','peDeleteYes',{id:p.id},'danger')}${b('やめる','closeModal',{})}</div>`);};
-ACT.peDeleteYes=d=>{G.players=G.players.filter(p=>p.id!=d.id);ensurePositions();autoLineup();autoNumbers();saveGame();closeModal();render();toast('退部させました');};
+ACT.peDeleteYes=d=>{G.players=G.players.filter(p=>p.id!=d.id);repairLineup(true);autoNumbers();saveGame();closeModal();render();toast('退部させました');};
 ACT.peAdd=()=>{if(!canEdit())return;const p=genPlayer({grade:1,q:55});G.players.push(p);saveGame();openModal(playerEditHtml(p));};
 function viewEditList(){if(!canEdit())return '';const list=G.players.slice().sort((a,b)=>a.grade-b.grade||rating(b)-rating(a)).map(p=>`<div class="pl" style="grid-template-columns:1fr auto"><div><div class="nm" data-act="playerEdit" data-id="${p.id}">${esc(p.name)} <span class="muted small">${p.grade}年 ${esc(playerPosLabel(p))} ${rkR(p)} 潜在${p.potential}</span></div></div>${b('編集','playerEdit',{id:p.id},'sm')}</div>`).join('');return `<section class="card"><h3>選手エディット <small>カスタムスタート専用</small></h3><div class="hint">名前・体格・守備位置・潜在能力・全能力値・球種・特殊能力を自由に変更できます。</div><div style="margin:6px 0">${b('新しい選手を追加','peAdd',{},'sm primary')}</div><div class="list">${list}</div></section>`;}

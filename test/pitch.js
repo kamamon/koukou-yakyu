@@ -1,6 +1,6 @@
 /* 一球単位エンジンの統計をPA単位エンジンと比較するキャリブレーション */
 const fs=require('fs');const path=require('path');
-const src=['01_data.js','01b_abil.js','01c_fac.js','01d_cards.js','02_core.js','03_match.js','03b_pitch.js','03c_phys.js','04_tourney.js','05_people.js','05b_events.js'].map(f=>fs.readFileSync(path.join(__dirname,'../src',f),'utf8')).join('\n');
+const src=['01_data.js','01b_abil.js','01c_fac.js','01d_cards.js','02_core.js','03_match.js','03b_pitch.js','03c_phys.js','04_tourney.js','05_people.js','05b_events.js','05c_story.js'].map(f=>fs.readFileSync(path.join(__dirname,'../src',f),'utf8')).join('\n');
 const code=src+`
 function saveGame(){}
 module.exports={newGame,G:()=>G,Match,cpuRoster,prepTeam,rating,pitRating,batRating,PITCH_PROF};

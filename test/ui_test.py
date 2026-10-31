@@ -187,11 +187,15 @@ def run():
                 if t=='alumni':
                     a=pg.query_selector_all('[data-act="alumDetail"]')
                     if a: sc(random.choice(a)); pg.click('[data-act="closeModal"]')
-                if t=='settings' and random.random()<0.3:
+                if t=='settings' and random.random()<0.3 and pg.query_selector('[data-act="uniformEditor"]'):
                     pg.click('[data-act="uniformEditor"]'); pg.wait_for_timeout(10)
-                    pg.select_option('select[data-scope="u"][data-k="style"]','raglan',timeout=8000)
-                    pg.click('[data-act="uniSwatch"][data-scope="u"][data-k="base"]')
-                    pg.click('[data-act="uniSave"]')
+                    if pg.query_selector('select[data-scope="u"][data-k="style"]'):
+                        pg.select_option('select[data-scope="u"][data-k="style"]','raglan',timeout=8000)
+                        pg.click('[data-act="uniSwatch"][data-scope="u"][data-k="base"]')
+                        pg.click('[data-act="uniSave"]')
+                    else:
+                        print('NOTE uniform editor not open; modal:',pg.evaluate("document.getElementById('overlay').hidden"),pg.inner_html('#modal')[:120].replace('\n',' '))
+                        if modal_open() and pg.query_selector('[data-act="closeModal"]'): pg.click('[data-act="closeModal"]')
                 if t=='news':
                     if pg.query_selector('[data-act="newsIssue"]'): pg.click('[data-act="newsIssue"]')
                     arts=pg.query_selector_all('[data-act="newsOpen"]')

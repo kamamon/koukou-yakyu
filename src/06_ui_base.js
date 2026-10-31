@@ -1,10 +1,14 @@
 /* ================= セーブ ================= */
 const SAVE_KEY='hsb_save_v1';
 function serialize(){return JSON.stringify(G);}
-function saveGame(){try{localStorage.setItem(SAVE_KEY,serialize());}catch(e){}}
+/* 保存：容量オーバーのときは古い写真（★なし→★あり）と古い記事を減らして保存し直す。それでも駄目なら一度だけ知らせる */
+function saveGame(){try{localStorage.setItem(SAVE_KEY,serialize());return true;}catch(e){}
+ for(let k=0;k<12;k++){const ph=G.photos||[];const i=ph.map(p=>!!p.pin).lastIndexOf(false);if(i>=0)ph.splice(i,1);else if(ph.length)ph.pop();else if(G.news&&G.news.length>150)G.news.length=Math.floor(G.news.length*0.75);else break;
+  try{localStorage.setItem(SAVE_KEY,serialize());if(!UI.saveTrimWarned){UI.saveTrimWarned=true;try{toast('保存容量が足りないため、古い写真・記事を整理しました');}catch(x){}}return true;}catch(e){}}
+ if(!UI.saveFailWarned){UI.saveFailWarned=true;try{toast('保存できませんでした（端末の空き容量を確認してください）');}catch(x){}}return false;}
 function loadGame(){try{const s=localStorage.getItem(SAVE_KEY);if(!s)return false;const g=JSON.parse(s);if(!g||!g.players)return false;G=g;migrate();return true;}catch(e){return false;}}
 function hasSave(){try{return !!localStorage.getItem(SAVE_KEY);}catch(e){return false;}}
-function migrate(){G.settings=G.settings||{mode:'card'};if(!G.stars){try{applyEliteSchools();refreshStars(true);}catch(e){console.warn(e);}}if(G.settings.mode==='action'&&!G.settings.keepAction){G.settings.mode='card';}G.tourneyLog=G.tourneyLog||[];G.uniform=G.uniform||defaultUniform();G.emblem=G.emblem||defaultEmblem();G.u18Log=G.u18Log||[];G.notices=G.notices||[];G.coachMarket=G.coachMarket||[];G.scoutMarket=G.scoutMarket||[];G.mode=G.mode||'normal';G.gameOver=!!G.gameOver;
+function migrate(){G.settings=G.settings||{mode:'card'};if(typeof ensureRival==='function'&&G.schools)ensureRival();G.photos=G.photos||[];G.mementos=G.mementos||[];if(!G.stars){try{applyEliteSchools();refreshStars(true);}catch(e){console.warn(e);}}if(G.settings.mode==='action'&&!G.settings.keepAction){G.settings.mode='card';}G.tourneyLog=G.tourneyLog||[];G.uniform=G.uniform||defaultUniform();G.emblem=G.emblem||defaultEmblem();G.u18Log=G.u18Log||[];G.notices=G.notices||[];G.coachMarket=G.coachMarket||[];G.scoutMarket=G.scoutMarket||[];G.mode=G.mode||'normal';G.gameOver=!!G.gameOver;
  if(G.fac&&G.fac.analysis){G.fac.video=G.fac.analysis;delete G.fac.analysis;}
  for(const k in G.fac){if(!FAC[k]){delete G.fac[k];continue;}const f=G.fac[k];if(f.model>=FAC[k].models.length)f.model=FAC[k].models.length-1;}
  if(G.coach&&!G.coach.style){G.coach.style=pick(COACH_STYLES).id;G.coach.bio=G.coach.bio||(G.coach.type==='教師'?'学校の先生':'外部招へい');G.coach.career=G.coach.career||'';}

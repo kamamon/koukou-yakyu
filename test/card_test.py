@@ -36,6 +36,11 @@ with sync_playwright() as p:
                         pg.click('[data-act="arAutoEnd"]',timeout=5000);break
                     except Exception as e:print('menu retry',str(e)[:60])
                 pg.wait_for_timeout(300)
+            # 試合終了のボード（2.2秒）→ 公式戦なら校歌斉唱 → 結果へ
+            for k in range(40):
+                if pg.evaluate("!AR.el||AR.el.hidden"):break
+                if pg.evaluate("AR.phase")=='cer':pg.evaluate("ACT.cerNext()")
+                pg.wait_for_timeout(250)
             pg.wait_for_timeout(300);break
         if ph=='pre' and not st['panel']:
             shot('pre_'+st['side'])

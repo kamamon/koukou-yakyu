@@ -37,6 +37,12 @@ def main():
                 # 1打席だけ操作してから最後まで
                 pg.wait_for_timeout(200)
                 pg.click('[data-act="arMenu"]');pg.wait_for_timeout(50);pg.click('[data-act="arAutoEnd"]');pg.wait_for_timeout(300)
+                # 試合終了のボード（2.2秒）→ 公式戦なら校歌斉唱 → 結果へ
+                for k in range(40):
+                    if pg.evaluate("!AR.el||AR.el.hidden"):break
+                    ph2=pg.evaluate("AR.phase")
+                    if ph2=='cer':pg.evaluate("ACT.cerNext()")
+                    pg.wait_for_timeout(250)
                 break
             if ph=='pre' and side=='bat' and not st['panel']:
                 shot('bat_pre')

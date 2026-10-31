@@ -263,6 +263,15 @@ label.f>*{color:var(--ink)}
 .lrow .lname{cursor:pointer;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:4px 2px}
 .lrow .larrows{display:flex;gap:2px}
 .lrow .larrows .btn{padding:3px 6px;font-size:11px}
+.lrow .lname{white-space:normal}
+.lrow .lname > b,.lrow .lname > span{white-space:nowrap}
+.lrow.inj{border-style:dashed;border-color:#c0392b66;background:color-mix(in srgb,var(--panel) 88%,#c0392b 12%)}
+.lrow.sp{background:color-mix(in srgb,var(--panel) 90%,var(--accent) 10%)}
+.lrow .lpos.fixed{display:inline-flex;align-items:center;justify-content:center;font-weight:700;border:1px solid var(--line);border-radius:6px;height:28px}
+.seg{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:6px 0 2px}
+.seg .btn{min-width:64px}
+.lu-sub{color:#c0392b;font-size:11px}
+.lu-dh{display:inline-block;font-size:10px;font-weight:700;border:1px solid var(--line);border-radius:4px;padding:0 4px;margin-left:4px;color:var(--muted)}
 .bpl{white-space:normal;text-align:left}
 /* 選手エディット */
 .pitchrow{display:grid;grid-template-columns:1fr 56px 48px 48px 48px auto;gap:4px;align-items:center;margin-bottom:4px}
@@ -446,3 +455,137 @@ label.f>*{color:var(--ink)}
 @keyframes ciPop{to{transform:none;opacity:1}}
 .ar-cutin.out{animation:ciOut .3s ease-in forwards}
 @keyframes ciOut{to{opacity:0;transform:translateX(-6%)}}
+
+/* ---- 新聞（一面）：スポーツ紙風。縦組み・段組み。大きさは紙面の幅（cqw）に比例 ---- */
+.np{container-type:inline-size;background:#f4f0e6;color:#1b1a17;border:1px solid #cfc7b4;box-shadow:0 2px 12px rgba(0,0,0,.2);padding:3cqw 3cqw 2cqw;font-family:"Hiragino Mincho ProN","Yu Mincho","Shippori Mincho","Noto Serif CJK JP","Noto Serif JP",serif;position:relative;overflow:hidden;margin:6px 0}
+.np::before{content:"";position:absolute;inset:0;background:radial-gradient(circle at 18% 8%,rgba(90,70,30,.05),transparent 55%),radial-gradient(circle at 85% 92%,rgba(90,70,30,.06),transparent 50%);pointer-events:none}
+.np .tcy{text-combine-upright:all;-webkit-text-combine:horizontal}
+.np-mast{display:flex;justify-content:space-between;align-items:stretch;gap:2cqw;border-bottom:.8cqw solid #1b1a17;padding-bottom:1.5cqw}
+.np-logo{display:flex;align-items:center;gap:1.6cqw;background:#b3121a;color:#fff;padding:1.2cqw 2.4cqw;border-radius:.6cqw}
+.np-title{font-family:"Yuji Syuku","Shippori Mincho",serif;font-size:8.4cqw;line-height:1;letter-spacing:.04em;white-space:nowrap}
+.np-ed{font-family:var(--font-body);font-size:2.9cqw;writing-mode:vertical-rl;font-weight:700;border-left:1px solid #fff8;padding-left:1cqw}
+.np-gogai{font-family:"Dela Gothic One","Hiragino Sans","Noto Sans CJK JP",sans-serif;font-size:4.6cqw;writing-mode:vertical-rl;background:#fff;color:#b3121a;padding:.3cqw .8cqw;border-radius:.4cqw;line-height:1.05;align-self:center}
+.np-date{display:flex;flex-direction:column;justify-content:center;align-items:flex-end;font-family:var(--font-body);font-size:2.5cqw;min-width:0;line-height:1.45;text-align:right}
+.np-date b{font-size:2.9cqw;white-space:nowrap}
+.np-index{display:flex;flex-wrap:wrap;gap:.4cqw 2cqw;font-family:var(--font-body);font-size:2.6cqw;padding:1cqw 0;border-bottom:1px solid #1b1a17;margin-bottom:2cqw;align-items:center}
+.np-index b{background:#1b1a17;color:#f4f0e6;padding:0 1.2cqw}
+.np-lead{cursor:pointer;border-bottom:1px solid #1b1a17;padding-bottom:2cqw;margin:2cqw 0}
+.np-top{display:flex;flex-direction:row-reverse;gap:2cqw;align-items:flex-start}
+.np-hls{display:flex;flex-direction:row-reverse;gap:1.2cqw;flex:0 0 auto}
+.np-hl{writing-mode:vertical-rl;margin:0;font-family:"Dela Gothic One","Hiragino Sans","Noto Sans CJK JP","Noto Sans JP","Yu Gothic",sans-serif;font-weight:400;line-height:1.06;background:#111;color:#fff;padding:1.4cqw .9cqw;letter-spacing:.02em}
+.np-hl span{display:block}
+.np-hl span+span{color:#ffe14d;margin-right:.6cqw}
+.np-hl.gg{background:#b3121a}
+.np-hl.gg span+span{color:#fff}
+.np-sub{writing-mode:vertical-rl;font-family:"Hiragino Sans","Noto Sans CJK JP","Noto Sans JP","Yu Gothic",sans-serif;font-weight:800;font-size:4.8cqw;line-height:1.12;border-right:.6cqw solid #b3121a;padding-right:.7cqw;max-height:66cqw}
+.np-sub.gg{color:#b3121a;font-size:5.6cqw}
+.np-photo{flex:1 1 auto;margin:0;min-width:0}
+.np-photo img{display:block;width:100%;aspect-ratio:4/3;object-fit:cover;filter:saturate(.92) contrast(1.05);border:1px solid #1b1a17}
+.np-photo figcaption{font-family:var(--font-body);font-size:2.5cqw;color:#3b3833;margin-top:.6cqw;line-height:1.35}
+.np-photo.ill{filter:sepia(.18) saturate(.85)}
+.np-scene{position:relative;aspect-ratio:4/3;overflow:hidden;border:1px solid #1b1a17;background:#7a9ab8}
+.np-scene .sky{position:absolute;inset:0 0 55% 0;background:linear-gradient(#5d93cf,#a9cbea)}
+.np-scene .stand{position:absolute;left:0;right:0;top:30%;height:28%;background:repeating-linear-gradient(0deg,#4b5563 0 3px,#5d6776 3px 6px)}
+.np-scene .field{position:absolute;left:0;right:0;bottom:0;height:46%;background:linear-gradient(#3f8a4a,#2f6e3a)}
+.np-scene .np-av{position:absolute;left:50%;bottom:-8%;transform:translateX(-50%);width:70%}
+.np-scene .np-av svg{width:100%;height:auto;display:block}
+.np-scene .np-ball{position:absolute;left:46%;top:34%;width:8%;aspect-ratio:1;border-radius:50%;background:#fff;box-shadow:0 0 0 1px #0003}
+.np-scene .dots{position:absolute;inset:0;background-image:radial-gradient(rgba(0,0,0,.2) .6px,transparent .75px);background-size:3px 3px;mix-blend-mode:multiply}
+.np-body{writing-mode:vertical-rl;column-gap:3cqw;column-rule:1px solid #1b1a1733;column-fill:auto;overflow:hidden;font-size:3.45cqw;line-height:1.72;text-align:justify;margin-top:2cqw;width:100%}
+.np-ls{width:100%;border-collapse:collapse;font-family:var(--font-num),var(--font-body);font-size:2.9cqw;margin-top:2cqw;background:#fffdf7}
+.np-ls td,.np-ls th{border:1px solid #1b1a17;text-align:center;padding:.4cqw .2cqw}
+.np-ls th{font-family:var(--font-body);text-align:left;padding-left:1cqw;white-space:nowrap}
+.np-ls .lh{background:#1b1a17;color:#f4f0e6;font-size:2.6cqw}
+.np-ls .r{font-weight:700}
+.np-ls tr.us th{color:#b3121a}
+.np-quote{font-family:var(--font-body);font-size:2.9cqw;margin-top:1.5cqw;border-top:1px dashed #1b1a1777;padding-top:1cqw}
+.np-quote p{margin:.4cqw 0}
+.np-boxh{font-family:var(--font-body);font-weight:800;font-size:3cqw;background:#1b1a17;color:#f4f0e6;padding:.3cqw 1.4cqw;margin-bottom:.8cqw;display:inline-block}
+.np-pvl{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:1.6cqw}
+.np-fav table{width:100%;border-collapse:collapse;font-size:3cqw}
+.np-fav td{border-bottom:1px solid #1b1a1744;padding:.6cqw .4cqw;vertical-align:top}
+.np-fav .mk{font-size:4.6cqw;color:#b3121a;width:6cqw;text-align:center;font-family:var(--font-body);line-height:1}
+.np-fav .nm{font-weight:700}
+.np-fav .nm small{font-weight:400;font-size:2.4cqw}
+.np-fav .nt{font-family:var(--font-body);font-size:2.4cqw;color:#3b3833;display:block;font-weight:400}
+.np-fav tr.us .nm{color:#b3121a}
+.np-our{border:1px solid #1b1a17;padding:1cqw 1.4cqw;font-family:var(--font-body);font-size:2.7cqw;background:#fffdf7}
+.np-our .np-boxh{display:block}
+.np-our .pw{display:grid;grid-template-columns:1fr 1fr;gap:.2cqw 2cqw}
+.np-our .pw span{white-space:nowrap;color:#b3121a}
+.np-our .pw i{color:#1b1a1733;font-style:normal}
+.np-our .op{margin-top:.6cqw}
+.np-stars{margin-top:2cqw}
+.np-stars .g{display:grid;grid-template-columns:repeat(3,1fr);gap:1.4cqw}
+.np-star{border:1px solid #1b1a1755;padding:1cqw;display:flex;flex-direction:column;align-items:center;font-family:var(--font-body);font-size:2.5cqw;text-align:center;position:relative;background:#fffdf7;line-height:1.35}
+.np-star.us{border-color:#b3121a;box-shadow:inset 0 0 0 1px #b3121a}
+.np-star b{font-size:3cqw}
+.np-star .np-sav svg{width:14cqw;height:14cqw;display:block}
+.np-star .st{color:#b3121a;font-weight:700}
+.np-star .rk{position:absolute;right:.8cqw;top:.4cqw;font-size:3.4cqw;min-width:0}
+.np-secs{display:grid;grid-template-columns:1fr 1fr;gap:3cqw;border-bottom:1px solid #1b1a17;padding-bottom:2cqw;margin-bottom:2cqw}
+.np-sec{display:flex;flex-direction:row-reverse;gap:1.4cqw;cursor:pointer;min-width:0}
+.np-sec h3{writing-mode:vertical-rl;margin:0;font-family:"Hiragino Sans","Noto Sans CJK JP","Noto Sans JP","Yu Gothic",sans-serif;font-weight:900;font-size:4.3cqw;line-height:1.15;max-height:46cqw;border-left:1px solid #1b1a1733;padding-left:1cqw}
+.np-sbody{writing-mode:vertical-rl;height:46cqw;overflow:hidden;font-size:3.05cqw;line-height:1.65;flex:1 1 auto;min-width:0}
+.np-mods{display:grid;grid-template-columns:1fr 1fr;gap:2cqw;border-bottom:1px solid #1b1a17;padding-bottom:2cqw;margin-bottom:2cqw;font-family:var(--font-body)}
+.np-mod{font-size:2.7cqw;min-width:0}
+.np-mod.wide{grid-column:1/-1}
+.np-mod .r{display:flex;justify-content:space-between;gap:1cqw;border-bottom:1px dotted #1b1a1755;padding:.3cqw 0}
+.np-mod .r.us{color:#b3121a;font-weight:700}
+.np-briefs{font-family:var(--font-body);font-size:2.9cqw;border-bottom:1px solid #1b1a17;padding-bottom:2cqw;margin-bottom:2cqw}
+.np-brief{padding:.6cqw 0;border-bottom:1px dashed #1b1a1744;cursor:pointer}
+.np-brief .c{display:inline-block;font-size:2.3cqw;border:1px solid #b3121a;color:#b3121a;padding:0 .8cqw;margin-right:1.2cqw}
+.np-col{display:flex;flex-direction:row-reverse;gap:1.4cqw;border:1px solid #1b1a17;padding:1.4cqw;margin-bottom:2cqw;background:#fffdf7}
+.np-colh{writing-mode:vertical-rl;font-family:"Shippori Mincho",serif;font-weight:700;font-size:5cqw;background:#1b1a17;color:#f4f0e6;padding:1cqw .6cqw;align-self:flex-start}
+.np-colb{writing-mode:vertical-rl;height:var(--colh,36cqw);overflow:hidden;font-size:3.05cqw;line-height:1.7;flex:1 1 auto;min-width:0}
+.np-ads{display:grid;grid-template-columns:1fr 1fr;gap:2cqw;margin-bottom:1.5cqw}
+.np-ad{border:.5cqw solid var(--ac);padding:1.4cqw;font-family:var(--font-body);display:flex;flex-direction:column;gap:.6cqw;background:#fffdf7}
+.np-ad b{color:var(--ac);font-size:3.4cqw;font-family:"Dela Gothic One",sans-serif;font-weight:400;line-height:1.2}
+.np-ad span{font-size:2.5cqw}
+.np-foot{font-family:var(--font-body);font-size:2.2cqw;color:#5b564d;text-align:center;border-top:1px solid #1b1a17;padding-top:1cqw}
+.np.gg{background:#fbf6ea}
+.np-back{max-width:52%;font-size:12px}
+/* 記事を読む（横書き） */
+.np-read{font-family:"Hiragino Mincho ProN","Yu Mincho","Shippori Mincho",serif}
+.np-rmast{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:3px double var(--ink);padding-bottom:4px;margin-bottom:8px;font-size:12px;font-family:var(--font-body)}
+.np-rmast span:first-child{font-family:"Yuji Syuku",serif;font-size:22px}
+.np-read h2{font-family:"Dela Gothic One",sans-serif;font-weight:400;font-size:24px;line-height:1.25;margin:6px 0}
+.np-rsub{font-weight:700;color:#b3121a;margin-bottom:8px;font-family:var(--font-body)}
+.np-read .np-photo{margin:8px 0}
+.np-read .np-photo figcaption{font-size:11px}
+.np-read .np-ls{font-size:12px}
+.np-rbody{font-size:15px;line-height:1.9;text-align:justify}
+.np-rq{font-size:14px;border-left:3px solid #b3121a;padding-left:8px}
+.np-rh{margin:10px 0 4px;font-size:14px;border-bottom:1px solid var(--line)}
+.np-rfav td{padding:4px}
+/* ホームの「最新の紙面」 */
+.np-teaser{cursor:pointer;display:flex;flex-direction:column;gap:2px;border-left:4px solid #b3121a}
+.np-teaser.gg{background:color-mix(in srgb,var(--panel) 88%,#b3121a 12%)}
+.np-tz{display:flex;align-items:center;gap:8px}
+.np-tz-t{font-family:"Yuji Syuku",serif;font-size:18px;color:#b3121a}
+.np-tz-g{background:#b3121a;color:#fff;font-weight:800;font-size:11px;padding:0 6px;border-radius:3px}
+.np-tz-h{font-family:"Dela Gothic One",sans-serif;font-weight:400;font-size:18px;line-height:1.3}
+
+/* ---- 実況・場内アナウンスの字幕 ---- */
+.ar-cap{position:absolute;left:8px;top:8px;max-width:min(78%,420px);z-index:3;pointer-events:none;display:flex;gap:6px;align-items:flex-start;background:rgba(8,14,20,.8);color:#fff;border-radius:6px;padding:5px 9px;font-size:13px;line-height:1.45;opacity:0;transform:translateY(-6px);transition:opacity .25s,transform .25s;box-shadow:0 2px 8px rgba(0,0,0,.3)}
+.ar-cap.show{opacity:1;transform:none}
+.ar-cap .who{flex:0 0 auto;font-size:10px;font-weight:700;background:#b3121a;border-radius:3px;padding:1px 5px;margin-top:2px}
+.ar-cap.anc .who{background:#2f6fdd}
+/* ---- 校歌斉唱・甲子園の土 ---- */
+.cer{margin-top:auto;margin-bottom:5%;width:min(92%,420px);background:linear-gradient(180deg,rgba(8,14,20,.5),rgba(8,14,20,.86));border:1px solid rgba(255,255,255,.18);border-radius:12px;padding:12px 14px;color:#fff;text-align:center;font-family:"Hiragino Mincho ProN","Shippori Mincho","Noto Serif CJK JP",serif}
+.cer.pop{animation:ovpop .4s ease-out}
+.cer-h{font-family:var(--font-body);font-size:12px;letter-spacing:.35em;color:#ffd166;font-weight:700}
+.cer-s{font-size:20px;font-weight:700;margin:2px 0 6px}
+.cer-l p{margin:5px 0;font-size:15px;opacity:.42;transition:opacity .4s,transform .4s}
+.cer-l p.on{opacity:1;transform:scale(1.05);color:#fff6d6;text-shadow:0 0 10px rgba(255,214,102,.45)}
+.cer-l p.done{opacity:.78}
+.cer-f{font-size:11px;opacity:.7;margin-top:6px;font-family:var(--font-body)}
+.cer.soil svg{display:block;margin:6px auto}
+.cer-t{font-size:14px;line-height:1.75}
+.ar-cutin .ci-rank .ttl.rv{background:#b3121a;border-color:#ff8a7a}
+/* ---- アルバム ---- */
+.alb{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+.alb-i{margin:0;position:relative;cursor:pointer;background:var(--panel);border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.alb-i img{display:block;width:100%;aspect-ratio:4/3;object-fit:cover}
+.alb-i figcaption{font-size:11px;padding:4px 6px;line-height:1.35;display:flex;flex-direction:column;gap:1px}
+.alb-i .pin{position:absolute;top:4px;right:6px;color:#ffd166;text-shadow:0 1px 2px #000}

@@ -1,6 +1,6 @@
 // 打撃バランス：強打者は格下相手を打ち込み、S級のスラッガーは年間100本塁打も狙える。両モデル（一球単位＝カード/操作、playPA＝おまかせ）で確認
 const fs=require('fs');const path=require('path');
-const src=['01_data.js','01b_abil.js','01c_fac.js','01d_cards.js','02_core.js','03_match.js','03b_pitch.js','03c_phys.js','04_tourney.js','05_people.js','05b_events.js'].map(f=>fs.readFileSync(path.join(__dirname,'../src',f),'utf8')).join('\n');
+const src=['01_data.js','01b_abil.js','01c_fac.js','01d_cards.js','02_core.js','03_match.js','03b_pitch.js','03c_phys.js','04_tourney.js','05_people.js','05b_events.js','05c_story.js'].map(f=>fs.readFileSync(path.join(__dirname,'../src',f),'utf8')).join('\n');
 const code=src+`\nfunction saveGame(){}\nmodule.exports={newGame,G:()=>G,createMatch,applyMatchResult,tourneyUserResult,userMatch,startPractice,advanceWeek,genPlayer,autoLineup,autoNumbers,active,committeeStart,committeeOptions,committeeChoose,committeeRequest,startTourney,playerWish,eventById,blankStats,isPitcher};`;
 const m={exports:{}};new Function('module','require',code)(m,require);const L=m.exports;
 function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return ((t^t>>>14)>>>0)/4294967296;};}
@@ -21,7 +21,8 @@ for(const pitch of [true,false]){const tag=pitch?'pitch':'playPA';
  within(w35.avg,0.28,0.48,tag+' q60 vs35 AVG');within(w55.avg,0.20,0.37,tag+' q60 vs55 AVG');within(w55.hrg,0,1.3,tag+' q60 vs55 HR/G');
  if(!(s35.avg>s55.avg&&s55.avg>s90.avg))throw new Error(tag+': AVG should fall as opponent gets stronger');
  /* 平均的なチームに1人だけS級スラッガー：相手が弱いほど本塁打が増え、1試合1本以上 */
- const star=(pw)=>{fresh(20+pw);setTeam(60);const p=G.players.find(x=>!L.isPitcher(x)&&x.grade===3)||G.players.find(x=>!L.isPitcher(x));for(const k of ['meetR','meetL','powR','powL','eye','clutch'])p.bat[k]=pw;p.bat.speed=Math.max(p.bat.speed,70);L.autoLineup();L.autoNumbers();return p.name;};
+ const star=(pw)=>{fresh(20+pw);setTeam(60);const p=G.players.find(x=>!L.isPitcher(x)&&x.grade===3)||G.players.find(x=>!L.isPitcher(x));for(const k of ['meetR','meetL','powR','powL','eye','clutch'])p.bat[k]=pw;p.bat.speed=Math.max(p.bat.speed,70);L.autoLineup();
+  /* 打撃の検証なので、守備の兼ね合いで外れたときは本職の枠に入れる */if(!G.lineup.some(s=>s.pid===p.id)){const s=G.lineup.find(x=>x.pos===p.pos)||G.lineup.find(x=>x.pos!=='投');s.pid=p.id;}L.autoNumbers();return p.name;};
  const n95=star(95);const a35=playGames(35,40,pitch,n95).star,a55=playGames(55,40,pitch,n95).star,a90=playGames(90,40,pitch,n95).star;
  const n75=star(75);const b55=playGames(55,40,pitch,n75).star;
  const hrg=s=>s.hr/Math.max(1,s.g);

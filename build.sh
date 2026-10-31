@@ -20,7 +20,7 @@ DOM='<div id="setup" class="setup" hidden></div>
 </div>
 <div id="overlay" class="overlay" hidden><div class="modal" id="modal" role="dialog" aria-modal="true"></div></div>
 <div id="toast" class="toast" hidden></div>'
-JS="$(cat src/01_data.js src/01b_abil.js src/01c_fac.js src/01d_cards.js src/02_core.js src/03_match.js src/03b_pitch.js src/03c_phys.js src/04_tourney.js src/05_people.js src/05b_events.js src/06_ui_base.js src/07_ui_tabs.js src/07b_ui_news.js src/08_ui_match.js src/08b_ui_edit.js src/08c_ui_action.js src/08d_ui_field.js src/08e_ui_card.js src/08f_ui_3d.js src/08g_ui_rig.js src/08h_ui_stadium.js src/08i_ui_gl.js src/09_ui_setup.js)"
+JS="$(cat src/01_data.js src/01b_abil.js src/01c_fac.js src/01d_cards.js src/02_core.js src/03_match.js src/03b_pitch.js src/03c_phys.js src/04_tourney.js src/05_people.js src/05b_events.js src/05c_story.js src/06_ui_base.js src/07_ui_tabs.js src/07b_ui_news.js src/08_ui_match.js src/08b_ui_edit.js src/08c_ui_action.js src/08d_ui_field.js src/08e_ui_card.js src/08f_ui_3d.js src/08g_ui_rig.js src/08h_ui_stadium.js src/08i_ui_gl.js src/08j_ui_immersion.js src/09_ui_setup.js)"
 THREE="$(cat vendor/three.min.js)"
 # 選手モデル（GLB・テクスチャ）の置き場所：単体HTML／アーティファクト版は GitHub Pages から取得、PWA版は同梱
 PAGES_ASSETS='<script>const R3_ASSET_BASE="https://kamamon.github.io/koukou-yakyu/assets/";</script>'

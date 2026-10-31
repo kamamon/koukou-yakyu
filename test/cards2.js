@@ -1,6 +1,6 @@
 /* カード効果の検証：同じ対戦でカードあり／なしの結果分布を比較 */
 const fs=require('fs');const path=require('path');
-const src=['01_data.js','01b_abil.js','01c_fac.js','01d_cards.js','02_core.js','03_match.js','03b_pitch.js','03c_phys.js','04_tourney.js','05_people.js','05b_events.js'].map(f=>fs.readFileSync(path.join(__dirname,'../src',f),'utf8')).join('\n');
+const src=['01_data.js','01b_abil.js','01c_fac.js','01d_cards.js','02_core.js','03_match.js','03b_pitch.js','03c_phys.js','04_tourney.js','05_people.js','05b_events.js','05c_story.js'].map(f=>fs.readFileSync(path.join(__dirname,'../src',f),'utf8')).join('\n');
 const code=src+`;function saveGame(){};module.exports={newGame,G:()=>G,Match,cpuRoster,CARD_DEFS,drawCard};`;
 const m={exports:{}};new Function('module','require',code)(m,require);const L=m.exports;
 L.newGame({name:'青葉高校',pref:'神奈川',type:'公立',size:'中',hensachi:55});

@@ -122,8 +122,8 @@ Match.prototype.contact=function(be,pe,P,sw,bHand){const meet=be.meet,pow=be.pow
  const q=(1-d*0.6)*tf;res.q=q;
  /* 打球速度（km/h）：高校生の上限は160前後。完璧な当たり×パワーで伸び、投手の被弾性・被安打性で少し落ちる */
  /* パワーは加速度的に効く（S級は150km/h超が当たり前で、年間100本塁打も狙える） */
- const pw=Math.min(pow,105);const powX=(pw-50)*0.2+Math.pow(clamp(pw-70,0,30),2)/80;/* 本塁打用のパワー上積み（安打判定には使わない） */
- let ev=97+q*posF*30+(pw-50)*0.25+powX-(pe.hit-50)*0.06-(pe.hr-50)*0.08+(sw.type==='power'?8:0)+gauss(0,8);
+ const pw=Math.min(pow,105);/* 本塁打用のパワー上積み（安打判定には使わない）。格下の投手（被弾性が低い）ほど大きい */const powX=(pw-50)*0.2+Math.pow(clamp(pw-70,0,30),2)/80+clamp(pw-pe.hr,-30,60)*0.25-3.5;
+ let ev=95+q*posF*30+(pw-50)*0.25+powX-(pe.hit-50)*0.06-(pe.hr-50)*0.05+(sw.type==='power'?8:0)+gauss(0,8);
  const bmc=(this.pa&&this.pa.bm)||{},pmc=(this.pa&&this.pa.pm)||{};
  let la=10+clamp((sw.cy-P.y)/ry,-1,1)*30+(sw.type==='power'?5:0)+clamp(pow-50,0,50)*0.1+gauss(0,9)+(bmc.laBias||0)-(pmc.gb||0);/* 強打者はやや打ち上げる */
  const hs=bHand==='左'?-1:1;

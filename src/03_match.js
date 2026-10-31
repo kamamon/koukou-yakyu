@@ -7,17 +7,23 @@ function cpuRoster(name,strength,pref){
  let ace=mk('投',ri(0,6));const rel=[mk('投',ri(-8,-2)),mk('投',ri(-14,-6))];
  /* 全国の注目選手が所属する学校なら、その選手を実際に入れる */
  for(const st of (typeof starsOf==='function'?starsOf(name,pref):[])){const sp=genPlayer({grade:st.grade,q:st.q,pos:st.pos,name:st.name,rank:st.rank,title:st.title,uniqProb:st.rank==='S'?0.8:0.5});sp.cpu=true;sp.nstar=st;sp.throws=st.throws;sp.bats=st.bats;
-  if(st.pos==='投'){const vmin=st.rank==='S'?146:141;if(sp.pit.velo<vmin)sp.pit.velo=ri(vmin,vmin+8);sp.pit.pitches[0].velo=Math.round(sp.pit.velo);if(sp.pit.pitches.length<3){const names=shuffle(PITCH_NAMES.filter(n=>n!=='ナックル'&&!sp.pit.pitches.some(q=>q.name===n))).slice(0,3-sp.pit.pitches.length);for(const n of names){const off=PITCH_SPEED_OFF[n]||[-10,-20];sp.pit.pitches.push({name:n,velo:sp.pit.velo+ri(off[1],off[0]),move:ri(80,92),sharp:ri(80,92),ctrl:ri(78,90)});}}}
-  boostToRating(sp,st.rank==='S'?ri(94,97):ri(88,92));if(st.rank!=='S'&&rating(sp)>93.2)capRating(sp,93.2);if(st.pos==='投'){if(ace.nstar){rel.unshift(ace);rel.length=Math.min(rel.length,3);}ace=sp;}
+  if(st.pos==='投'){const vmin=st.velo||(st.rank==='S'?146:141);if(sp.pit.velo<vmin)sp.pit.velo=vmin;sp.pit.pitches[0].velo=Math.round(sp.pit.velo);if(sp.pit.pitches.length<3){const names=shuffle(PITCH_NAMES.filter(n=>n!=='ナックル'&&!sp.pit.pitches.some(q=>q.name===n))).slice(0,3-sp.pit.pitches.length);for(const n of names){const off=PITCH_SPEED_OFF[n]||[-10,-20];sp.pit.pitches.push({name:n,velo:sp.pit.velo+ri(off[1],off[0]),move:ri(80,92),sharp:ri(80,92),ctrl:ri(78,90)});}}}
+  boostToRating(sp,st.rank==='S'?ri(94,97):ri(88,92));if(st.rank!=='S'&&rating(sp)>93.2)capRating(sp,93.2);if(st.pos==='投'&&st.velo){sp.pit.velo=st.velo;sp.pit.pitches[0].velo=st.velo;}if(st.pos==='投'){if(ace.nstar){rel.unshift(ace);rel.length=Math.min(rel.length,3);}ace=sp;}
   else{let i=fielders.findIndex(f=>f.pos===st.pos&&!f.nstar);if(i<0)i=fielders.findIndex(f=>!f.nstar&&f.pos!=='捕');if(i<0)continue;sp.pos=fielders[i].pos;fielders[i]=sp;}}
  const benchF=[mk(pick(['一','二','三','左','右']),ri(-14,-6)),mk(pick(['捕','遊','中']),ri(-14,-6))];
- const lineup=fielders.map(p=>({p,pos:p.pos}));lineup.push({p:ace,pos:'投'});
+ /* DH制（2026年春から高校野球でも採用可）：7割ほどの学校が使う。打撃のいい投手がいる学校は使わないことも */
+ let h=0;for(const ch of name)h=(h*31+ch.charCodeAt(0))>>>0;const useDH=(h%10)<7&&!(batRating(ace)>=q-2&&R()<0.6);
+ const slots=fielders.map(p=>({p,pos:p.pos}));
+ if(useDH){const dh=mk(pick(['一','左','右','三']),ri(-2,5));slots.push({p:dh,pos:'指'});}else slots.push({p:ace,pos:'投'});
+ const lineup=orderBatters(slots);
  return {name,isUser:false,strength,pref,lineup,bench:rel.concat(benchF),pitcher:ace};
 }
-function userRoster(){ensureLineup();const a=active();const lineup=G.lineup.map(s=>({p:a.find(x=>x.id===s.pid),pos:s.pos})).filter(s=>s.p);const sp=lineup.find(s=>s.pos==='投');return {name:G.school.name,isUser:true,strength:teamStrength(),pref:G.school.pref,lineup,bench:benchPlayers(),pitcher:sp?sp.p:lineup[8].p,starters:new Set(lineup.map(s=>s.p.id))};}
-function prepTeam(t){t.batIdx=0;t.pc={};t.stats={};t.pstats={};t.used=new Set(t.lineup.map(s=>s.p.id));t.starters=t.starters||new Set(t.lineup.map(s=>s.p.id));t.mound=0;t.compose=0;t.infieldIn=false;t.extraBoost=0;t.startPitcher=t.pitcher;calcDef(t);return t;}
+function userRoster(){const ef=effectiveLineup();const lineup=ef.slots.filter(s=>s.p).map(s=>({p:s.p,pos:s.pos}));const sp=ef.sp||lineup[lineup.length-1].p;
+ const subs=ef.slots.filter(s=>s.orig).map(s=>({orig:s.orig,p:s.p,pos:s.pos}));if(ef.spOrig&&ef.sp)subs.push({orig:ef.spOrig,p:ef.sp,pos:'投'});
+ return {name:G.school.name,isUser:true,strength:teamStrength(),pref:G.school.pref,lineup,bench:benchPlayers(ef),pitcher:sp,dh:ef.dh,subs,starters:new Set(lineup.map(s=>s.p.id).concat([sp.id]))};}
+function prepTeam(t){t.batIdx=0;t.pc={};t.stats={};t.pstats={};t.used=new Set(t.lineup.map(s=>s.p.id));if(t.pitcher)t.used.add(t.pitcher.id);t.dh=!t.lineup.some(s=>s.pos==='投');t.starters=t.starters||new Set(t.lineup.map(s=>s.p.id));t.mound=0;t.compose=0;t.infieldIn=false;t.extraBoost=0;t.startPitcher=t.pitcher;calcDef(t);return t;}
 function posCtx(pos){return {catcher:pos==='捕',infield:['一','二','三','遊'].includes(pos),outfield:['左','中','右'].includes(pos)};}
-function calcDef(t){const f=t.lineup.filter(s=>s.pos!=='投');let errRes=0,defAdd=0;const fx=(s,r,b)=>{const p=s.p;const acc=abilAcc(p,posCtx(s.pos));let v=(p.bat.field+(acc.field||0))*0.4+p.bat[r]*0.2+p.bat[b]*0.2+p.bat.thr*0.2;errRes+=acc.errRes||0;defAdd+=acc.def||0;return v*posFit(p,s.pos);};
+function calcDef(t){const f=t.lineup.filter(s=>s.pos!=='投'&&s.pos!=='指');let errRes=0,defAdd=0;const fx=(s,r,b)=>{const p=s.p;const acc=abilAcc(p,posCtx(s.pos));let v=(p.bat.field+(acc.field||0))*0.4+p.bat[r]*0.2+p.bat[b]*0.2+p.bat.thr*0.2;errRes+=acc.errRes||0;defAdd+=acc.def||0;return v*posFit(p,s.pos);};
  t.defR=avg(f.map(s=>fx(s,'rfR','rbR')))+defAdd;t.defL=avg(f.map(s=>fx(s,'rfL','rbL')))+defAdd;t.errRes=clamp(errRes/8,-0.5,0.6);
  const c=t.lineup.find(s=>s.pos==='捕');if(c){const acc=abilAcc(c.p,posCtx('捕'));t.catcherArm=c.p.bat.arm*0.6+c.p.bat.thr*0.4+(acc.arm||0)*0.6+(acc.stealDef||0);}else t.catcherArm=40;
  const ps=t.pitcher?abilAcc(t.pitcher,posCtx('投')):{};t.defR+=(ps.def||0);t.defL+=(ps.def||0);t.errRes=clamp(t.errRes+(ps.errRes||0)/4,-0.5,0.6);}
@@ -36,6 +42,7 @@ class Match{
  userFielding(){return this.def().isUser}
  addLog(text,kind){this.log.push({inn:this.inn,top:this.top,text,kind:kind||'',s:this.score.slice()});}
  startHalf(){this.outs=0;this.bases=[null,null,null];this.errInn=false;const d=this.def();d.infieldIn=false;d.lastKey=null;this.line[this.bi()][this.inn-1]=0;
+  if(d.realign)this.realignDefense(d);
   if(d.needPitcher){const rel=d.bench.filter(x=>isPitcher(x)||x.sub.includes('投')).sort((a,b)=>pitRating(b)-pitRating(a))[0];const slot=d.lineup.find(s=>s.pos==='投');if(rel)this.changePitcher(d,rel);else{d.pitcher=slot?slot.p:d.pitcher;pst(d,d.pitcher);d.needPitcher=false;this.addLog(`${d.name} 投手がいないため${d.pitcher.name}が登板`,'sub');}}
   this.addLog(`${this.inn}回${this.top?'表':'裏'} ${this.bat().name}の攻撃`,'inn');
   if(this.inn>=10){const t=this.bat(),n=t.lineup.length;this.bases[0]=t.lineup[(t.batIdx+n-1)%n].p;this.bases[1]=t.lineup[(t.batIdx+n-2)%n].p;this.addLog('タイブレーク：無死一・二塁から開始','note');}}
@@ -106,7 +113,7 @@ class Match{
    const cv=Math.pow(Math.max(0,be.meet-65),2)/26000;/* ミートが高いほど加速度的に打つ */
    /* 本塁打：パワーで指数的に増える（S級は格下相手なら1試合1本以上、年間100本も）。投手の被弾性が低い（弱い）ほど増え、高いほど減る */
    const pw=0.5*be.pow+0.5*(be.powRaw!=null?be.powRaw:be.pow);/* 得点圏などの一時的な上昇は本塁打には半分だけ効く */const hrBase=pw>=60?Math.min(0.36,0.004*Math.exp((pw-60)/8.3)):Math.max(0.001,0.004*(pw-30)/30);
-   const hrPit=(pe.hr<55?1+(55-pe.hr)/120:Math.exp(-(pe.hr-55)/32))*(1-(sharp-50)/400);
+   const hrPit=(pe.hr<55?1+(55-pe.hr)/60:Math.exp(-(pe.hr-55)/32))*(1-(sharp-50)/400);
    let hrp=hrBase*hrPit+be.hrp;hrp=clamp(hrp,0.001,0.45);
    let hp=0.28+(be.meet-50)/1400+cv+edge-(pe.hit-50)/900-(def-50)/1300-(move-50)/2000+(be.pow-50)/2200-(pe.velo-120)/1800+(d.infieldIn?0.05:0);hp=clamp(hp*(1+pe.tired*0.1),0.14,0.58);hp*=1-hrp*0.8;/* 本塁打になる分は単打等から差し引く */if(hp+hrp>0.72){const kk=0.72/(hp+hrp);hp*=kk;hrp*=kk;}
    let ep=clamp((0.02-(def-50)/3000)*(1-d.errRes),0.004,0.05);
@@ -161,8 +168,15 @@ class Match{
  winPitcher(t){const list=Object.values(t.pstats).sort((a,b)=>a.order-b.order);return list.length?list[list.length>1&&list[0].ipo<15?list.length-1:0]:null;}
  lastPitcher(t){const list=Object.values(t.pstats).sort((a,b)=>a.order-b.order);return list[list.length-1]||null;}
  changePitcher(team,np){const old=team.pitcher;const slot=team.lineup.find(s=>s.pos==='投')||team.lineup.find(s=>s.p.id===old.id);const outName=slot?slot.p.name:old.name;team.pitcher=np;team.used.add(np.id);team.bench=team.bench.filter(x=>x.id!==np.id);if(slot){slot.p=np;slot.pos='投';}team.needPitcher=false;pst(team,np);team.compose=0;calcDef(team);this.addLog(`${team.name} 投手交代：${outName}→${np.name}`,'sub');this.subsLog.push({team:team.name,out:old.id,in:np.id});}
- pinchHit(team,idx,np){const slot=team.lineup[idx];const old=slot.p;slot.p=np;team.used.add(np.id);team.bench=team.bench.filter(x=>x.id!==np.id);if(old.id===team.pitcher.id)team.needPitcher=true;calcDef(team);this.addLog(`${team.name} 代打：${old.name}→${np.name}`,'sub');}
- pinchRun(team,base,np){const old=this.bases[base];this.bases[base]=np;team.used.add(np.id);team.bench=team.bench.filter(x=>x.id!==np.id);const slot=team.lineup.find(s=>s.p.id===old.id);if(slot){slot.p=np;if(old.id===team.pitcher.id)team.needPitcher=true;}calcDef(team);this.addLog(`${team.name} 代走：${old.name}→${np.name}`,'sub');}
+ pinchHit(team,idx,np){const slot=team.lineup[idx];const old=slot.p;slot.p=np;team.used.add(np.id);team.bench=team.bench.filter(x=>x.id!==np.id);if(old.id===team.pitcher.id)team.needPitcher=true;if(slot.pos!=='投'&&slot.pos!=='指')team.realign=true;calcDef(team);this.addLog(`${team.name} 代打：${old.name}→${np.name}`,'sub');}
+ pinchRun(team,base,np){const old=this.bases[base];this.bases[base]=np;team.used.add(np.id);team.bench=team.bench.filter(x=>x.id!==np.id);const slot=team.lineup.find(s=>s.p.id===old.id);if(slot){slot.p=np;if(old.id===team.pitcher.id)team.needPitcher=true;if(slot.pos!=='投'&&slot.pos!=='指')team.realign=true;}calcDef(team);this.addLog(`${team.name} 代走：${old.name}→${np.name}`,'sub');}
+ /* 守備位置の整理：代打・代走で入った選手が不慣れな位置に就いたままにならないよう、
+  守備位置の入れ替え→それでも不慣れなら控えから適性のある選手を守備固めで入れる */
+ realignDefense(team){team.realign=false;const slots=team.lineup.filter(s=>s.pos!=='投'&&s.pos!=='指');const before=new Map(slots.map(s=>[s.p.id,s.pos]));
+  /* 不慣れな選手が絡む入れ替えだけを行う（必要以上に守備位置を動かさない） */for(let it=0;it<3;it++){let imp=false;for(let i=0;i<slots.length;i++)for(let j=i+1;j<slots.length;j++){const a=slots[i],b=slots[j];const fa=posFit(a.p,a.pos),fb=posFit(b.p,b.pos);if(fa>=0.85&&fb>=0.85)continue;const sw=posFit(a.p,b.pos)+posFit(b.p,a.pos);if(sw>fa+fb+0.01&&Math.min(posFit(a.p,b.pos),posFit(b.p,a.pos))>=Math.min(fa,fb)){const t=a.pos;a.pos=b.pos;b.pos=t;imp=true;}}if(!imp)break;}
+  const moved=slots.filter(s=>before.get(s.p.id)!==s.pos);if(moved.length)this.addLog(`${team.name} 守備位置の変更：${moved.map(s=>s.p.name+'→'+s.pos).join('、')}`,'sub');
+  for(const s of slots){if(posFit(s.p,s.pos)>=0.85)continue;const c=team.bench.filter(p=>!isPitcher(p)&&posFit(p,s.pos)>=0.85).sort((x,y)=>defScore(y,s.pos)-defScore(x,s.pos))[0];if(!c)continue;const old=s.p;s.p=c;team.used.add(c.id);team.bench=team.bench.filter(x=>x.id!==c.id);this.addLog(`${team.name} 守備交代：${old.name}→${c.name}（${s.pos}）`,'sub');this.subsLog.push({team:team.name,out:old.id,in:c.id});}
+  calcDef(team);}
  timeout(team){if(team.mound>=3)return false;team.mound++;team.compose=4;this.addLog(`${team.name} タイム（マウンドへ）`,'note');return true;}
  aiPitchingChange(team){const p=team.pitcher;const tired=this.tired(team,p);const ps=pst(team,p);const relievers=team.bench.filter(x=>isPitcher(x)||x.sub.includes('投'));if(!relievers.length)return;const best=relievers.sort((a,b)=>pitRating(b)-pitRating(a))[0];const need=tired>0.3||(ps.r>=6&&this.inn>=4&&pitRating(best)>pitRating(p)-8)||(tired>0.15&&this.inn>=7&&pitRating(best)>pitRating(p)-5&&R()<0.4);if(need)this.changePitcher(team,best);}
  aiBatCommand(){const t=this.bat();const slot=t.lineup[t.batIdx];const b=slot.p;const diff=this.score[this.bi()]-this.score[1-this.bi()];
@@ -210,5 +224,6 @@ function applyMatchResult(m,ctx){
  /* 信頼度：出場で上がる、勝てばさらに */for(const s of Object.values(u.stats)){const p=s.p;if(p.cpu)continue;p.trust=clamp((p.trust||40)+1+(won?1:0)+(s.h>=2||s.hr?1:0),0,100);}for(const s of Object.values(u.pstats)){const p=s.p;if(p.cpu)continue;p.trust=clamp((p.trust||40)+1+(won?1:0)+(s.w?1:0),0,100);}
  if(best){res.mvpName=best.name;res.mvpId=best.id;res.mvpLine=bestLine;
   if((ctx.importance||1)>=1.6&&bestv>=8)addNews('特集',`${best.name}、大舞台で${isPitcher(best)&&bestLine.includes('回')?'快投':'大暴れ'}`,`${ctx.label}。${G.school.name}の${best.name}（${best.grade}年・${posName(best.pos)}）が${bestLine}の活躍。${won?G.school.name+'は'+res.score[0]+'-'+res.score[1]+'で'+opp.name+'を下した':'チームは敗れたが、その存在感は際立っていた'}。${best.unique.length?'「'+best.unique[0]+'」の名に恥じない内容だった。':''}`,{imp:3,pid:best.id});}
+ if(typeof gameStory==='function'){const art=gameStory(m,res,ctx);if(art){res.article=art;}}
  G.lastMatch=res;return res;}
 function growFromXp(p,xp,pitching){const pts=xp/10;if(pts<=0)return;if(pitching){const keys=['hitR','hitL','kR','kL','hrR','hrL','stamina'];for(let i=0;i<3;i++){const k=pick(keys);grow(p,'pit',k,pts*0.5);}growPitch(p,pick(['ctrl','move','sharp']),pts*0.5);}else{const keys=['meetR','meetL','powR','powL','eye','clutch','speed','field'];for(let i=0;i<3;i++)grow(p,'bat',pick(keys),pts*0.5);}}
