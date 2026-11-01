@@ -29,7 +29,8 @@ button.on{background:#2f6fd6;border-color:#2f6fd6;color:#fff}
 </style></head><body><div id="wrap">
 <div id="stage"><div id="hud"><span id="fps">–</span>　ドラッグで回転 / ピンチ・ホイールでズーム</div><div id="err"></div></div>
 <div id="panel">
-<div class="row"><b>見る</b><button data-preset="pitcher">投手</button><button data-preset="pitcherFace">投手（顔）</button><button data-preset="batter">打者</button><button data-preset="catcher">捕手・審判</button><button data-preset="fielder">野手</button></div>
+<div class="row"><b>顔</b><button data-set="face" data-v="photo" class="on">写真から作成（試作）</button><button data-set="face" data-v="paint">今の顔</button><span class="hint">投手だけに適用</span></div>
+<div class="row"><b>見る</b><button data-preset="pitcher">投手</button><button data-preset="pitcherFace">投手（顔）</button><button data-preset="faceUp">顔アップ</button><button data-preset="batter">打者</button><button data-preset="catcher">捕手・審判</button><button data-preset="fielder">野手</button></div>
 <div class="row"><b>カメラ</b><button data-preset="batCam">打席視点</button><button data-preset="cfCam">センター</button><button data-preset="wide">全景</button><button data-preset="roof">銀傘</button><button data-preset="alps">アルプス</button><button data-preset="board">ボード</button></div>
 <div class="row"><b>動き</b><button data-anim="idle">静止</button><button data-anim="pitch">投球</button><button data-anim="swing">スイング</button>　<b>フォーム</b><button data-set="form" data-v="over" class="on">オーバー</button><button data-set="form" data-v="three">スリークォーター</button><button data-set="form" data-v="side">サイド</button><button data-set="form" data-v="under">アンダー</button></div>
 <div class="row"><b>利き</b><button data-set="hand" data-v="右" class="on">右投</button><button data-set="hand" data-v="左">左投</button><button data-set="bhand" data-v="右" class="on">右打</button><button data-set="bhand" data-v="左">左打</button>　<b>時間</b><button data-set="night" data-v="0" class="on">デーゲーム</button><button data-set="night" data-v="1">ナイター</button></div>

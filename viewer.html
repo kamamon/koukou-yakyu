@@ -18,7 +18,8 @@ button.on{background:#2f6fd6;border-color:#2f6fd6;color:#fff}
 </style></head><body><div id="wrap">
 <div id="stage"><div id="hud"><span id="fps">–</span>　ドラッグで回転 / ピンチ・ホイールでズーム</div><div id="err"></div></div>
 <div id="panel">
-<div class="row"><b>見る</b><button data-preset="pitcher">投手</button><button data-preset="pitcherFace">投手（顔）</button><button data-preset="batter">打者</button><button data-preset="catcher">捕手・審判</button><button data-preset="fielder">野手</button></div>
+<div class="row"><b>顔</b><button data-set="face" data-v="photo" class="on">写真から作成（試作）</button><button data-set="face" data-v="paint">今の顔</button><span class="hint">投手だけに適用</span></div>
+<div class="row"><b>見る</b><button data-preset="pitcher">投手</button><button data-preset="pitcherFace">投手（顔）</button><button data-preset="faceUp">顔アップ</button><button data-preset="batter">打者</button><button data-preset="catcher">捕手・審判</button><button data-preset="fielder">野手</button></div>
 <div class="row"><b>カメラ</b><button data-preset="batCam">打席視点</button><button data-preset="cfCam">センター</button><button data-preset="wide">全景</button><button data-preset="roof">銀傘</button><button data-preset="alps">アルプス</button><button data-preset="board">ボード</button></div>
 <div class="row"><b>動き</b><button data-anim="idle">静止</button><button data-anim="pitch">投球</button><button data-anim="swing">スイング</button>　<b>フォーム</b><button data-set="form" data-v="over" class="on">オーバー</button><button data-set="form" data-v="three">スリークォーター</button><button data-set="form" data-v="side">サイド</button><button data-set="form" data-v="under">アンダー</button></div>
 <div class="row"><b>利き</b><button data-set="hand" data-v="右" class="on">右投</button><button data-set="hand" data-v="左">左投</button><button data-set="bhand" data-v="右" class="on">右打</button><button data-set="bhand" data-v="左">左打</button>　<b>時間</b><button data-set="night" data-v="0" class="on">デーゲーム</button><button data-set="night" data-v="1">ナイター</button></div>
@@ -1018,7 +1019,7 @@ const $=s=>document.querySelector(s);
 function sum(a){return a.reduce((s,v)=>s+v,0);}
 function arAbbr(name){const s=String(name||'').replace(/高等学校|高等学院|高校|学園|学院|工業|商業|附属|付属/g,'');return (s||name||'').slice(0,4);}
 function fontCss(id){const f=UNI_FONTS.find(x=>x.id===id)||UNI_FONTS[0];return f.css;}
-const VW={night:false,form:'over',hand:'右',bhand:'右',anim:'idle',t0:0,target:new THREE.Vector3(0,1,-18.4),dist:5,yaw:0.6,pitch:0.28,fps:0,uni:0,gear:true};
+const VW={night:false,form:'over',hand:'右',bhand:'右',anim:'idle',t0:0,face:'photo',target:new THREE.Vector3(0,1,-18.4),dist:5,yaw:0.6,pitch:0.28,fps:0,uni:0,gear:true};
 const UNIS=[
  {name:'青葉（紺・前立て）',c:{base:'#f3f2ee',trim:'#0b2a4a',cap:'#0b2a4a',capBrim:'#0b2a4a',pants:'#f3f2ee',style:'placket',text:'青葉',textFont:'graduate',textColor:'#0b2a4a',textOutline:'#ffffff',numFont:'oswald',numColor:'#0b2a4a',numOutline:'#ffffff',mark:'青'}},
  {name:'赤・袖ライン',c:{base:'#f6f1e8',trim:'#b3202a',cap:'#b3202a',capBrim:'#1b1b1b',pants:'#f6f1e8',style:'sleeve',text:'KOSHIEN',textFont:'oswald',textColor:'#b3202a',textOutline:'#ffffff',numFont:'oswald',numColor:'#b3202a',numOutline:'#ffffff',mark:'K'}},
@@ -1040,13 +1041,14 @@ function vwPointer(){const cv=R3.cv;let last=null,pinch=null;
  cv.addEventListener('pointerdown',e=>{last={x:e.clientX,y:e.clientY,id:e.pointerId};cv.setPointerCapture(e.pointerId);});
  cv.addEventListener('pointermove',e=>{if(!last||e.pointerId!==last.id)return;const dx=e.clientX-last.x,dy=e.clientY-last.y;last.x=e.clientX;last.y=e.clientY;VW.yaw-=dx*0.006;VW.pitch=clamp(VW.pitch+dy*0.005,-0.2,1.4);});
  cv.addEventListener('pointerup',()=>{last=null;});cv.addEventListener('pointercancel',()=>{last=null;});
- cv.addEventListener('wheel',e=>{e.preventDefault();VW.dist=clamp(VW.dist*(1+e.deltaY*0.0015),0.8,160);},{passive:false});
+ cv.addEventListener('wheel',e=>{e.preventDefault();VW.dist=clamp(VW.dist*(1+e.deltaY*0.0015),0.4,160);},{passive:false});
  cv.addEventListener('touchstart',e=>{if(e.touches.length===2){pinch=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);last=null;}},{passive:true});
- cv.addEventListener('touchmove',e=>{if(e.touches.length===2&&pinch){const d=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);VW.dist=clamp(VW.dist*pinch/d,0.8,160);pinch=d;e.preventDefault();}},{passive:false});
+ cv.addEventListener('touchmove',e=>{if(e.touches.length===2&&pinch){const d=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);VW.dist=clamp(VW.dist*pinch/d,0.4,160);pinch=d;e.preventDefault();}},{passive:false});
  cv.addEventListener('touchend',()=>{pinch=null;});}
 const PRESETS={
  pitcher:{t:[0,1.0,-17.6],d:4.2,yaw:0.5,pitch:0.15,anim:'pitch',label:'投手'},
  pitcherFace:{t:[-0.1,1.5,-17.8],d:1.5,yaw:0.45,pitch:0.02,anim:'face',label:'投手（顔）'},
+ faceUp:{t:[0,1.6,-18.17],d:0.55,yaw:0.2,pitch:0.03,anim:'face',label:'顔アップ'},
  batter:{t:[-0.5,1.0,0.1],d:3.6,yaw:-2.2,pitch:0.12,anim:'swing',label:'打者'},
  catcher:{t:[0,0.7,1.6],d:3.4,yaw:2.5,pitch:0.2,anim:'idle',label:'捕手・審判'},
  fielder:{t:[19,0.9,-21.9],d:4,yaw:0.4,pitch:0.15,anim:'idle',label:'野手'},
@@ -1061,6 +1063,7 @@ function vwPreset(k){const p=PRESETS[k];if(!p)return;VW.target.set(p.t[0],p.t[1]
 function vwCam(){const t=VW.target;const cp=Math.cos(VW.pitch),sp=Math.sin(VW.pitch);const pos=new THREE.Vector3(t.x+Math.sin(VW.yaw)*cp*VW.dist,t.y+sp*VW.dist,t.z+Math.cos(VW.yaw)*cp*VW.dist);if(pos.y<0.3)pos.y=0.3;R3.cam.position.copy(pos);R3.cam.lookAt(t);R3.cam.fov=VW.dist>40?50:42;R3.cam.updateProjectionMatrix();R3.cam.updateMatrixWorld();R3.camLook=t.clone();}
 function vwScene(now){const uni=UNIS[VW.uni].c;const hs=VW.hand==='左'?-1:1;const sg=VW.bhand==='左'?-1:1;const u=((now-VW.t0)/1000);
  for(const k in R3.fielders){const r=R3.fielders[k];r.setColors(uni,false);r.setNumber(POS_NUM[k],uni.trim);r.setGear(k==='捕'&&VW.gear?'catcher':null);r.glove.visible=k!=='捕';const p=DEF[k];r.g.visible=true;r.g.scale.x=1;r.bat.visible=false;
+  if(r.setFace)r.setFace(k==='投'&&VW.face==='photo'?'face1':null);
   if(k==='投'){r.at(0,0,-R3C.RUBBER+0.15);r.g.scale.x=hs;r.face(0,1);r.apply(vwPitchPose(u));continue;}
   if(k==='捕'){r.at(0,0,1.6);r.face(0,-1);const cp=Object.assign({},RP.crouch);cp.dy=RP.crouch.dy+Math.sin(now/900)*0.02;r.apply(cp);r.glove.visible=false;continue;}
   r.at(p[0],0,-p[1]);r.face(-p[0],p[1]);const rp=Object.assign({},RP.ready);rp.dy=RP.ready.dy+Math.sin(now/700+k.charCodeAt(0))*0.02;r.apply(rp);}
@@ -1077,6 +1080,19 @@ function vwPitchPose(u){if(VW.anim==='face'){const p=Object.assign({},RP.stand);
  const ph=vwPitchPhase(u);if(ph.u<1)return r3ClipPose('windup_'+VW.form,ph.u);const fu=ph.fu-1;return fu<1?r3ClipPose('pfollow_'+VW.form,fu):RP.pland;}
 function vwBatPose(u,now){if(VW.anim!=='swing'){const w=Math.sin(now/420),w2=Math.sin(now/650);const p=Object.assign({},RP.stance);p.batDir=[-0.55+w*0.08,0.8,-0.3+w*0.12];p.dy=RP.stance.dy+w2*0.015;p.head=[0.05+w2*0.03,1.0,0];return p;}
  const L=2.6;const t=((u%L)+L)%L;if(t<1.4){const w=Math.sin(now/420);const p=Object.assign({},RP.stance);p.batDir=[-0.55+w*0.08,0.8,-0.3+w*0.12];return p;}const k=(t-1.4)/0.9;return k<1?r3ClipPose('swing',k):RP.follow;}
+/* 写真から作った顔（試作）：skin_<name>.jpg と eye_<name>.jpg をその選手だけに貼る。読み込みが終わってから差し替える */
+const VW_FACE={};
+function vwFaceTex(name){if(VW_FACE[name])return VW_FACE[name];const base=glAssetBase();const f=VW_FACE[name]={ready:false,wait:[]};let n=0;
+ const mk=file=>{const t=new THREE.Texture();t.colorSpace=THREE.SRGBColorSpace;t.flipY=false;t.wrapS=t.wrapT=THREE.RepeatWrapping;t.anisotropy=R3.renderer?Math.min(8,R3.renderer.capabilities.getMaxAnisotropy()):4;
+  const im=new Image();if(/^https?:/.test(base))im.crossOrigin='anonymous';im.onload=()=>{t.image=im;t.needsUpdate=true;if(++n===2){f.ready=true;f.wait.splice(0).forEach(cb=>cb());}};im.onerror=()=>{f.failed=true;const el=$('#err');if(el)el.textContent='写真の顔を読み込めませんでした: '+file;};im.src=base+file;return t;};
+ f.skin=mk('skin_'+name+'.jpg');f.eye=mk('eye_'+name+'.jpg');return f;}
+if(typeof R3RigGL!=='undefined')R3RigGL.prototype.setFace=function(name){if(this.faceReq===name)return;this.faceReq=name;
+ if(!this.faceOrig)this.faceOrig={skin:this.skinMat.map,eye:this.eyes.material.map,tint:this.skinMat.color.getHex()};
+ const apply=()=>{if(this.faceReq!==name)return;const o=this.faceOrig;
+  if(name){const f=VW_FACE[name];this.skinMat.map=f.skin;this.eyes.material.map=f.eye;this.skinMat.color.set('#ffffff');}
+  else{this.skinMat.map=o.skin;this.eyes.material.map=o.eye;this.skinMat.color.setHex(o.tint);}
+  this.skinMat.needsUpdate=true;this.eyes.material.needsUpdate=true;};
+ if(!name){apply();return;}const f=vwFaceTex(name);if(f.ready)apply();else f.wait.push(apply);};
 let VW_last=0,VW_frames=0,VW_fpsT=0;
 function vwRender(now){vwScene(now);vwCam();if(R3.camLook){R3.sun.target.position.set(R3.camLook.x,0,R3.camLook.z);R3.sun.position.set(R3.camLook.x+(R3.night?40:-70),120,R3.camLook.z+(R3.night?-70:-30));}R3.renderer.render(R3.scene,R3.cam);}
 function vwLoop(now){requestAnimationFrame(vwLoop);if(VW.paused)return;try{vwRender(now);
