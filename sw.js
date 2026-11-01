@@ -1,5 +1,5 @@
 /* オフライン用サービスワーカー：本体をキャッシュし、更新は裏で取得 */
-const VERSION='20261101182241';
+const VERSION='20261101231106';
 const CACHE='hsb-'+VERSION;
 const SHELL=['./','./index.html','./manifest.webmanifest','./icon-192.png','./icon-512.png','./apple-touch-icon.png'];
 const ASSETS=['./assets/cap.jpg','./assets/cap_n.jpg','./assets/catcher.jpg','./assets/catcher_n.jpg','./assets/eye.jpg','./assets/eye_face1.jpg','./assets/gear.glb','./assets/hand_mask.png','./assets/head_ao.png','./assets/helmet.png','./assets/player.glb','./assets/skin.jpg','./assets/skin_face1.jpg','./assets/uni_dirt.jpg','./assets/uni_layers.png','./assets/uni_mask.png','./assets/uni_normal.jpg','./assets/uni_shade.jpg','./assets/uni_zones.png'];/* 選手モデル・テクスチャ：インストール時はベストエフォート、以後はキャッシュ優先 */

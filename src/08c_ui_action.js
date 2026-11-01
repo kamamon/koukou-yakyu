@@ -87,7 +87,7 @@ function arNextPA(){const m=AR.m;if(m.done){arFinish();return;}
  arSetPhase('pre');arRenderAll();arLowerThird();}
 function arSetPhase(ph){AR.phase=ph;AR.phaseT=performance.now();}
 /* 投球モーションの長さ（ms）。打席側はフォームを見せるため長め */
-function arWindDur(){return AR.side==='bat'?950:600;}
+function arWindDur(){return AR.side==='bat'?950:800;}
 /* 自分が操作しない半回はPA単位で一気に進める */
 function arSimHalf(){const m=AR.m;const inn=m.inn,top=m.top;const from=m.log.length;let g=0;while(!m.done&&g++<200){m.step();if(m.inn!==inn||m.top!==top)break;}
  const lines=m.log.slice(from).filter(l=>l.kind!=='inn').map(l=>l.text);
@@ -172,7 +172,7 @@ function arShowResult(ev){const m=AR.m;AR.ev=ev;AR.resultAt=performance.now();tr
  if(AR.meterRes&&AR.side==='pit'&&P){const mr=AR.meterRes;if(mr.acc)sub+=`　メーター:${mr.acc}${mr.over>0?'（オーバー）':''}`;AR.meterRes=null;}
  AR.foot=(AR.mode==='card'&&AR.footPrefix?AR.footPrefix+'　｜　':'')+sub;
  arHideLower();if(P&&!ev.skipScene)arVelTag(P,ev);if(P&&ev.sw&&ev.c&&!ev.skipScene&&(AR.side==='bat'||AR.mode==='card'))arPciBadge(ev);
- if(ev.kind==='inplay'){const c=ev.bb;AR.cam=null;const sc=fwBuildScene(c,ev.decision?null:ev.play,{dec:ev.decision});sc.c=c;sc.ev=ev;AR.field=sc;if(ev.skipScene){sc.t0=performance.now()-sc.T/(sc.rate||1)-300;sc.skipped=true;}else if(AR.swung&&AR.swingT){const el=performance.now()-(AR.swingT+75*AR.speed);if(el>0&&el<700)sc.t0-=el/(sc.rate||1);}arSetPhase('field');arOverlay(c.res==='HR'?'大きい！':c.dist>=90&&(c.type==='fly'||c.type==='line')?'大きい！':'','');setTimeout(()=>{if(AR.phase==='field')arOverlay('','');},700);}
+ if(ev.kind==='inplay'){const c=ev.bb;AR.cam=null;const sc=(typeof plBuildSafe==='function'?plBuildSafe:fwBuildScene)(c,ev.decision?null:ev.play,{dec:ev.decision});sc.c=c;sc.ev=ev;AR.field=sc;if(ev.skipScene){sc.t0=performance.now()-sc.T/(sc.rate||1)-300;sc.skipped=true;}else if(AR.swung&&AR.swingT){const el=performance.now()-(AR.swingT+75*AR.speed);if(el>0&&el<700)sc.t0-=el/(sc.rate||1);}arSetPhase('field');arOverlay(c.res==='HR'?'大きい！':c.dist>=90&&(c.type==='fly'||c.type==='line')?'大きい！':'','');setTimeout(()=>{if(AR.phase==='field')arOverlay('','');},700);}
  else{const k=ev.kind;if(k==='bb'||k==='hbp'||k==='ibb')arSound('walk');if(k==='kSwing'||k==='kLook'||k==='kBunt')setTimeout(()=>arSound('k'),120);
   arOverlay(txt,ev.runText||'',k==='kSwing'||k==='kLook'||k==='kBunt'?'k':k==='bb'||k==='hbp'?'bb':'');arSetPhase('after');}
  if(ev.kind!=='inplay')arRenderTop();arRenderFoot();}
@@ -206,7 +206,7 @@ function arAfterBanner(){AR.banner=null;AR.bannerEl=null;arOverlay('','');if(AR.
 function imEndCeremony(){AR.cerDone=true;AR.cer=null;arOverlay('','');try{imStopVoice();}catch(e){}arFinish();}
 ACT.cerNext=()=>imEndCeremony();
 ACT.arDecide=d=>{const m=AR.m;if(AR.phase!=='decide')return;const old=AR.field;const choice=d.t!=null?{throwTo:parseInt(d.t)}:{send:d.v==='1'};const ev=m.finishInplay(choice);AR.ev=ev;AR.pending=null;if(ev.runText)AR.foot=ev.runText;else if(choice.throwTo)AR.foot=`${['','一塁','二塁','三塁','本塁'][choice.throwTo]}へ送球 → ${ev.text||''}`;arSound(d.v==='1'||choice.throwTo?'run':'ui');
- const sc=fwBuildScene(ev.bb,ev.play,{resume:old?old.pauseAt:null,dec:old?old.decision:null});sc.c=ev.bb;sc.ev=ev;sc.t0=performance.now()-(old?old.pauseAt:0)/(sc.rate||1);sc.pauseAt=null;AR.field=sc;arSetPhase('field');arRenderAll();};
+ const sc=(typeof plBuildSafe==='function'?plBuildSafe:fwBuildScene)(ev.bb,ev.play,{resume:old?old.pauseAt:null,dec:old?old.decision:null,prev:old,contact:old&&old.mo?old.mo.contact:null,pitchClip:old&&old.mo?old.mo.pitchClip:null});sc.c=ev.bb;sc.ev=ev;sc.t0=performance.now()-(old?old.pauseAt:0)/(sc.rate||1);sc.pauseAt=null;AR.field=sc;arSetPhase('field');arRenderAll();};
 /* ---- メインループ ---- */
 function arLoop(){AR.raf=requestAnimationFrame(arLoop);const now=performance.now();
  try{imBandTick(now);imPhotoMoments(now);imCallSubs();const m=AR.m;if(m&&m.done&&(AR.phase==='after'||AR.phase==='field')&&now-AR.resultAt>650&&!(AR.snaps||[]).some(x=>x.kind==='end')){const ui=m.A.isUser?0:1;const won=m.winner===ui;const sc=[m.score[ui],m.score[1-ui]];imSnap('end',won?`試合終了の瞬間。${G.school.name}が${sc[0]}－${sc[1]}で勝利`:`試合終了。${G.school.name}は${sc[0]}－${sc[1]}で敗れた`,2);}
@@ -218,7 +218,7 @@ function arLoop(){AR.raf=requestAnimationFrame(arLoop);const now=performance.now
   if((AR.side==='pit'||AR.mode==='card')&&AR.cpuSwingAt!=null&&!AR.swung&&now-AR.t0>=AR.cpuSwingAt*AR.speed){AR.swung=true;AR.swingT=now;arSwingSound(AR.ev);}
   if(u>=1&&!AR.caughtSnd){AR.caughtSnd=true;const ev=AR.ev;const hit=ev&&AR.swung&&(ev.kind==='inplay'||ev.kind==='foul');if(!hit)arSound('mitt');}
   if(u>=1+0.18){if(!AR.ev){AR.ev=AR.m.resolvePitch(P,null);}arShowResult(AR.ev);}}
- if(AR.phase==='after'){const ev=AR.ev;const hr=ev&&ev.bb&&ev.bb.res==='HR'&&!ev.skipScene;const d=(hr?2800:ev&&(ev.paDone||ev.halfEnd||ev.runText)?1500:950)+(AR.mode==='card'?500:0);if(ev&&ev.runPlay&&!ev.runShown&&now-AR.resultAt>450){ev.runShown=true;AR.cam=null;const sc=fwBuildRunnerScene(ev.runPlay);sc.ev=ev;AR.field=sc;arOverlay('','');arSetPhase('field');}else if(now-AR.resultAt>d){arAfterResult();if(AR.phase==='pre'&&AR.side==='bat'&&actionSettings().autoThrow)AR.autoT=now+700;}}
+ if(AR.phase==='after'){const ev=AR.ev;const hr=ev&&ev.bb&&ev.bb.res==='HR'&&!ev.skipScene;const d=(hr?2800:ev&&(ev.paDone||ev.halfEnd||ev.runText)?1500:950)+(AR.mode==='card'?500:0);if(ev&&ev.runPlay&&!ev.runShown&&now-AR.resultAt>450){ev.runShown=true;AR.cam=null;const sc=(typeof plRunSceneSafe==='function'?plRunSceneSafe:fwBuildRunnerScene)(ev.runPlay);sc.ev=ev;AR.field=sc;arOverlay('','');arSetPhase('field');}else if(now-AR.resultAt>d){arAfterResult();if(AR.phase==='pre'&&AR.side==='bat'&&actionSettings().autoThrow)AR.autoT=now+700;}}
  if(AR.phase==='pre'&&AR.autoT&&now>AR.autoT){AR.autoT=0;if(AR.side==='bat'&&!AR.panel)arThrowCpu();}
  if(AR.phase==='field'){const sc=AR.field;const t=fwTime(sc,now);if(sc.pauseAt!=null&&!sc.paused&&t>=sc.pauseAt){sc.paused=true;arSetPhase('decide');AR.pending=AR.ev;arRenderAll();}else if(!sc.paused&&t>sc.T+250)arFieldDone();}
  if(AR.phase==='replay'){const rp=AR.replay;if(!rp||rp.from+(now-rp.t0)*rp.rate>=rp.until)arEndReplay();}
@@ -450,7 +450,7 @@ ACT.arAutoPitch=()=>{if(AR.phase!=='pre')return;const s=AR.sign||AR.m.cpuPitchIn
 ACT.arShift=d=>{const m=AR.m;const t=m.def();if(d.k==='in'){t.infieldIn=!t.infieldIn;m.addLog(t.infieldIn?'前進守備を敷く':'守備位置を戻す','note');}else if(d.k==='deep'){t.ofDeep=!t.ofDeep;if(t.ofDeep)t.ofIn=false;}else{t.ofIn=!t.ofIn;if(t.ofIn)t.ofDeep=false;}arSound('ui');arRenderCtl();};
 ACT.arIbb=()=>{const m=AR.m;if(AR.phase!=='pre')return;const ev=m.paIbb();arShowResult(ev);};
 ACT.arPitchout=()=>{if(AR.phase!=='pre')return;AR.target={x:0,y:0};arThrowUser(null,{pitchout:true});};
-ACT.arPickoff=()=>{const m=AR.m;if(AR.phase!=='pre')return;const r=m.pickoff();AR.foot=r.text;if(r.kind==='none'){arRenderAll();return;}arSound('mitt');AR.ev=r;r.runShown=true;AR.cam=null;const sc=fwBuildRunnerScene(r.runPlay);sc.ev=r;AR.field=sc;AR.panel=null;arSetPhase('field');arRenderAll();};
+ACT.arPickoff=()=>{const m=AR.m;if(AR.phase!=='pre')return;const r=m.pickoff();AR.foot=r.text;if(r.kind==='none'){arRenderAll();return;}arSound('mitt');AR.ev=r;r.runShown=true;AR.cam=null;const sc=(typeof plRunSceneSafe==='function'?plRunSceneSafe:fwBuildRunnerScene)(r.runPlay);sc.ev=r;AR.field=sc;AR.panel=null;arSetPhase('field');arRenderAll();};
 ACT.arTimeout=()=>{const m=AR.m;if(!m.timeout(m.def())){toast('タイムはもう取れません');return;}AR.foot='タイム：マウンドに集まり落ち着いた（制球・疲労が一時回復）';arRenderAll();};
 ACT.arBannerNext=()=>{arAfterBanner();};
 ACT.arPanelClose=()=>{AR.panel=null;arRenderCtl();};

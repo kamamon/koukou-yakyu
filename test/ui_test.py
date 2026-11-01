@@ -189,9 +189,9 @@ def run():
                     if a: sc(random.choice(a)); pg.click('[data-act="closeModal"]')
                 if t=='settings' and random.random()<0.3 and pg.query_selector('[data-act="uniformEditor"]'):
                     pg.click('[data-act="uniformEditor"]'); pg.wait_for_timeout(10)
-                    if pg.query_selector('select[data-scope="u"][data-k="style"]'):
-                        pg.select_option('select[data-scope="u"][data-k="style"]','raglan',timeout=8000)
-                        pg.click('[data-act="uniSwatch"][data-scope="u"][data-k="base"]')
+                    if pg.query_selector('#modal select[data-scope="u"][data-k="style"]'):
+                        pg.select_option('#modal select[data-scope="u"][data-k="style"]','raglan',timeout=8000)
+                        pg.click('#modal [data-act="uniSwatch"][data-scope="u"][data-k="base"]')
                         pg.click('[data-act="uniSave"]')
                     else:
                         print('NOTE uniform editor not open; modal:',pg.evaluate("document.getElementById('overlay').hidden"),pg.inner_html('#modal')[:120].replace('\n',' '))

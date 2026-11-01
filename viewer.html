@@ -433,14 +433,14 @@ function r3PitchPos(P,u,rel){const ph=phOf(P);
 /* 打球（物理：重力＋空気抵抗＋バックスピン）：接触点から ev/la/a で飛ぶ。インプレーはフィールド演出側（fwBuildScene）が同じ物理で描く */
 function r3HitPos(h,dt){const t=dt/1000;if(h.pts){const q=phSample(h.pts,t);if(t<=h.T)return r3V(q.x,q.y,q.z);const k=Math.max(0,1-(t-h.T)*0.8);const last=h.pts[h.pts.length-1];const vx=h.vx*0.45*k,vy=h.vy*0.45*k;const tt=t-h.T;return r3V(last.x+vx*tt,last.y+vy*tt,0.05+Math.abs(Math.sin(tt*9))*0.35*Math.max(0,0.5-tt)*2);}
  const g=9.8;let x=h.p0.x+h.v.x*t,y=h.p0.y+h.v.y*t-0.5*g*t*t,z=h.p0.z+h.v.z*t;if(y<0.05){const tg=h.tg;const xg=h.p0.x+h.v.x*tg,zg=h.p0.z+h.v.z*tg;const k=Math.max(0,1-(t-tg)*0.8);x=xg+h.v.x*(t-tg)*0.45*k;z=zg+h.v.z*(t-tg)*0.45*k;y=0.05+Math.abs(Math.sin((t-tg)*9))*0.35*Math.max(0,0.5-(t-tg))*2;}return new THREE.Vector3(x,y,z);}
-function r3MakeHit(ev,P){const c=ev.c||{};let a=c.a||0,la=c.la==null?15:c.la,evk=(c.ev||100);const foul=ev.kind==='foul';
+function r3MakeHit(ev,P,cp){const c=ev.c||{};let a=c.a||0,la=c.la==null?15:c.la,evk=(c.ev||100);const foul=ev.kind==='foul';
  if(foul){if(c.tip){a=170+gauss(0,15)*(a>=0?1:-1);la=clamp(20+Math.abs(gauss(0,25)),5,70);evk*=0.5;}else{const side=a>=0?1:-1;a=side*Math.max(Math.abs(a),58+Math.random()*25);la=clamp(la+10,-5,75);evk*=0.8;}}
- const p0=r3ZoneW(P.x,P.y);
+ /* 打球の始点＝接触の時刻のボールの位置（バットの芯）。なければゾーンの点 */const p0=cp?r3V(cp[0],cp[1],cp[2]):r3ZoneW(P.x,P.y);
  try{const r=phHitPath(evk,la,a,null,{x0:p0.x,y0:-p0.z,z0:p0.y});const n=r.pts.length;const l=r.pts[n-1],l2=r.pts[Math.max(0,n-3)];const dtl=Math.max(1e-3,l.t-l2.t);return {pts:r.pts,T:r.t,vx:(l.x-l2.x)/dtl,vy:(l.y-l2.y)/dtl,t0:0};}catch(e){}
  const v=(evk/3.6)*0.92;const ar=a*Math.PI/180,lr=la*Math.PI/180;const vel=new THREE.Vector3(Math.sin(ar)*Math.cos(lr)*v,Math.sin(lr)*v,-Math.cos(ar)*Math.cos(lr)*v);
  const g=9.8;const disc=vel.y*vel.y+2*g*(p0.y-0.05);const tg=(vel.y+Math.sqrt(Math.max(0,disc)))/g;return {p0,v:vel,tg,t0:0};}
 /* ---- 毎フレーム ---- */
-function r3Frame(now){if(!r3on())return;const m=AR.m;if(!m)return;try{
+function r3Frame(now){if(!r3on())return;const m=AR.m;if(!m)return;try{if(typeof plHideExtras==='function')plHideExtras();
  const night=arNight();if(night!==R3.night)r3SetNight(night);
  const ph=AR.phase;const cut=(R3.lastPhase!==ph&&(ph==='field'||ph==='replay'||R3.lastPhase==='field'||R3.lastPhase==='replay'||R3.lastPhase==='half'||R3.lastPhase==='decide'||R3.lastPhase==null))||R3.lastSide!==AR.side;R3.lastSide=AR.side;
  const fieldPh=ph==='field'||ph==='decide'||ph==='replay'||(ph==='after'&&AR.field&&AR.ev&&(AR.ev.kind==='inplay'||AR.ev.runShown||/^pickoff/.test(AR.ev.kind)));
@@ -494,7 +494,7 @@ function r3AddDirt(pid,amt){AR.dirt=AR.dirt||{};AR.dirt[pid]=Math.min(1,(AR.dirt
 function r3Dress(r,p,gear){r.setPerson(r3Seed(p));r.setDirt(r3Dirt(p));}
 function r3PlayerOf(team,k){if(k==='投'&&team.pitcher)return team.pitcher;const sl=team.lineup.find(x=>x.pos===k);return sl?sl.p:null;}
 /* 投球／打撃のシーン */
-function r3PitchScene(now){const m=AR.m;const d=m.def(),t=m.bat();const cd=arTeamColors(d),cb=arTeamColors(t);const pa=m.pa;const P=AR.cur;const ph=AR.phase;const S=actionSettings();
+function r3PitchScene(now){if(typeof plUseMotion==='function'&&plUseMotion()){plPitchFrame(now);return;}const m=AR.m;const d=m.def(),t=m.bat();const cd=arTeamColors(d),cb=arTeamColors(t);const pa=m.pa;const P=AR.cur;const ph=AR.phase;const S=actionSettings();
  const hand=pa&&(AR.mode!=='card'||ph!=='pre')?pa.bHand:(AR.preHand||'右');const sg=hand==='左'?-1:1;const hs=pa?(pa.p.throws==='左'?-1:1):(P?P.hs:1);
  const DP=fwDefPos(d);
  /* 野手 */const numOf=(team,k)=>{if(k==='投'&&team.pitcher)return team.pitcher.number!=null?team.pitcher.number:1;const sl=team.lineup.find(x=>x.pos===k);return sl?(sl.p.number!=null?sl.p.number:POS_NUM[k]):POS_NUM[k];};const pidNum=(team,pid)=>{const pl=team.lineup.map(x=>x.p).concat(team.bench||[]).find(x=>x.id===pid);return pl?(pl.number!=null?pl.number:null):null;};
@@ -527,7 +527,7 @@ function r3PitchScene(now){const m=AR.m;const d=m.def(),t=m.bat();const cd=arTea
   else{const tgt=r3ZoneW(P.x,P.y);tgt.z=0.3;R3.mitt.position.lerp(tgt,0.4);ball.position.copy(R3.mitt.position);ball.position.z-=0.08;ball.visible=!(ev&&(ev.kind==='hbp'));}}
  else{ball.visible=false;R3.hit=null;R3.mitt.position.lerp(mittT,0.1);}}
 /* フィールドプレーのシーン */
-function r3FieldScene(sc,t,now){const m=AR.m;const cd=sc.colDef||arTeamColors(m.def()),cb=sc.colBat||arTeamColors(m.bat());const b=fwAt(sc.ball,t);const dT=sc.defTeam||m.def(),bT=sc.batTeam||m.bat();
+function r3FieldScene(sc,t,now){if(sc.mo&&typeof plFieldFrame==='function'&&plUseMotion()){plFieldFrame(sc,t,now);return;}if(R3.gbat)R3.gbat.visible=false;const m=AR.m;const cd=sc.colDef||arTeamColors(m.def()),cb=sc.colBat||arTeamColors(m.bat());const b=fwAt(sc.ball,t);const dT=sc.defTeam||m.def(),bT=sc.batTeam||m.bat();
  const numOf=(team,k)=>{if(k==='投'&&team.pitcher)return team.pitcher.number!=null?team.pitcher.number:1;const sl=team.lineup.find(x=>x.pos===k);return sl?(sl.p.number!=null?sl.p.number:POS_NUM[k]):POS_NUM[k];};const pidNum=(team,pid)=>{const pl=team.lineup.map(x=>x.p).concat(team.bench||[]).find(x=>x.id===pid);return pl&&pl.number!=null?pl.number:null;};
  for(const k in R3.fielders){const r=R3.fielders[k];const f=sc.fielders[k];r.setColors(cd,false);r.setNumber(numOf(dT,k),cd.trim);r.setGear(k==='捕'?'catcher':null);r.glove.visible=k!=='捕';r.g.scale.x=1;r.bat.visible=false;if(!f){r.g.visible=false;continue;}r.g.visible=true;r3Dress(r,r3PlayerOf(dT,k));r.setExpression(null);
   const p=fwAt(f.path,t);const prev=fwAt(f.path,t-80);r.at(p.x,0,-p.y);
