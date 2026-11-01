@@ -138,8 +138,10 @@ function rrAtlas(u){const key=[u.base,u.trim,u.pants,u.style].join('|');if(RR_AT
  const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;t.anisotropy=R3.renderer?Math.min(8,R3.renderer.capabilities.getMaxAnisotropy()):4;t.wrapS=THREE.RepeatWrapping;
  const mat=new THREE.MeshStandardMaterial({map:t,bumpMap:rrBump(),bumpScale:0.004,roughness:0.9,metalness:0,envMap:R3.env||null,envMapIntensity:0.2,vertexColors:true});RR_ATLAS[key]={tex:t,mat};return RR_ATLAS[key];}
 /* 帽子マーク（チーム名の頭文字） */
-function rrMark(u){const key=[u.mark,u.cap,u.trim,u.base].join('|');if(RR_MARK[key])return RR_MARK[key];const c=document.createElement('canvas');c.width=c.height=128;const g=c.getContext('2d');
- const col=u.cap===u.base?u.trim:u.base;if(u.mark){g.font='700 86px "Dela Gothic One","Noto Sans JP",sans-serif';g.textAlign='center';g.textBaseline='middle';g.lineWidth=10;g.strokeStyle=u.trim===u.cap?'rgba(255,255,255,.9)':u.trim;g.strokeText(u.mark,64,70);g.fillStyle=col;g.fillText(u.mark,64,70);}
+function rrMark(u){const key=[u.mark,u.cap,u.trim,u.base].join('|');if(RR_MARK[key])return RR_MARK[key];const c=document.createElement('canvas');c.width=c.height=256;const g=c.getContext('2d');
+ /* 刺しゅうのマーク：文字色と縁取りが同じ色のときは縁取りしない（太い縁で字がつぶれるため） */
+ const col=u.cap===u.base?u.trim:u.base;if(u.mark){const n=[...u.mark].length;g.font=`700 ${n<=1?188:n===2?120:84}px "Shippori Mincho","Noto Serif JP","Noto Serif CJK JP","Hiragino Mincho ProN","Yu Mincho",serif`;g.textAlign='center';g.textBaseline='middle';
+  const ol=u.trim===u.cap?null:u.trim;if(ol&&ol!==col){g.lineJoin='round';g.lineWidth=14;g.strokeStyle=ol;g.strokeText(u.mark,128,136);}g.fillStyle=col;g.fillText(u.mark,128,136);}
  const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;RR_MARK[key]=t;return t;}
 /* 顔のテクスチャ（肌色＋目・眉・鼻・口・頬）。球の正面は u=0.25、目は赤道 */
 function rrFaceTex(skin){if(RR_FACE&&RR_FACE[skin])return RR_FACE[skin];RR_FACE=RR_FACE||{};const cv=document.createElement('canvas');cv.width=512;cv.height=256;const g=cv.getContext('2d');

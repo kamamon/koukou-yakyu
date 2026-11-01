@@ -11,7 +11,7 @@ import os, sys, math, json, numpy as np
 from PIL import Image, ImageFilter
 import cv2
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from mhlib import JOINTS
+from mhlib import JOINTS, MH
 HERE = os.path.dirname(os.path.abspath(__file__)); ROOT = os.path.dirname(HERE)
 ASSETS = os.path.join(ROOT, 'assets'); TMP = os.path.join(HERE, 'out')
 D = np.load(os.path.join(TMP, 'model.npz'), allow_pickle=True)
@@ -212,7 +212,7 @@ def remap_pts(img, x, y, **kw):
 
 def make_eye(photo, LP, out_name):
     """目玉のテクスチャ（MakeHuman の茶色い目）の虹彩を、写真の瞳の色に塗り替える"""
-    eye = cv2.imread(os.path.join(ASSETS, 'eye.jpg')).astype(np.float32) / 255
+    eye = cv2.resize(cv2.imread(os.path.join(MH, 'eyes', 'brown_eye.png')), (512, 512), interpolation=cv2.INTER_AREA).astype(np.float32) / 255  # 元の（赤茶の）目から塗り替える
     # 写真の虹彩の色（瞳孔と映り込みを除いた環）
     cols = []
     for c, ring in ((468, [469, 470, 471, 472]), (473, [474, 475, 476, 477])):
@@ -280,6 +280,9 @@ def bake(photo_path, out_name, debug=True):
     C = np.zeros((S, S, 3), np.float32); C[ys, xs] = col
     # テクスチャ空間で重みを少しぼかして継ぎ目をなめらかに（色は重みの大きい画素から広げる）
     Wt = cv2.GaussianBlur(Wt, (0, 0), 2.0) * (Wt > 0.001)
+    # 髪（坊主頭）の範囲は build_textures.py が作った生え際を使う（写真の顔は肌の部分だけ）
+    hair = np.load(os.path.join(TMP, 'hair_mask.npy')).astype(np.float32)
+    Wt = Wt * (1 - cv2.GaussianBlur(hair, (0, 0), 1.5))
     base = cv2.imread(skin_path).astype(np.float32) / 255.0
     # 体の肌色を写真に合わせる（顔の頬・額の平均色の比）
     core = Wt > 0.85
@@ -292,13 +295,11 @@ def bake(photo_path, out_name, debug=True):
     base_lin = base ** 2.2
     adj_lin = base_lin * (1 + skinness[..., None] * (gain[None, None, :] - 1))
     # 坊主頭（頭皮）の色を写真の生え際の上の色に合わせる（build_textures.py の頭皮と同じ範囲）
-    py_, pz_ = P3[..., 1], P3[..., 2]
-    scalp = M & (py_ > eyeC[1] - 0.03) & ((py_ > eyeC[1] + 0.065) | ((pz_ < eyeC[2] - 0.11) & (py_ > eyeC[1] - 0.02)))
-    scalp = cv2.GaussianBlur(scalp.astype(np.float32), (0, 0), 4.0)
+    scalp = cv2.GaussianBlur(hair, (0, 0), 1.0)
     ytop = oval[:, 1].min()
     hp = photo[int(ytop - 0.25 * ipd_p):int(ytop - 0.05 * ipd_p), int(cen[0] - 0.4 * ipd_p):int(cen[0] + 0.4 * ipd_p)].reshape(-1, 3).astype(np.float32) / 255
     hair_t = (hp ** 2.2).mean(0)
-    hs = scalp > 0.9
+    hs = scalp > 0.95
     hair_b = adj_lin[hs].mean(0)
     hgain = hair_t / np.maximum(hair_b, 1e-4); print('hair gain (B,G,R):', hgain.round(3))
     adj_lin = adj_lin * (1 + scalp[..., None] * (hgain[None, None, :] - 1))

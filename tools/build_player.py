@@ -135,7 +135,8 @@ def build(seed=0):
     rng = np.random.RandomState(7)
     def face_variant(k):
         cands = []
-        for d in ['head', 'nose', 'mouth', 'cheek', 'chin', 'forehead', 'eyes', 'eyebrows', 'ears']:
+        # 頭の大きさ・額・耳を変えるターゲットは使わない（帽子・ヘルメットを頭の形に合わせて作っているため）
+        for d in ['nose', 'mouth', 'cheek', 'chin', 'eyes', 'eyebrows']:
             p = T(d)
             if os.path.isdir(p):
                 for f in sorted(os.listdir(p)):

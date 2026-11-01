@@ -1,6 +1,7 @@
 import os,sys,random,time
 from playwright.sync_api import sync_playwright
 HTML=os.path.abspath(os.path.join(os.path.dirname(__file__),'../dist/高校野球シミュレーション.html'))
+URL=os.environ.get('URL') or ('file://'+HTML)
 PITCHES=int(sys.argv[1]) if len(sys.argv)>1 else 40
 SHOT=len(sys.argv)>2 and sys.argv[2]=='shot'
 DARK=len(sys.argv)>3 and sys.argv[3]=='dark'
@@ -11,7 +12,7 @@ def main():
         pg.route("**/*",lambda r: r.abort() if 'googleapis' in r.request.url else r.continue_())
         pg.on('pageerror',lambda e: errs.append(str(e)))
         pg.on('console',lambda m: print('CONSOLE',m.text[:500]) if ('3D' in m.text or m.type=='error' and 'ERR_FAILED' not in m.text) else None)
-        pg.goto('file://'+HTML);pg.wait_for_timeout(200)
+        pg.goto(URL);pg.wait_for_timeout(200)
         pg.check('input[name=suMode][value=custom]');pg.click('[data-act="startGame"]');pg.wait_for_timeout(100)
         if pg.query_selector('[data-act="qShift"]'): pg.click('[data-act="qShift"]')
         pg.evaluate("enqueue({type:'practice',opp:{name:'テスト高校',strength:58,pref:'神奈川'}});render();")

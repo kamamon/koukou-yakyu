@@ -118,6 +118,23 @@ def noise2d(size, scale, seed):
         total += amp; amp *= 0.5; s //= 2
     return acc / total
 
+_NT = np.random.RandomState(12345).rand(1 << 20).astype(np.float32)
+def noise3(P, cell, seed=0):
+    """3次元の値ノイズ（UV の継ぎ目をまたいでも連続）。P: (...,3) メートル、cell: 格子の間隔（m）"""
+    X = P / cell + seed * 17.13; I = np.floor(X).astype(np.int64); F = (X - I).astype(np.float32); F = F * F * (3 - 2 * F)
+    def h(dx, dy, dz):
+        return _NT[((I[..., 0] + dx) * 73856093 ^ (I[..., 1] + dy) * 19349663 ^ (I[..., 2] + dz) * 83492791 ^ seed * 2654435761) & ((1 << 20) - 1)]
+    fx, fy, fz = F[..., 0], F[..., 1], F[..., 2]
+    x00 = h(0, 0, 0) * (1 - fx) + h(1, 0, 0) * fx; x10 = h(0, 1, 0) * (1 - fx) + h(1, 1, 0) * fx
+    x01 = h(0, 0, 1) * (1 - fx) + h(1, 0, 1) * fx; x11 = h(0, 1, 1) * (1 - fx) + h(1, 1, 1) * fx
+    return (x00 * (1 - fy) + x10 * fy) * (1 - fz) + (x01 * (1 - fy) + x11 * fy) * fz
+
+def fbm3(P, cell, octaves=4, seed=0):
+    acc = 0; amp = 1; tot = 0
+    for k in range(octaves):
+        acc = acc + amp * noise3(P, cell / (2 ** k), seed + k); tot += amp; amp *= 0.5
+    return acc / tot
+
 def save(name, arr, size=None, q=92):
     im = Image.fromarray(np.clip(arr, 0, 255).astype(np.uint8))
     if size: im = im.resize((size, size), Image.LANCZOS)
@@ -134,7 +151,7 @@ for i in lips: flags[i, 1] = 1
 for i in lash: flags[i, 2] = 1
 for i in range(nv):
     y, z = V[i, 1], V[i, 2]
-    if abs(y - mouth_y) < 0.015 and z < mouth_z - 0.018 and abs(V[i, 0]) < 0.03: flags[i, 3] = 1
+    pass
     # 頭皮：目の高さ+6cm より上、または後頭部（z が目より 7cm 以上後ろ）
     headCy = eyeY + 0.03
     if JOINTS[int(dom[i])] == 'head' and y > headCy - 0.02:
@@ -145,6 +162,62 @@ for i in range(nv):
     if j in ('rFoot', 'lFoot'):
         flags[i, 6] = 1
     if j in ('rKnee', 'lKnee', 'rFoot', 'lFoot') and y < 0.075 and y > 0.0: flags[i, 7] = 1
+# 口の中：口を開けた（雄叫びの）形を正面から描いたとき見える三角形のうち、閉じた形では唇の奥に隠れているもの
+_mn = list(D['morph_names']); Vo = V + D['morphs'][_mn.index('shout')]
+def zbuf_tris(Vs, tris, box, ppm):
+    x0, x1, y0, y1 = box; W = int((x1 - x0) * ppm); H = int((y1 - y0) * ppm)
+    zb = np.full((H, W), -np.inf); tid = np.full((H, W), -1, np.int64)
+    sx = (Vs[:, 0] - x0) * ppm; sy = (y1 - Vs[:, 1]) * ppm
+    for f, tv in enumerate(tris):
+        X = sx[tv]; Y = sy[tv]; Z = Vs[tv, 2]
+        if X.max() < 0 or X.min() > W or Y.max() < 0 or Y.min() > H: continue
+        a0 = int(max(0, math.floor(X.min()))); a1 = int(min(W - 1, math.ceil(X.max()))); b0 = int(max(0, math.floor(Y.min()))); b1 = int(min(H - 1, math.ceil(Y.max())))
+        if a1 < a0 or b1 < b0: continue
+        d = (X[1] - X[0]) * (Y[2] - Y[0]) - (X[2] - X[0]) * (Y[1] - Y[0])
+        if abs(d) < 1e-12: continue
+        xs, ys = np.meshgrid(np.arange(a0, a1 + 1) + 0.5, np.arange(b0, b1 + 1) + 0.5)
+        l1 = ((xs - X[0]) * (Y[2] - Y[0]) - (ys - Y[0]) * (X[2] - X[0])) / d; l2 = ((X[1] - X[0]) * (ys - Y[0]) - (Y[1] - Y[0]) * (xs - X[0])) / d; l0 = 1 - l1 - l2
+        ins = (l0 >= 0) & (l1 >= 0) & (l2 >= 0)
+        if not ins.any(): continue
+        z = l0 * Z[0] + l1 * Z[1] + l2 * Z[2]; yy, xx = np.nonzero(ins); yy += b0; xx += a0; zz = z[ins]
+        c = zz > zb[yy, xx]; zb[yy[c], xx[c]] = zz[c]; tid[yy[c], xx[c]] = f
+    return zb, tid
+print('mouth_y - eyeY = %.4f' % (mouth_y - eyeY))
+mbox = (-0.05, 0.05, eyeY - 0.13, eyeY - 0.03); MPPM = 5000
+_bt = D['body_tris']
+mt = _bt[((np.abs(V[_bt][:, :, 0]) < 0.07) & (V[_bt][:, :, 1] > eyeY - 0.15) & (V[_bt][:, :, 1] < eyeY - 0.01) & (V[_bt][:, :, 2] > 0.0)).all(1)]
+zb_o, tid_o = zbuf_tris(Vo, mt, mbox, MPPM); zb_n, _ = zbuf_tris(V, mt, mbox, MPPM)
+vis_t = np.unique(tid_o[tid_o >= 0])
+cn = V[mt[vis_t]].mean(1); px_ = ((cn[:, 0] - mbox[0]) * MPPM).astype(int); py_ = ((mbox[3] - cn[:, 1]) * MPPM).astype(int)
+okp = (px_ >= 0) & (px_ < zb_n.shape[1]) & (py_ >= 0) & (py_ < zb_n.shape[0])
+hidden = np.zeros(len(vis_t), bool); hidden[okp] = cn[okp, 2] < zb_n[py_[okp], px_[okp]] - 0.0015
+seed_t = set()
+for f in vis_t[hidden]:
+    for i in mt[f]: flags[i, 3] = 1
+# UV の島（同じ UV 頂点を共有する三角形のつながり）ごと口腔とみなす
+_btt = D['body_tt']; _bt2 = D['body_tris']
+from collections import defaultdict
+uv2t = defaultdict(list)
+for f, t3 in enumerate(_btt):
+    for q in t3: uv2t[int(q)].append(f)
+seed = set()
+for f, t3 in enumerate(_bt2):
+    uvc = VT[_btt[f]].mean(0)
+    if all(flags[int(i), 3] for i in t3) and 0.72 < uvc[0] < 0.97 and (1 - uvc[1]) > 0.82: seed.add(f)
+isl = set(); stack = list(seed)
+while stack:
+    f = stack.pop()
+    if f in isl: continue
+    isl.add(f)
+    for q in _btt[f]:
+        for g in uv2t[int(q)]:
+            if g not in isl: stack.append(g)
+# 島が大きすぎる（顔の島につながっている）ときは広げない
+if 0 < len(isl) < 1500:
+    for f in isl:
+        for i in _bt2[f]: flags[int(i), 3] = 1
+print('mouth interior verts', int(flags[:, 3].sum()), 'island tris', len(isl))
+
 exposed = np.ones(nv, dtype=np.float32)  # 日焼け（露出部）1 / 服の下 0
 cov = D['cov']
 for i in range(nv):
@@ -159,7 +232,7 @@ img = base_light[None, None, :] * (1 - EX[..., None]) + base_tan[None, None, :] 
 # 日焼けの境界をぼかす
 img = np.asarray(Image.fromarray(np.clip(img, 0, 255).astype(np.uint8)).filter(ImageFilter.GaussianBlur(6)), dtype=np.float32)
 # 低周波の色むら・毛穴
-n1 = noise2d(S, 256, 1); n2 = noise2d(S, 8, 2)
+n1 = fbm3(P, 0.09, 3, 1); n2 = fbm3(P, 0.0035, 2, 2)
 img *= (0.94 + 0.12 * n1)[..., None]
 img *= (0.95 + 0.1 * n2)[..., None]
 # 赤み：頬・鼻・耳・肘・ひざ・指
@@ -171,18 +244,53 @@ red += 0.5 * cheek + 0.35 * nose
 img[..., 0] += 22 * red; img[..., 1] -= 10 * red; img[..., 2] -= 12 * red
 # くぼみ（キャビティ）を暗く
 img *= (1 - 0.22 * np.clip(CV, 0, 1))[..., None]
-# 坊主頭：濃い青黒を半透明で
-scalp = np.clip(FL[..., 4], 0, 1)
-scalp = np.asarray(Image.fromarray((scalp * 255).astype(np.uint8)).filter(ImageFilter.GaussianBlur(4)), dtype=np.float32) / 255
-hair_col = np.array([48, 40, 42], dtype=np.float32)
-stubble = (0.5 + 0.5 * noise2d(S, 4, 5))
-img = img * (1 - scalp[..., None] * 0.62 * stubble[..., None]) + hair_col[None, None, :] * (scalp[..., None] * 0.62 * stubble[..., None])
-# 眉：濃い毛
-browm = np.clip(FL[..., 0], 0, 1)
-browm = np.asarray(Image.fromarray((browm * 255).astype(np.uint8)).filter(ImageFilter.GaussianBlur(1.0)), dtype=np.float32) / 255
-strokes = (noise2d(S, 3, 9) > 0.5).astype(np.float32)
-bcol = np.array([48, 36, 30], dtype=np.float32)
-k = np.clip(browm * (0.45 + 0.45 * strokes) * 0.9, 0, 1)
+# 坊主頭（3mm くらい）：生え際の高さを方位ごとに決め、その上を短い毛で覆う。耳と付け根のまわりは肌
+import gear as GEAR
+hairC = GEAR.C
+def smoothstep(a, b, x):
+    t = np.clip((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t)
+HL = np.array([[0, 0.074], [22, 0.071], [38, 0.063], [52, 0.046], [62, 0.024], [70, -0.004], [78, -0.016], [86, -0.018], [96, -0.03], [108, -0.046], [125, -0.066], [150, -0.079], [180, -0.086]])
+def hairline(th):
+    a = np.degrees(np.abs((th + np.pi) % (2 * np.pi) - np.pi))
+    return eyeY + np.interp(a, HL[:, 0], HL[:, 1])
+th_t = np.arctan2(px - hairC[0], pz - hairC[2])
+headreg = (py > eyeY - 0.13) & (np.hypot(px - hairC[0], pz - hairC[2]) < 0.16) & (py > eyeY - 0.095 - 0.0 * px)
+jit = (fbm3(P, 0.006, 2, 21) - 0.5) * 0.004
+hl = hairline(th_t)
+dens = smoothstep(hl - 0.0025, hl + 0.0045, py + jit) * headreg
+# 前の生え際は少し薄く
+front = np.cos(th_t) > 0.5
+dens *= np.where(front, 0.55 + 0.45 * smoothstep(hl, hl + 0.01, py), 1.0)
+# 耳（耳介）と付け根のまわり 4mm は毛なし
+ear_ids = set()
+for side in 'lr':
+    ii, dd = load_target(T('ears', side + '-ear-wing-incr.target')); mm = np.linalg.norm(dd, axis=1); ear_ids |= set(ii[mm >= mm.max() * 0.1].tolist())
+earflag = np.zeros(nv, np.float32); earflag[list(ear_ids)] = 1
+RE, _ = rasterize(body_tris, body_tt, S, {'ear': earflag}); EAR = dilate(RE['ear'], M)[..., 0]
+from scipy import ndimage as _nd
+earm = _nd.binary_dilation(EAR > 0.5, iterations=7)
+earm = np.asarray(Image.fromarray((earm * 255).astype(np.uint8)).filter(ImageFilter.GaussianBlur(3)), dtype=np.float32) / 255
+dens *= (1 - earm)
+# うなじの下（首）と顔には生えない（念のため）
+dens *= smoothstep(eyeY - 0.11, eyeY - 0.095, py)
+stub = noise3(P, 0.00055, 31)
+hairk = np.clip(dens * (0.5 + 0.42 * smoothstep(0.25, 0.75, stub) + 0.08 * fbm3(P, 0.02, 2, 33)), 0, 0.92)
+hair_col = np.array([34, 30, 31], dtype=np.float32)
+img = img * (1 - hairk[..., None]) + hair_col[None, None, :] * hairk[..., None]
+np.save(os.path.join(TMP, 'hair_mask.npy'), np.clip(dens, 0, 1).astype(np.float16))
+# 眉：眉頭が太く眉尻へ細くなる弓形。毛流れに沿った筋で描く（正面の向きの面だけ）
+ax_ = np.abs(px); q = (ax_ - 0.0115) / (0.063 - 0.0115)
+ycen = eyeY + 0.0185 + 0.0085 * np.sin(np.clip(q, 0, 1) * np.pi * 0.86)
+hw = 0.0040 * (1 - 0.5 * np.clip(q, 0, 1)) + 0.0004
+dy = (py - ycen) / hw
+band = np.exp(-np.abs(dy) ** 3.0)
+ends = smoothstep(-0.08, 0.06, q) * (1 - smoothstep(0.9, 1.04, q))
+facing = smoothstep(0.15, 0.4, NR[..., 2]) * (pz > eyeC[2] - 0.04) * (ax_ < 0.075)
+Ps = np.stack([px / 0.004, py / 0.00075, pz / 0.004], -1) * 0.001
+strokes = smoothstep(0.35, 0.7, noise3(Ps, 0.001, 9))
+browm = band * ends * facing
+k = np.clip(browm * (0.5 + 0.45 * strokes) * 0.92, 0, 1)
+bcol = np.array([36, 28, 24], dtype=np.float32)
 img = img * (1 - k[..., None]) + bcol[None, None, :] * k[..., None]
 # 唇
 lipm = np.clip(FL[..., 1], 0, 1); lipm = np.asarray(Image.fromarray((lipm * 255).astype(np.uint8)).filter(ImageFilter.GaussianBlur(2)), dtype=np.float32) / 255
@@ -208,6 +316,18 @@ save('skin.jpg', img, q=90)
 hand = np.clip(FL[..., 5], 0, 1)
 hand = np.asarray(Image.fromarray((hand * 255).astype(np.uint8)).filter(ImageFilter.GaussianBlur(1.5)), dtype=np.float32) / 255
 save('hand_mask.png', np.stack([hand * 255] * 3, -1), size=1024)
+# 帽子・ヘルメットの縁の影（環境光の遮り）：R=帽子 G=ヘルメット B=耳当て。ゲーム側でかぶっている物に応じて掛ける
+dyc = GEAR.cap_line(th_t) - py; dyh = GEAR.helm_line(th_t) - py
+fr = smoothstep(0.3, 0.8, np.cos(th_t))
+near = headreg & (np.hypot(px - hairC[0], pz - hairC[2]) < 0.14)
+ao_cap = np.where(dyc < 0, 0.35, (1 - 0.45 * np.exp(-np.maximum(dyc, 0) / 0.005)) * (1 - 0.26 * fr * np.exp(-np.maximum(dyc, 0) / 0.03)))
+ao_helm = np.where(dyh < 0, 0.35, (1 - 0.5 * np.exp(-np.maximum(dyh, 0) / 0.006)) * (1 - 0.2 * fr * np.exp(-np.maximum(dyh, 0) / 0.025)))
+# 打者用（両耳当て一体）の縁
+dyb = GEAR.helm_edge_bat(th_t) - py
+ao_flap = np.where(dyb < 0, 0.35, (1 - 0.5 * np.exp(-np.maximum(dyb, 0) / 0.006)) * (1 - 0.2 * fr * np.exp(-np.maximum(dyb, 0) / 0.025)))
+aoimg = np.stack([np.where(near, ao_cap, 1), np.where(near, ao_helm, 1), np.where(near, ao_flap, 1)], -1)
+aoimg = np.asarray(Image.fromarray(np.clip(aoimg * 255, 0, 255).astype(np.uint8)).filter(ImageFilter.GaussianBlur(2)), dtype=np.float32)
+save('head_ao.png', aoimg, size=1024)
 
 # ============ ユニフォーム（tights の UV） ============
 U = 2048
@@ -275,8 +395,8 @@ zones = np.stack([raglan * 255, band * 255, np.maximum(cuffband * 128, side * 25
 save('uni_zones.png', zones)
 # 陰影：キャビティ＋しわ＋脇・股・ベルト下
 h = np.zeros((U, U), dtype=np.float32)
-fab = noise2d(U, 4, 11)
-h += 0.15 * fab
+fab = noise2d(U, 8, 11)
+h += 0.035 * fab
 # 関節まわりの折りじわ（距離の正弦）
 for jn, amp, freq in (('lEl', 1.0, 90), ('rEl', 1.0, 90), ('lKnee', 1.0, 70), ('rKnee', 1.0, 70), ('lHip', 0.6, 60), ('rHip', 0.6, 60), ('hips', 0.5, 45)):
     c = pos[jn]
@@ -311,5 +431,11 @@ save('uni_dirt.jpg', np.stack([dirt * 255] * 3, -1), size=1024, q=88)
 print('done')
 
 # 目のテクスチャ（MakeHuman 同梱・CC0）を縮小して JPEG に
-eye = Image.open(os.path.join(MH, 'eyes', 'brown_eye.png')).convert('RGB').resize((512, 512), Image.LANCZOS)
-eye.save(os.path.join(OUT, 'eye.jpg'), quality=90); print('saved eye.jpg')
+eye = np.asarray(Image.open(os.path.join(MH, 'eyes', 'brown_eye.png')).convert('RGB').resize((512, 512), Image.LANCZOS), dtype=np.float32) / 255
+r_, g_, b_ = eye[..., 0], eye[..., 1], eye[..., 2]
+iris = np.clip((r_ - (g_ + b_) / 2 - 0.08) / 0.12, 0, 1); iris = np.asarray(Image.fromarray((iris * 255).astype(np.uint8)).filter(ImageFilter.GaussianBlur(1.5)), dtype=np.float32) / 255
+lin = eye ** 2.2; lum = lin.mean(2); ml = lum[iris > 0.8].mean()
+target = (np.array([46, 31, 24], np.float32) / 255) ** 2.2
+new_ = target[None, None, :] * np.clip(lum / ml, 0.2, 3.0)[..., None] ** 0.8
+out = lin * (1 - iris[..., None]) + new_ * iris[..., None]
+Image.fromarray(np.clip(out ** (1 / 2.2) * 255, 0, 255).astype(np.uint8)).save(os.path.join(OUT, 'eye.jpg'), quality=90); print('saved eye.jpg')
