@@ -4,6 +4,9 @@
  ボール：手に持っている間は手の位置、リリースはその時刻の手の位置から、捕手が捕ったらミットの中。 */
 const PL={key:null,ctx:null,rigs:{},relKey:null,rel:null};
 /* 追加のリグ（審判4人目・塁コーチなど）を必要なときだけ作る */
+/* 投球のクリップ：オーバースローは実測（CMU）の投球。ちびキャラと設定でオフのときは手作りの投球 */
+function plPitClip(p){const f=r3PitForm(p);if(f==='over'&&MODEF.p_set_mc&&actionSettings().model3d!=='chibi'&&actionSettings().mocap!==false)return 'p_set_mc';return 'p_set_'+f;}
+function plPitEnd(clip){const d=MODEF[clip];return (d&&d.end)||MODEF.p_set.end;}
 function plRig(key,setup){let r=PL.rigs[key];if(!r||r._model!==actionSettings().model3d||(GL.ready&&!(r instanceof R3RigGL)&&actionSettings().model3d!=='chibi')){if(r&&r.g.parent)r.g.parent.remove(r.g);r=r3NewRig();r._model=actionSettings().model3d;R3.scene.add(r.g);PL.rigs[key]=r;if(setup)setup(r);}return r;}
 function plUseMotion(){return actionSettings().model3d!=='chibi'&&typeof moFrame==='function';}
 /* 守備位置（状況で動かす）：走者一塁で併殺態勢、一塁手は走者を抑える */
@@ -22,8 +25,8 @@ function plPitchPlan(now){const m=AR.m,d=m.def(),tb=m.bat(),pa=m.pa;const ph=AR.
  if(!go){pSeg.push({k:'pose',pose:'p_setpos',t0:T0-5000,t1:FAR,x:pRoot[0],y:pRoot[1],yaw:0,edit:(Q,t)=>plIdleSet(Q,t)});}
  else{/* 着地まで（クリップ0〜860ms）を W-140ms に、着地〜リリースは実時間で */const A=Math.max(200,W-140);
   pSeg.push({k:'pose',pose:'p_setpos',t0:T0-5000,t1:T0,x:pRoot[0],y:pRoot[1],yaw:0,edit:(Q,t)=>plIdleSet(Q,t)});
-  pSeg.push({k:'clip',clip:'p_set_'+r3PitForm(pa?pa.p:d.pitcher),t0:T0,t1:tRel+700,x:pRoot[0],y:pRoot[1],yaw:0,fade:60,warp:[[0,0],[A,860],[A+140,1000]]});
-  const e=MODEF.p_set.end;const o=moL2F(e.dx,e.dz,0,hs);const fx=pRoot[0]+o[0],fy=pRoot[1]+o[1];
+  const pClip=plPitClip(pa?pa.p:d.pitcher);pSeg.push({k:'clip',clip:pClip,t0:T0,t1:tRel+700,x:pRoot[0],y:pRoot[1],yaw:0,fade:MODEF[pClip]&&MODEF[pClip].mocap?140:60,warp:[[0,0],[A,860],[A+140,1000]]});
+  const e=plPitEnd(pClip);const o=moL2F(e.dx,e.dz,0,hs);const fx=pRoot[0]+o[0],fy=pRoot[1]+o[1];
   const back=[{t:tRel+900,x:fx,y:fy},{t:tRel+1700,x:pRoot[0],y:pRoot[1]+0.05}];
   pSeg.push({k:'pose',pose:'f_ready',t0:tRel+700,t1:tRel+900,x:fx,y:fy,yaw:0,fade:200});
   pSeg.push({k:'move',t0:tRel+900,t1:tRel+1700,path:back,face:{mode:'yaw',yaw:0},style:'walk',fade:200});
@@ -167,10 +170,10 @@ function plBuild(c,play,opt){opt=opt||{};const m=AR.m;const d=m.def(),tb=m.bat()
  /* --- 初期配置（投球の場面の続き） --- */
  const pRoot=[0,R3C.RUBBER-0.15];const pOff=opt.pitchClip!=null?opt.pitchClip:1450;
  for(const k of ['投','捕','一','二','三','遊','左','中','右']){const e=ents[k]=plEnt({key:k,mir:k==='投'?hs:1});const p0=DP0[k];
-  if(k==='投'){plAdd(e,{k:'clip',clip:'p_set_'+r3PitForm(m.pa&&m.pa.p?m.pa.p:d.pitcher),t0:-600,x:pRoot[0],y:pRoot[1],yaw:0,off:pOff-600*ts,rate:ts});continue;}
+  if(k==='投'){plAdd(e,{k:'clip',clip:plPitClip(m.pa&&m.pa.p?m.pa.p:d.pitcher),t0:-600,x:pRoot[0],y:pRoot[1],yaw:0,off:pOff-600*ts,rate:ts});continue;}
   if(k==='捕'){plAdd(e,{k:'pose',pose:'c_crouch',t0:-600,x:0,y:-0.85,yaw:Math.PI});continue;}
   const yaw=moYawTo(p0[0],p0[1],0,0);const of=k==='左'||k==='中'||k==='右';const fw=moL2F(0,of?0.9:0.55,yaw,1);e.home=[p0[0]+fw[0],p0[1]+fw[1]];plAdd(e,{k:'pose',pose:'f_ready',t0:-600,x:e.home[0],y:e.home[1],yaw});}
- ents['投'].home=(()=>{const o=moL2F(MODEF.p_set.end.dx,MODEF.p_set.end.dz,0,hs);return [pRoot[0]+o[0],pRoot[1]+o[1]];})();ents['捕'].home=[0,-0.85];
+ ents['投'].home=(()=>{const pe=plPitEnd(plPitClip(m.pa&&m.pa.p?m.pa.p:d.pitcher));const o=moL2F(pe.dx,pe.dz,0,hs);return [pRoot[0]+o[0],pRoot[1]+o[1]];})();ents['捕'].home=[0,-0.85];
  const tPitchEnd=Math.max(0,(1650-pOff)*S);/* 投手のフォローが終わる時刻 */
  const posAt=(k,t)=>{const e=E(k);const segs=e.segs;let s=segs[0];for(const g of segs)if(g.t0<=t)s=g;if(s.k==='move'||s.k==='glide')return moPathAt(s.path,t);if(t>=s.t1-1)return plSegEnd(s);return [s.x,s.y];};
  const freeAt=(k)=>{const e=E(k);const l=e.segs[e.segs.length-1];return Math.max(l.t0+1,k==='投'?tPitchEnd:0);};

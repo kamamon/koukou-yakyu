@@ -803,9 +803,9 @@ class R3RigReal{
   const ep=E0.clone().addScaledVector(dn,-E0.dot(dn)),pp=pl.clone().addScaledVector(dn,-pl.dot(dn));
   if(ep.lengthSq()>1e-6&&pp.lengthSq()>1e-6){ep.normalize();pp.normalize();const ang=Math.atan2(ep.clone().cross(pp).dot(dn),ep.dot(pp));q.premultiply(new THREE.Quaternion().setFromAxisAngle(dn,ang));}
   sh.quaternion.copy(q);}
- apply(p){const j=this.j;for(const k in j)j[k].rotation.set(0,0,0);const hp=this.dim.hipsPos||[0,RR.HIPS,0];j.hips.position.set(hp[0],hp[1]+(p.dy||0),hp[2]+(p.dz||0));
+ apply(p){const j=this.j;for(const k in j)j[k].rotation.set(0,0,0);const hp=this.dim.hipsPos||[0,RR.HIPS,0];j.hips.position.set(hp[0]+(p.mx||0),hp[1]+(p.dy||0),hp[2]+(p.dz||0));
   const mir=this.g.scale.x<0;if(mir!==this.mirrored){this.mirrored=mir;this._drawNum();this._drawText();}
-  for(const k in p){const r=p[k];if(!Array.isArray(r))continue;if(k==='torso'){j.torso.rotation.set(r[0]*0.45,r[1]*0.4,r[2]*0.45);j.chest.rotation.set(r[0]*0.55,r[1]*0.6,r[2]*0.55);continue;}const jo=j[k];if(jo)jo.rotation.set(r[0]||0,r[1]||0,r[2]||0);}
+  for(const k in p){const r=p[k];if(!Array.isArray(r))continue;if(k==='tor'){j.torso.rotation.set(r[0],r[1],r[2]);continue;}if(k==='torso'){j.torso.rotation.set(r[0]*0.45,r[1]*0.4,r[2]*0.45);j.chest.rotation.set(r[0]*0.55,r[1]*0.6,r[2]*0.55);continue;}const jo=j[k];if(jo)jo.rotation.set(r[0]||0,r[1]||0,r[2]||0);}
   if(this.bat.visible){/* バット：右手（上の手）の拳の位置に握り、左手は2関節IKでグリップ下端へ */
    const Mh=this._localM(j.rHand);const wrist=new THREE.Vector3().setFromMatrixPosition(Mh);const hd=new THREE.Vector3(0,-1,0).transformDirection(Mh);const fist=wrist.clone().addScaledVector(hd,this.dim.fist);
    const d=p.batDir||[0,1,0];const v=new THREE.Vector3(d[0],d[1],d[2]).normalize();this.bat.position.copy(fist).addScaledVector(v,-0.07);this.bat.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),v);

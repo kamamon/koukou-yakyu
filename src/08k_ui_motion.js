@@ -19,7 +19,7 @@ const MOT={
  LOOK_YAW:1.25,LOOK_PITCH:0.7, /* 頭を向けられる範囲（rad） */
 };
 /* 関節→部位（時間差の指定に使う） */
-const MO_GRP={hips:'hips',dx:'hips',dy:'hips',dz:'hips',torso:'torso',chest:'torso',head:'head',rSh:'armR',rEl:'armR',rHand:'armR',hr:'armR',hrq:'armR',hrw:'armR',lSh:'armL',lEl:'armL',lHand:'armL',hl:'armL',hlq:'armL',hlw:'armL',rHip:'legR',rKnee:'legR',rFoot:'legR',fr:'legR',frq:'legR',kr:'legR',lHip:'legL',lKnee:'legL',lFoot:'legL',fl:'legL',flq:'legL',kl:'legL',batDir:'bat',look:'head'};
+const MO_GRP={hips:'hips',dx:'hips',mx:'hips',tor:'torso',dy:'hips',dz:'hips',torso:'torso',chest:'torso',head:'head',rSh:'armR',rEl:'armR',rHand:'armR',hr:'armR',hrq:'armR',hrw:'armR',lSh:'armL',lEl:'armL',lHand:'armL',hl:'armL',hlq:'armL',hlw:'armL',rHip:'legR',rKnee:'legR',rFoot:'legR',fr:'legR',frq:'legR',kr:'legR',lHip:'legL',lKnee:'legL',lFoot:'legL',fl:'legL',flq:'legL',kl:'legL',batDir:'bat',look:'head'};
 const MO_VEC={batDir:1}; /* 正規化して補間する方向ベクトル */
 /* ---------- 単調3次補間（Fritsch–Carlson） ---------- */
 function moSlopes(t,v,ends){const n=t.length;const m=new Float64Array(n);if(n<2)return m;const d=new Float64Array(n-1);for(let i=0;i<n-1;i++){const h=t[i+1]-t[i];d[i]=h>0?(v[i+1]-v[i])/h:0;}
