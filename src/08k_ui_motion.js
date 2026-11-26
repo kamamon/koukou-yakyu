@@ -235,7 +235,7 @@ function moApply(rig,st,ent,t,noBat){const mo=moRig(rig);const mir=st.mir<0?-1:1
  /* 打撃の接触の補正：接触の時刻に芯がボールへ来るよう、上体の前傾とバットの傾き（高さ）→手元の位置（残り）で合わせる */
  const bt=!noBat&&st.seg&&st.seg.bat&&rig.bat&&rig.bat.visible?st.seg.bat:null;let bw=0;
  if(bt){const tc=bt.tc;bw=t<tc?moSmooth((t-(tc-70))/55):1-moSmooth((t-tc)/130);if(bw>0&&bt._d===undefined)moBatPrep(rig,ent,bt);if(!bt._d)bw=0;}
- rig.g.scale.x=mir;const gz=moGround(st.x,st.y);rig.g.position.set(st.x,gz,-st.y);rig.g.rotation.set(0,st.yaw,0);rig.g.updateMatrix();
+ const body=rig._v28Body;if(body)rig.g.scale.set(mir*body.x,body.y,body.z);else rig.g.scale.x=mir;const gz=moGround(st.x,st.y);rig.g.position.set(st.x,gz,-st.y);rig.g.rotation.set(0,st.yaw,0);rig.g.updateMatrix();
  let P=st.P||{};if(bw>0&&bt._adj){P=Object.assign({},P);moBatAdj(P,bt._adj,bw);}rig.apply(P);
  const inv=_mm[0].copy(rig.g.matrix).invert();
  /* 足の目標（足首の位置と足の向き：リグのローカル） */const tg={};

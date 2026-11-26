@@ -56,7 +56,7 @@
  const originalStadium=r3BuildStadium;
  r3BuildStadium=function(S){
   const v=venue(),g=new THREE.Group();g.name=v.name;S.add(g);state.venue=v;state.group=g;R3.venue=v;
-  if(v.id==='national_01')originalStadium(g);else customStadium(g,v);caps();
+  R3S.flags=[];if(v.id==='national_01')originalStadium(g);else customStadium(g,v);caps();
  };
  function clearStadium(){if(!state.group)return;
   const sharedG=new Set(Object.values(R3_GEOS)),sharedM=new Set(Object.values(R3_MATS)),gs=new Set(),ms=new Set();state.group.traverse(o=>{if(o.geometry&&!sharedG.has(o.geometry))gs.add(o.geometry);for(const m of [].concat(o.material||[]))if(m&&!sharedM.has(m))ms.add(m);});
@@ -74,7 +74,6 @@
    const grip=new THREE.TubeGeometry(new THREE.CatmullRomCurve3(gripPath),128,.0013,4,false);
    const lacePath=[];for(let i=0;i<=64;i++){const a=i/64*Math.PI*2;lacePath.push(new THREE.Vector3(.088*Math.cos(a),.118*Math.sin(a),.025));}
    const lace=new THREE.TubeGeometry(new THREE.CatmullRomCurve3(lacePath,true),64,.0024,4,true);
-   const seam=new THREE.Group(); // actual webbing rows, material shared, meshes instanced per rig below
    const laces=new THREE.MeshStandardMaterial({color:0x52341f,roughness:.91});
    const gripMat=new THREE.MeshStandardMaterial({color:0x55575b,roughness:.85});
    gearCache={bat,grip,lace,laces,gripMat,metals:[0x9b9fa3,0x343a44,0xc1a45a,0x82929d].map(color=>new THREE.MeshStandardMaterial({color,metalness:.62,roughness:.32})),leathers:[0x8b5e34,0x5a3828,0xb1814b,0x29292b].map(color=>new THREE.MeshStandardMaterial({color,roughness:.83}))};
