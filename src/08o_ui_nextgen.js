@@ -69,7 +69,7 @@ const NGCore=(function ngCoreFactory(){
    const current=p.buttons.map(b=>b.pressed||b.value>.65);
    if(state.pad!==p.index){state.pad=p.index;state.buttons=current;state.padT=now;return;}
    const dt=C.clamp((now-state.padT)/1000,0,.05);state.padT=now;
-   const edge=i=>current[i]&&!state.buttons[i];state.buttons=current;
+   const previous=state.buttons;const edge=i=>current[i]&&!previous[i];state.buttons=current;
    if(AR.panel)return;
    if(AR.phase==='decide'&&AR.pending&&AR.pending.decision){const d=AR.pending.decision;if(d.kind==='throw'){
     const target=edge(1)?1:edge(3)?2:edge(2)?3:edge(0)?4:null;
