@@ -147,3 +147,6 @@ GitHub Pages には `dist/pwa` の中身をリポジトリ直下に置いてい�
 - 投球のモーションキャプチャ: The data used in this project was obtained from mocap.cs.cmu.edu. The database was created with funding from NSF EIA-0196217.（BVH は cgspeed による変換版。データ単体の再配布・販売は不可）
 - 人体メッシュ・表情ターゲット・眼球: MakeHuman（CC0 1.0） http://www.makehumancommunity.org
 - three.js（MIT）
+
+### v29
+83ボーンの高密度派生モデル、実測6クリップ、守備・走塁直接操作、連続バット衝突を追加。試験機能は試合メニューでON。詳細・検証状況は [NEXTGEN_V29](docs/NEXTGEN_V29.md)、[実測素材](docs/MOCAP_V29.md)。

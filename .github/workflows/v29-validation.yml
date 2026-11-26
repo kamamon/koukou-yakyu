@@ -1,0 +1,41 @@
+name: v29 regression and GLB export
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'assets/player_deform_v29.json'
+      - 'test/nextgen_v29.cjs'
+      - 'test/v29_browser.py'
+      - 'tools/build_player_v29.cjs'
+      - '.github/workflows/v29-validation.yml'
+permissions:
+  contents: read
+jobs:
+  validation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node test/nextgen_v29.cjs
+      - run: node tools/build_player_v29.cjs dist/player-v29.glb
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install playwright
+      - run: python -m playwright install --with-deps chromium
+      - run: |
+          python -m http.server 8765 > /tmp/hsb-http.log 2>&1 &
+          python test/v29_browser.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: v29-validation
+          path: |
+            dist/player-v29.glb
+            dist/player-v29.glb.json
+            dist/v29-browser/
