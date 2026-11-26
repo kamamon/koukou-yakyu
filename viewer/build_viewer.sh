@@ -5,7 +5,7 @@ cd "$(dirname "$0")/.."
 THREE="$(cat vendor/three.min.js)"
 DATA="$(grep -E '^const (UNI_FONTS|POS_NUM)' src/01_data.js; sed -n '/^const UNI_FONTS=\[/,/^\];/p' src/01_data.js | tail -n +2)"
 CORE="const R3_ASSET_BASE='${ASSET_BASE:-assets/}';const clamp=(v,a,b)=>v<a?a:v>b?b:v;const FENCE=a=>100+20*Math.cos(a*Math.PI/90);function gauss(m,s){let u=0,v=0;while(u===0)u=Math.random();while(v===0)v=Math.random();return m+s*Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);}"
-MODS="$(cat src/03c_phys.js src/08f_ui_3d.js src/08g_ui_rig.js src/08h_ui_stadium.js src/08i_ui_gl.js viewer/viewer.js)"
+MODS="$(cat src/03c_phys.js src/08f_ui_3d.js src/08g_ui_rig.js src/08h_ui_stadium.js src/08i_ui_gl.js src/08t_deform_v29.js viewer/viewer.js viewer/v29_inspect.js)"
 mkdir -p dist
 {
 cat <<'HTML'

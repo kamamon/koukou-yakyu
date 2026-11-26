@@ -136,7 +136,7 @@ function arThrowCpu(){const m=AR.m;if(AR.phase!=='pre'||AR.side!=='bat')return;A
 function arSwing(){const m=AR.m;if(AR.phase!=='flight'||AR.swung)return;const P=AR.cur;const now=performance.now();const dtReal=now-AR.t0-(P.T*AR.speed-70*AR.speed);const dt=dtReal/AR.speed;
  AR.swung=true;AR.swingT=now;const type=AR.swingType;AR.swing={type,cx:AR.cursor.x,cy:AR.cursor.y,dt,ease:arEase()};
  AR.ev=m.resolvePitch(P,AR.swing);arSwingSound(AR.ev);}
-function arSwingSound(ev){const k=ev?ev.kind:'miss';if(k==='inplay'){setTimeout(()=>arSound(ev.bb&&ev.bb.bunt?'mitt':'hit'),75*AR.speed);}else if(k==='foul'){arSound('swing');setTimeout(()=>arSound('foul'),75*AR.speed);}else arSound('swing');}
+function arSwingSound(ev){const k=ev?ev.kind:'miss',h=ev&&ev.sw&&ev.sw.v29Collision,dt=(h&&h.hit?h.time:75)*AR.speed;if(k==='inplay'){setTimeout(()=>arSound(ev.bb&&ev.bb.bunt?'mitt':'hit'),dt);}else if(k==='foul'){arSound('swing');setTimeout(()=>arSound('foul'),dt);}else arSound('swing');}
 /* ---- 投球：ユーザー ---- */
 /* 2段階メーター（パワー停止→精度停止）。simple=従来の往復ゲージ */
 function arStartGauge(){const m=AR.m;const S=actionSettings();const tired=m.tired(m.def(),m.pa.p);const simple=S.meter==='simple';
@@ -172,7 +172,7 @@ function arShowResult(ev){const m=AR.m;AR.ev=ev;AR.resultAt=performance.now();tr
  if(AR.meterRes&&AR.side==='pit'&&P){const mr=AR.meterRes;if(mr.acc)sub+=`　メーター:${mr.acc}${mr.over>0?'（オーバー）':''}`;AR.meterRes=null;}
  AR.foot=(AR.mode==='card'&&AR.footPrefix?AR.footPrefix+'　｜　':'')+sub;
  arHideLower();if(P&&!ev.skipScene)arVelTag(P,ev);if(P&&ev.sw&&ev.c&&!ev.skipScene&&(AR.side==='bat'||AR.mode==='card'))arPciBadge(ev);
- if(ev.kind==='inplay'){const c=ev.bb;AR.cam=null;const sc=(typeof plBuildSafe==='function'?plBuildSafe:fwBuildScene)(c,ev.decision?null:ev.play,{dec:ev.decision});sc.c=c;sc.ev=ev;AR.field=sc;if(ev.skipScene){sc.t0=performance.now()-sc.T/(sc.rate||1)-300;sc.skipped=true;}else if(AR.swung&&AR.swingT){const el=performance.now()-(AR.swingT+75*AR.speed);if(el>0&&el<700)sc.t0-=el/(sc.rate||1);}arSetPhase('field');arOverlay(c.res==='HR'?'大きい！':c.dist>=90&&(c.type==='fly'||c.type==='line')?'大きい！':'','');setTimeout(()=>{if(AR.phase==='field')arOverlay('','');},700);}
+ if(ev.kind==='inplay'){const c=ev.bb;AR.cam=null;const sc=(typeof plBuildSafe==='function'?plBuildSafe:fwBuildScene)(c,ev.decision?null:ev.play,{dec:ev.decision});sc.c=c;sc.ev=ev;AR.field=sc;if(ev.skipScene){sc.t0=performance.now()-sc.T/(sc.rate||1)-300;sc.skipped=true;}else if(AR.swung&&AR.swingT){const el=performance.now()-(AR.swingT+((AR.swing&&AR.swing.v29Collision&&AR.swing.v29Collision.hit?AR.swing.v29Collision.time:75)*AR.speed));if(el>0&&el<700)sc.t0-=el/(sc.rate||1);}arSetPhase('field');arOverlay(c.res==='HR'?'大きい！':c.dist>=90&&(c.type==='fly'||c.type==='line')?'大きい！':'','');setTimeout(()=>{if(AR.phase==='field')arOverlay('','');},700);}
  else{const k=ev.kind;if(k==='bb'||k==='hbp'||k==='ibb')arSound('walk');if(k==='kSwing'||k==='kLook'||k==='kBunt')setTimeout(()=>arSound('k'),120);
   arOverlay(txt,ev.runText||'',k==='kSwing'||k==='kLook'||k==='kBunt'?'k':k==='bb'||k==='hbp'?'bb':'');arSetPhase('after');}
  if(ev.kind!=='inplay')arRenderTop();arRenderFoot();}

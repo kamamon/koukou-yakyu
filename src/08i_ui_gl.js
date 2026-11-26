@@ -15,7 +15,8 @@ function glLoad(){if(GL.data||GL.loading||GL.failed)return GL.loading;const base
  const img=(name)=>new Promise((res,rej)=>{const im=new Image();if(/^https?:/.test(base))im.crossOrigin='anonymous';im.onload=()=>res(im);im.onerror=()=>rej(new Error('image '+name));im.src=base+name;});
  GL.loading=fetch(base+'player.glb').then(r=>{if(!r.ok)throw new Error('glb '+r.status);return r.arrayBuffer();}).then(buf=>{GL.data=glParse(buf,base+'player.glb');
   const gear=fetch(base+'gear.glb').then(r=>r.ok?r.arrayBuffer():null).then(b=>{if(b)GL.gear=glParse(b,base+'gear.glb');}).catch(e=>console.warn('gear.glb',e));
-  return Promise.all([gear].concat(['skin.jpg','eye.jpg','uni_mask.png','uni_shade.jpg','uni_normal.jpg','uni_dirt.jpg','uni_layers.png','uni_zones.png','hand_mask.png','head_ao.png','cap.jpg','cap_n.jpg','helmet.png','catcher.jpg','catcher_n.jpg'].map(n=>img(n).then(im=>{GL.tex[n]=im;},e=>{console.warn('texture missing',n);}))));})
+  const deform=fetch(base+'player_deform_v29.json').then(r=>r.ok?r.json():null).then(v=>{if(v&&v.version===29)GL.deform29=v;}).catch(e=>console.warn('v29 deform asset unavailable',e));
+  return Promise.all([gear,deform].concat(['skin.jpg','eye.jpg','uni_mask.png','uni_shade.jpg','uni_normal.jpg','uni_dirt.jpg','uni_layers.png','uni_zones.png','hand_mask.png','head_ao.png','cap.jpg','cap_n.jpg','helmet.png','catcher.jpg','catcher_n.jpg'].map(n=>img(n).then(im=>{GL.tex[n]=im;},e=>{console.warn('texture missing',n);}))));})
  .then(()=>{GL.ready=true;try{if(typeof r3RebuildRigs==='function'&&R3.scene){R3.rigModel=null;r3RebuildRigs();}}catch(e){console.warn(e);}})
  .catch(e=>{console.warn('player.glb load failed → 手続き生成モデルを使用',e);GL.failed=true;});
  return GL.loading;}

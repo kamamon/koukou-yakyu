@@ -48,7 +48,7 @@ function plPitchPlan(now){const m=AR.m,d=m.def(),tb=m.bat(),pa=m.pa;const ph=AR.
  if(!go){bSeg.push({k:'pose',pose:'b_stance',t0:T0-5000,t1:FAR,x:bRoot[0],y:bRoot[1],yaw:bYaw,edit:(Q,t)=>plWaggle(Q,t)});}
  else{bSeg.push({k:'pose',pose:'b_stance',t0:T0-5000,t1:tRel-1000+Math.max(0,1000-W),x:bRoot[0],y:bRoot[1],yaw:bYaw,edit:(Q,t)=>plWaggle(Q,t)});
   const pre={k:'clip',clip:bunt?'b_bunt':'b_pre',t0:tRel-1000,t1:FAR,x:bRoot[0],y:bRoot[1],yaw:bYaw,fade:220};if(W<1000){pre.t0=AR.windT0;pre.off=1000-W;}bSeg.push(pre);
-  if(AR.swung&&AR.swingT&&!(AR.swing&&AR.swing.type==='bunt')){pre.t1=AR.swingT;bSeg.push({k:'clip',clip:'b_swing',t0:AR.swingT,t1:FAR,x:bRoot[0],y:bRoot[1],yaw:bYaw,fade:35,rate:1/AR.speed,bat:{tc:AR.swingT+75*AR.speed,target:()=>{const ev=AR.ev;return ev&&(ev.kind==='inplay'||ev.kind==='foul')?plContactPoint():null;}}});}
+  if(AR.swung&&AR.swingT&&!(AR.swing&&AR.swing.type==='bunt')){pre.t1=AR.swingT;bSeg.push({k:'clip',clip:AR.swing&&AR.swing.v29Clip||'b_swing',t0:AR.swingT,t1:FAR,x:bRoot[0],y:bRoot[1],yaw:bYaw,fade:35,rate:1/AR.speed,bat:{tc:AR.swingT+75*AR.speed,target:()=>{if(AR.swing&&AR.swing.v29Aim)return AR.swing.v29Aim;const ev=AR.ev;return ev&&(ev.kind==='inplay'||ev.kind==='foul')?plContactPoint():null;}}});}
   else if(ph==='after'&&AR.resultAt&&!bunt){pre.t1=AR.resultAt;bSeg.push({k:'clip',clip:'b_take',t0:AR.resultAt,t1:FAR,x:bRoot[0],y:bRoot[1],yaw:bYaw,fade:150});}
   const evK=AR.ev&&(AR.ev.kind==='kSwing'||AR.ev.kind==='kLook'||AR.ev.kind==='kBunt');if(ph==='after'&&AR.resultAt&&evK){const tk=AR.resultAt+380;bSeg[bSeg.length-1].t1=tk;bSeg.push({k:'pose',pose:'kDown',t0:tk,t1:FAR,x:bRoot[0],y:bRoot[1],yaw:bYaw,fade:450,edit:(Q,t)=>moBreath(Q,t,0.6)});}}
  ents.B={ts:1/AR.speed,mir:bs,segs:bSeg,look:[{t0:-1e12,t1:1e12,target:()=>R3.ballF||[0,R3C.RUBBER-1,1.7],w:0.9}]};
@@ -110,7 +110,7 @@ function plPitchFrame(now){const m=AR.m;const d=m.def(),tb=m.bat();const cd=arTe
  /* ボール */const ball=R3.ball;const pit=R3.fielders['投'];R3.mitt.visible=!cat.g.visible;
  const mittT=plMittTarget(now);if(!cat.g.visible)R3.mitt.position.set(mittT[0],mittT[2],-mittT[1]);
  if(ph==='wind'||(AR.windT0&&now<ctx.tRel)&&ctx.go){ball.position.copy(r3V(...moAttach(pit,'r')));ball.visible=true;R3.hit=null;}
- else if((ph==='flight'||ph==='after')&&P&&AR.t0){const rel=plRelease(ctx);const T=P.T*AR.speed;const u=(now-AR.t0)/T;const ev=AR.ev;const tc=AR.swingT!=null?AR.swingT+75*AR.speed:null;const hit=!!(ev&&AR.swung&&tc!=null&&(ev.kind==='inplay'||ev.kind==='foul')&&now>=tc);
+ else if((ph==='flight'||ph==='after')&&P&&AR.t0){const rel=plRelease(ctx);const T=P.T*AR.speed;const u=(now-AR.t0)/T;const ev=AR.ev;const tc=AR.swingT!=null?AR.swingT+((AR.swing&&AR.swing.v29Collision&&AR.swing.v29Collision.hit?AR.swing.v29Collision.time:75)*AR.speed):null;const hit=!!(ev&&AR.swung&&tc!=null&&(ev.kind==='inplay'||ev.kind==='foul')&&now>=tc);
   if(hit){if(!R3.hit||R3.hit.ev!==ev){R3.hit=r3MakeHit(ev,P,plContactPoint());R3.hit.ev=ev;R3.hit.tc=tc;}ball.position.copy(r3HitPos(R3.hit,now-R3.hit.tc));ball.visible=true;}
   else if(PL.ret&&now>=PL.ret.B.segs[0].t0+30){const bp=moBallPos(PL.ret.B,now,{ents:ctx.ents,rig:k=>plPitchRig(k),ts:1});if(bp){ball.position.set(bp[0],bp[2],-bp[1]);ball.visible=true;}}
   else{const cp=plCatchPoint();const Tc=T*1.04;if(u<1)ball.position.copy(r3PitchPos(P,u,rel));else if(u<1.04&&cp){const a=r3PitchPos(P,1,rel);const k=(u-1)/0.04;ball.position.set(a.x+(cp[0]-a.x)*k,a.y+(cp[2]-a.y)*k,a.z+(-cp[1]-a.z)*k);}else{if(cat.g.visible)ball.position.copy(r3V(...moAttach(cat,'glove')));else{ball.position.copy(R3.mitt.position);ball.position.z-=0.08;}}ball.visible=!(ev&&ev.kind==='hbp'&&u>=1);}}
@@ -385,7 +385,7 @@ function plBuildSafe(c,play,opt){try{if(typeof plBuild==='function'){opt=Object.
 /* 接触点（フィールド座標）：スイングの接触の時刻のボールの位置 */
 function plContactPoint(){const P=AR.cur;if(!P||!AR.swingT||!AR.t0)return null;const tc=AR.swingT+75*AR.speed;const u=clamp((tc-AR.t0)/(P.T*AR.speed),0,1.05);try{const v=r3PitchPos(P,Math.min(1,u),PL.rel||null);return [v.x,-v.z,v.y];}catch(e){return null;}}
 /* 接触の時刻の投手のクリップ時刻（フォローの続きから守備の場面を始める） */
-function plPitchClipAt(){if(!AR.windT0||!AR.swingT)return 1450;const tRel=AR.windT0+arWindDur();const tc=AR.swingT+75*AR.speed;return clamp(1000+(tc-tRel),1000,1650);}
+function plPitchClipAt(){if(!AR.windT0||!AR.swingT)return 1450;const tRel=AR.windT0+arWindDur();const tc=AR.swingT+((AR.swing&&AR.swing.v29Collision&&AR.swing.v29Collision.hit?AR.swing.v29Collision.time:75)*AR.speed);return clamp(1000+(tc-tRel),1000,1650);}
 /* 守備の場面の1コマ（r3FieldScene から呼ぶ） */
 function plFieldFrame(sc,t,now){const m=AR.m;const cd=sc.colDef||arTeamColors(m.def()),cb=sc.colBat||arTeamColors(m.bat());const dT=sc.defTeam||m.def(),bT=sc.batTeam||m.bat();const M=sc.mo;
  const numOf=(team,k)=>{if(k==='投'&&team.pitcher)return team.pitcher.number!=null?team.pitcher.number:1;const sl=team.lineup.find(x=>x.pos===k);return sl?(sl.p.number!=null?sl.p.number:POS_NUM[k]):POS_NUM[k];};const plOf=(team,pid)=>team.lineup.map(x=>x.p).concat(team.bench||[]).find(x=>x.id===pid);

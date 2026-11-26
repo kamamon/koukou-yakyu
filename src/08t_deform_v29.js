@@ -43,10 +43,11 @@ const V29Deform=(function deformFactory(T){
   const old=r.skel,rest={},nodes={},base=r.g;
   for(const n of data.control){if(!r.j[n])return false;rest[n]=vec(data.baseJoints[n]);}
   for(const q of data.bones){if(!rest[q.parent]&&!data.bones.some(x=>x.name===q.parent))throw Error("missing parent "+q.parent);rest[q.name]=vec(q.head);const b=new T.Bone();b.name=q.name;nodes[q.name]=b;}
+  const entries=[["body",r.body],["uniform",r.cloth],["eyes",r.eyes]],rows=[];
+  for(const [kind,m] of entries){if(!m)continue;const g=geometry(m.geometry,data,kind);const v=g.low.userData.v29;if(kind!=='eyes'&&v.matched/Math.max(1,v.total)<.97)throw Error('deform source mismatch '+kind+' '+v.matched+'/'+v.total);rows.push({kind,m,g});}
   const extra=[];for(const q of data.bones){const b=nodes[q.name],p=nodes[q.parent]||r.j[q.parent];b.position.copy(rest[q.name]).sub(rest[q.parent]);p.add(b);r.j[q.name]=b;extra.push(b);}
   base.updateMatrixWorld(true);const inv=old.boneInverses.concat(extra.map(b=>b.matrixWorld.clone().invert())),skel=new T.Skeleton(old.bones.concat(extra),inv);
-  const entries=[["body",r.body],["uniform",r.cloth],["eyes",r.eyes]],rows=[];
-  for(const [kind,m] of entries){if(!m)continue;const original=m.geometry,g=geometry(original,data,kind);m.geometry=g.low;m.bind(skel,new T.Matrix4());rows.push({kind,m,g});}
+  for(const row of rows){row.m.geometry=row.g.low;row.m.bind(skel,new T.Matrix4());}
   r.skel=skel;r._v29Rig={data,rows,extra,names:data.control.concat(data.bones.map(x=>x.name)),high:false};r._v29Rig.info={bones:skel.bones.length,meshes:rows.map(x=>({kind:x.kind,...x.g.high.userData.v29}))};return true;
  }
  function setLOD(r,high){const d=r._v29Rig;if(!d||d.high===high)return;d.high=high;for(const row of d.rows)row.m.geometry=high?row.g.high:row.g.low;}
