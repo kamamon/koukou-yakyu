@@ -22,7 +22,7 @@ function r3Start(stage){if(!r3Supported())return false;
  r3Resize(AR.W,AR.H);r3SetNight(arNight(),true);r3UpdateBoard();return true;}
 function r3Stop(){if(R3.cv&&R3.cv.parentNode)R3.cv.parentNode.removeChild(R3.cv);const st=$('#arstage');if(st)st.classList.remove('three');R3.on=false;}
 function r3Fail(){r3Stop();R3.broken=true;try{toast('3D表示を停止しました（2D表示に切り替え）');}catch(e){}}
-function r3Resize(W,H){if(!R3.renderer)return;W=Math.max(1,W);H=Math.max(1,H);const dpr=Math.min(1.5,window.devicePixelRatio||1);if(R3.W===W&&R3.H===H&&R3.dpr===dpr&&R3.cv.parentNode)return;R3.W=W;R3.H=H;R3.dpr=dpr;R3.renderer.setPixelRatio(dpr);R3.renderer.setSize(W,H,false);R3.cv.style.width=W+'px';R3.cv.style.height=H+'px';R3.cam.aspect=W/H;R3.cam.updateProjectionMatrix();try{if(R3.on&&AR.m)R3.renderer.render(R3.scene,R3.cam);}catch(e){}}
+function r3Resize(W,H){if(!R3.renderer)return;W=Math.max(1,W);H=Math.max(1,H);const dpr=typeof ngDpr==='function'?ngDpr():Math.min(1.5,window.devicePixelRatio||1);if(R3.W===W&&R3.H===H&&R3.dpr===dpr&&R3.cv.parentNode)return;R3.W=W;R3.H=H;R3.dpr=dpr;R3.renderer.setPixelRatio(dpr);R3.renderer.setSize(W,H,false);R3.cv.style.width=W+'px';R3.cv.style.height=H+'px';R3.cam.aspect=W/H;R3.cam.updateProjectionMatrix();try{if(R3.on&&AR.m)R3.renderer.render(R3.scene,R3.cam);}catch(e){}}
 /* ---- 材質・形状のキャッシュ ---- */
 const R3_MATS={},R3_GEOS={};
 function r3Mat(c,opt){const k=String(c)+(opt?JSON.stringify(opt):'');if(!R3_MATS[k]){const o=Object.assign({color:new THREE.Color(c)},opt||{});R3_MATS[k]=new THREE.MeshLambertMaterial(o);}return R3_MATS[k];}
@@ -168,7 +168,7 @@ function r3BuildWorld(){R3.schoolFlag=null;const S=R3.scene=new THREE.Scene();R3
  const gc=document.createElement('canvas');gc.width=gc.height=64;const gg=gc.getContext('2d');const grd=gg.createRadialGradient(32,32,2,32,32,30);grd.addColorStop(0,'rgba(255,255,255,1)');grd.addColorStop(0.35,'rgba(255,255,255,.55)');grd.addColorStop(1,'rgba(255,255,255,0)');gg.fillStyle=grd;gg.fillRect(0,0,64,64);
  R3.glow=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(gc),transparent:true,depthWrite:false,opacity:0.9}));S.add(R3.glow);
  R3.trailM=[];R3.trailP=[];for(let i=0;i<7;i++){const t=new THREE.Mesh(r3Sph(0.05),new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:0.45-i*0.06,depthWrite:false}));t.visible=false;S.add(t);R3.trailM.push(t);}
- R3.shadowBlob=null;}
+ R3.shadowBlob=null;if(typeof ngBuildWorld==='function')try{ngBuildWorld(S);}catch(e){console.warn('nextgen scenery',e);}}
 /* 選手リグの生成（設定「選手モデル」で作り直せる） */
 function r3BuildRigs(S){const all=[].concat(Object.values(R3.fielders||{}),R3.batter?[R3.batter]:[],R3.runners||[],R3.umps||[]);for(const r of all){if(r&&r.g&&r.g.parent)r.g.parent.remove(r.g);}
  R3.fielders={};for(const k of ['投','捕','一','二','三','遊','左','中','右']){const r=r3NewRig();S.add(r.g);R3.fielders[k]=r;}
@@ -250,7 +250,7 @@ function r3SetNight(night,force){if(R3.night===night&&!force)return;R3.night=nig
  for(const d of (R3S.dim||[]))d.m.material.color.set(night?d.night:d.day);
  if(R3.groundTex){const t=r3GroundTex(night);R3.ground.material.map=t;R3.ground.material.needsUpdate=true;R3.groundTex.dispose();R3.groundTex=t;}
  if(R3.home){const t=r3HomeTex(night);R3.home.material.map=t;R3.home.material.needsUpdate=true;if(R3.homeTex)R3.homeTex.dispose();R3.homeTex=t;}
- R3.mound.material=r3Mat(night?'#463a31':'#5c4d43');R3.renderer.setClearColor(night?0x0a1220:0x9fcbea);}
+ R3.mound.material=r3Mat(night?'#463a31':'#5c4d43');R3.renderer.setClearColor(night?0x0a1220:0x9fcbea);if(typeof ngNight==='function')try{ngNight(night);}catch(e){console.warn('nextgen sky',e);}}
 /* ---- 投影ヘルパー（HUD用） ---- */
 function r3Project(v){const p=v.clone().project(R3.cam);return [(p.x+1)/2*R3.W,(1-p.y)/2*R3.H,p.z];}
 function r3WorldToScreen(X,Y,Z){return r3Project(r3V(X,Y,Z||0)).slice(0,2);}
@@ -322,6 +322,7 @@ function r3Frame(now){if(!r3on())return;const m=AR.m;if(!m)return;try{if(typeof 
  /* ボールの光とトレイル */{const b=R3.ball;R3.glow.visible=b.visible;if(b.visible){R3.glow.position.copy(b.position);const d=R3.cam.position.distanceTo(b.position);R3.glow.scale.setScalar(Math.max(0.16,d*0.02));const last=R3.trailP[0];if(!last||last.distanceTo(b.position)>0.08){R3.trailP.unshift(b.position.clone());if(R3.trailP.length>7)R3.trailP.length=7;}}else R3.trailP.length=0;
   R3.trailM.forEach((m,i)=>{const p=R3.trailP[i+1];m.visible=!!p&&b.visible;if(p){m.position.copy(p);const d=R3.cam.position.distanceTo(p);m.scale.setScalar(Math.max(0.6,d*0.03));}});}
  /* 歓声（観客がはねる） */{const ch=R3.cheerUntil&&now<R3.cheerUntil;const dy=ch?Math.abs(Math.sin(now/110))*0.3:0;R3.crowd.position.y=dy;R3.crowdH.position.y=dy;}
+ if(typeof ngFrame==='function')try{ngFrame(now);}catch(e){console.warn('nextgen frame',e);}
  R3.renderer.render(R3.scene,R3.cam);
  if(R3.snapReq){const cb=R3.snapReq;R3.snapReq=null;try{cb(imGrab());}catch(e){}}
  }catch(e){console.warn('3D frame error',e);r3Fail();}}

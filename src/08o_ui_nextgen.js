@@ -131,7 +131,7 @@ const NGCore=(function ngCoreFactory(){
  window.ngFrame=function(now){
   const R=R3;if(!R.ngSeams)return;const s=actionSettings();quality(now);
   if(R.ngScenery)R.ngScenery.visible=s.ngScenery;
-  const b=R.ball;const d=R.cam.position.distanceTo(b.position);b.scale.setScalar(s.ngRealBall?.0366/.075:1);
+  const b=R.ball;const d=R.cam.position.distanceTo(b.position);b.scale.setScalar(s.ngRealBall ? .0366/.075 : 1);
   if(b.visible){let rpm=1800,axis=[1,0,0],t=0;const P=AR.cur;
    if(P&&AR.phase==='flight'){const sp=PH_SPIN[P.name];if(sp){rpm=sp.rpm;axis=[sp.axis[0],sp.axis[2]*(P.hs||1),-sp.axis[1]];}t=Math.max(0,(now-AR.t0)/(1000*(AR.speed||1)));}
    else if(AR.field){rpm=1900;t=Math.max(0,(AR.phase==='replay'&&AR.replay?AR.replay.from+(now-AR.replay.t0)*AR.replay.rate:fwTime(AR.field,now))/1000);}

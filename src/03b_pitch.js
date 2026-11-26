@@ -138,9 +138,11 @@ Match.prototype.battedBall=function(c,be,pe){const d=this.def();const bHand=this
  /* 飛距離：20〜45度でよく飛ぶ（実測に近い形）。150km/h・30度で約115m */const lar=(Math.min(la,60)+8)*Math.PI/180;let f=Math.pow(Math.max(0,Math.sin(2*lar)),0.8);if(la>45)f*=Math.max(0,1-(la-45)/50);
  let dist=0.0052*ev*ev*f;if(type==='ground')dist=clamp((ev-60)*0.6,8,70);if(type==='pop')dist=Math.min(dist,60);c.dist=Math.round(dist);
  const fence=FENCE(a);c.fence=Math.round(fence);
+ const physical=type!=='ground'&&c.ngPhysics&&typeof ngCarry==='function'?ngCarry(c,fence):null;
+ if(physical){dist=Math.max(1,physical.dist);c.dist=Math.round(dist);c.ngWall=physical.wall;}else if(type!=='ground')c.ngPhysics=false;
  const gap=Math.abs(a)>12&&Math.abs(a)<32;const line=Math.abs(a)>38;
  /* フェンス際はぎりぎり越える／越えないの確率的な判定 */
- if((type==='fly'||type==='line')&&dist>=fence-10&&R()<clamp((dist-(fence-10))/16,0,1)){c.res='HR';c.dist=Math.max(c.dist,Math.round(fence+1));c.fpos=fielderOf(c);return c;}
+ if((type==='fly'||type==='line')&&(physical?physical.hr:dist>=fence-10&&R()<clamp((dist-(fence-10))/16,0,1))){c.res='HR';c.dist=Math.max(c.dist,Math.round(fence+1));c.fpos=fielderOf(c);return c;}
  let hp,xb=0,tr=0;const ofDeep=d.ofDeep?1:0,ofIn=d.ofIn?1:0;
  /* 格下投手に対する上積み（ミート−被安打性の二乗）：強打者が弱い相手を打ち込む */const edge=Math.pow(clamp(be.meet-pe.hit,0,60),2)/50000+(be.meet-50)/900;
  if(type==='ground'){hp=0.17+(evc-110)/500+(be.speed-50)/450-(def-50)/600+(d.infieldIn?0.07:0)+(line?0.08:0)+edge;xb=line&&evc>115?0.5:0.04;tr=line&&be.speed>=70?0.1:0;}

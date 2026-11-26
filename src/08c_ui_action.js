@@ -208,7 +208,7 @@ ACT.cerNext=()=>imEndCeremony();
 ACT.arDecide=d=>{const m=AR.m;if(AR.phase!=='decide')return;const old=AR.field;const choice=d.t!=null?{throwTo:parseInt(d.t)}:{send:d.v==='1'};const ev=m.finishInplay(choice);AR.ev=ev;AR.pending=null;if(ev.runText)AR.foot=ev.runText;else if(choice.throwTo)AR.foot=`${['','一塁','二塁','三塁','本塁'][choice.throwTo]}へ送球 → ${ev.text||''}`;arSound(d.v==='1'||choice.throwTo?'run':'ui');
  const sc=(typeof plBuildSafe==='function'?plBuildSafe:fwBuildScene)(ev.bb,ev.play,{resume:old?old.pauseAt:null,dec:old?old.decision:null,prev:old,contact:old&&old.mo?old.mo.contact:null,pitchClip:old&&old.mo?old.mo.pitchClip:null});sc.c=ev.bb;sc.ev=ev;sc.t0=performance.now()-(old?old.pauseAt:0)/(sc.rate||1);sc.pauseAt=null;AR.field=sc;arSetPhase('field');arRenderAll();};
 /* ---- メインループ ---- */
-function arLoop(){AR.raf=requestAnimationFrame(arLoop);const now=performance.now();
+function arLoop(){AR.raf=requestAnimationFrame(arLoop);const now=performance.now();if(typeof ngPollGamepad==='function')ngPollGamepad(now);
  try{imBandTick(now);imPhotoMoments(now);imCallSubs();const m=AR.m;if(m&&m.done&&(AR.phase==='after'||AR.phase==='field')&&now-AR.resultAt>650&&!(AR.snaps||[]).some(x=>x.kind==='end')){const ui=m.A.isUser?0:1;const won=m.winner===ui;const sc=[m.score[ui],m.score[1-ui]];imSnap('end',won?`試合終了の瞬間。${G.school.name}が${sc[0]}－${sc[1]}で勝利`:`試合終了。${G.school.name}は${sc[0]}－${sc[1]}で敗れた`,2);}
   if(AR.phase==='cer'&&AR.cer&&now-AR.cer.t0>AR.cer.dur)imEndCeremony();}catch(e){console.warn(e);}
  /* 重いフレーム（シェーダー初期化など）の間はカットインのタイマーを進めない（1人あたり最大3秒まで補正） */{const dt=now-(AR.loopT||now);AR.loopT=now;if(dt>400&&AR.intro){const it=AR.intro;it.comp=(it.comp||0);const add=Math.min(dt,3000-it.comp);if(add>0){it.t0+=add;it.comp+=add;}}}
@@ -237,7 +237,7 @@ const AR_PAL={day:{sky1:'#4a94d8',sky2:'#9ccbef',stand1:'#2c3540',stand2:'#3a455
 function arPal(){return arNight()?AR_PAL.night:AR_PAL.day;}
 /* ---- 描画 ---- */
 function arDraw(now){const g=AR.g;if(!g)return;AR.drawN=(AR.drawN||0)+1;const W=AR.W,H=AR.H;g.setTransform(AR.dpr,0,0,AR.dpr,0,0);g.clearRect(0,0,W,H);
- if(r3on()){r3Frame(now);if(r3on()){arDrawHud3d(now);return;}}
+ if(r3on()){r3Frame(now);if(r3on()){arDrawHud3d(now);if(typeof ngHud==='function')ngHud(now);return;}}
  if(AR.phase==='replay'&&AR.replay&&AR.field){const rp=AR.replay;fwDrawScene(now,Math.min(rp.until,rp.from+(now-rp.t0)*rp.rate));g.fillStyle='rgba(0,0,0,.85)';g.fillRect(0,0,W,H*0.07);g.fillRect(0,H*0.93,W,H*0.07);return;}
  if(AR.phase==='field'||AR.phase==='decide'||(AR.phase==='after'&&AR.field&&AR.ev&&(AR.ev.kind==='inplay'||AR.ev.runShown||AR.ev.kind==='pickoff'||AR.ev.kind==='pickoffErr'||AR.ev.kind==='pickoffSafe'))){fwDrawScene(now);return;}
  if(AR.phase==='intro'){arDrawBackdrop();arDrawIntro(now);return;}

@@ -6,13 +6,13 @@ const PH={g:9.81,rho:1.205,m:0.145,r:0.0366};
 PH.k=0.5*PH.rho*Math.PI*PH.r*PH.r/PH.m; /* ≈0.0175 /m */
 function phCd(s){return 0.33;}
 function phCl(S){return S<0.1?1.5*S:0.09+0.6*S;} /* 揚力係数（Sawicki/Nathan） */
-function phAccel(v,w,eff){const s=Math.hypot(v[0],v[1],v[2])||1e-6;const cd=phCd(s);
+function phAccel(v,w,eff,wind){if(wind)v=[v[0]-(wind[0]||0),v[1]-(wind[1]||0),v[2]-(wind[2]||0)];const s=Math.hypot(v[0],v[1],v[2])||1e-6;const cd=phCd(s);
  const ax=-PH.k*cd*s*v[0],ay=-PH.k*cd*s*v[1],az=-PH.k*cd*s*v[2]-PH.g;
  const wm=Math.hypot(w[0],w[1],w[2]);
  if(wm>1){const S=PH.r*wm/s;const cl=phCl(S)*0.85*(eff==null?1:eff);const f=PH.k*cl*s/wm;
   const cx=w[1]*v[2]-w[2]*v[1],cy=w[2]*v[0]-w[0]*v[2],cz=w[0]*v[1]-w[1]*v[0];return [ax+f*cx,ay+f*cy,az+f*cz];}
  return [ax,ay,az];}
-function phStep(p,v,w,dt,eff){const a1=phAccel(v,w,eff);const vm=[v[0]+a1[0]*dt/2,v[1]+a1[1]*dt/2,v[2]+a1[2]*dt/2];const a2=phAccel(vm,w,eff);
+function phStep(p,v,w,dt,eff,wind){const a1=phAccel(v,w,eff,wind);const vm=[v[0]+a1[0]*dt/2,v[1]+a1[1]*dt/2,v[2]+a1[2]*dt/2];const a2=phAccel(vm,w,eff,wind);
  return [[p[0]+vm[0]*dt,p[1]+vm[1]*dt,p[2]+vm[2]*dt],[v[0]+a2[0]*dt,v[1]+a2[1]*dt,v[2]+a2[2]*dt]];}
 /* 球種ごとの回転（右投げ基準。回転軸：X=一塁側+ Y=センター+ Z=上。左投げはZ成分の符号を反転） */
 const PH_SPIN={
@@ -54,9 +54,9 @@ function phPitchPath(P,opt){opt=opt||{};const sp=PH_SPIN[P.name]||{rpm:1800,axis
 /* 打球の軌道：打球速度ev(km/h)・打球角度la・方向a(度、+が一塁側) で飛ばし、エンジンの飛距離distに合うよう初速を補正する */
 function phHitPath(ev,la,a,dist,opt){opt=opt||{};const ar=a*Math.PI/180,lr=la*Math.PI/180;const dir=[Math.sin(ar),Math.cos(ar)];
  const rpm=la>8?Math.max(500,Math.min(3200,900+la*60)):600;const wm=rpm*2*Math.PI/60;const w=la>8?[Math.cos(ar)*wm,-Math.sin(ar)*wm,0]:[-Math.cos(ar)*wm*0.4,Math.sin(ar)*wm*0.4,0];
- const start=[opt.x0||0,opt.y0||0.4,opt.z0||1.0];const dt=1/90;
+ const start=[opt.x0??0,opt.y0??0.4,opt.z0??1.0];const dt=1/90;
  const fly=(mult,keep)=>{const s=Math.max(5,ev/3.6*mult);let p=start.slice(),v=[dir[0]*s*Math.cos(lr),dir[1]*s*Math.cos(lr),s*Math.sin(lr)];let t=0;const pts=keep?[{t:0,x:p[0],y:p[1],z:p[2]}]:null;let apex=p[2];
-  for(let i=0;i<900;i++){const r=phStep(p,v,w,dt);const pn=r[0];if(pn[2]>apex)apex=pn[2];
+  for(let i=0;i<900;i++){const r=phStep(p,v,w,dt,undefined,opt.wind);const pn=r[0];if(pn[2]>apex)apex=pn[2];
    if(pn[2]<=0.02&&i>2){const f=(p[2]-0.02)/(p[2]-pn[2]);const q=[p[0]+(pn[0]-p[0])*f,p[1]+(pn[1]-p[1])*f,0.02];t+=dt*f;if(pts)pts.push({t,x:q[0],y:q[1],z:q[2]});return {d:Math.hypot(q[0],q[1]),t,pts,apex};}
    p=pn;v=r[1];t+=dt;if(pts)pts.push({t,x:p[0],y:p[1],z:p[2]});}
   return {d:Math.hypot(p[0],p[1]),t,pts,apex};};
