@@ -106,8 +106,8 @@ function arPointerDown(e){if(e.target.closest('.ar-gauge')){arRelease();return;}
  if(act&&AR.side==='pit'&&ph==='pre'){return;}
  arTap(sx,sy,e);}
 function arPointerMove(e){if(!AR.ptrDown)return;const {sx,sy}=arStagePos(e);const last=AR.ptrLast||{sx,sy};const dx=sx-last.sx,dy=sy-last.sy;AR.ptrLast={sx,sy};AR.ptrMoved=(AR.ptrMoved||0)+Math.abs(dx)+Math.abs(dy);
- if(AR.side==='bat'&&(AR.phase==='pre'||AR.phase==='wind'||AR.phase==='flight')){if(AR.mode==='card')return;/* 相対移動（指で画面を隠さずに済む） */const z=arZone();const k=Math.max(1/80,1.8/Math.max(40,z.w));AR.cursor={x:clamp(AR.cursor.x+dx*k,-1.9,1.9),y:clamp(AR.cursor.y+dy*k,-1.9,1.9)};}
- else if(AR.side==='pit'&&AR.phase==='pre'&&AR.mode!=='card'){/* ドラッグで相対的に狙いを動かす */const t=AR.target||arDefaultTarget();const k=1/45;AR.target={x:clamp(t.x+dx*k,-1.9,1.9),y:clamp(t.y+dy*k,-1.9,1.9)};}}
+ if(AR.side==='bat'&&(AR.phase==='pre'||AR.phase==='wind'||AR.phase==='flight')){if(AR.mode==='card')return;/* 相対移動（指で画面を隠さずに済む） */const z=arZone();const k=Math.max(1/80,1.8/Math.max(40,z.w))*(typeof v31InputScale==='function'?v31InputScale():1);AR.cursor={x:clamp(AR.cursor.x+dx*k,-1.9,1.9),y:clamp(AR.cursor.y+dy*k,-1.9,1.9)};}
+ else if(AR.side==='pit'&&AR.phase==='pre'&&AR.mode!=='card'){/* ドラッグで相対的に狙いを動かす */const t=AR.target||arDefaultTarget();const k=(1/45)*(typeof v31InputScale==='function'?v31InputScale():1),sign=typeof v31Horizontal==='function'?v31Horizontal('pit'):1;AR.target={x:clamp(t.x+dx*k*sign,-1.9,1.9),y:clamp(t.y+dy*k,-1.9,1.9)};}}
 function arPointerUp(e){const was=AR.ptrDown;AR.ptrDown=false;if(!was)return;const now=performance.now();const moved=(AR.ptrMoved||0)>12;const act=AR.mode!=='card';
  if(AR.hold){AR.hold=false;const P=AR.cur;
   if(act&&AR.side==='bat'&&AR.phase==='flight'&&!AR.swung&&P){const u=(now-AR.t0)/(P.T*AR.speed);if(u>=0.22)arSwing();else AR.foot='早く離したので見逃し';}
@@ -128,13 +128,13 @@ function arTap(sx,sy,e){const m=AR.m;const ph=AR.phase;const q=arS2Z(sx,sy);cons
  else{if(ph==='gauge')arRelease();}}
 function arKey(e){if(!AR.el||AR.el.hidden)return;const k=e.key;
  if(k===' '||k==='Enter'){e.preventDefault();if(AR.phase==='flight'&&AR.side==='bat'&&!AR.swung)arSwing();else if(AR.phase==='gauge')arRelease();else if(AR.phase==='pre'&&AR.side==='bat'&&!AR.panel)arThrowCpu();else if(AR.phase==='pre'&&AR.side==='pit'&&AR.target){if(actionSettings().meter!=="none")arStartGauge();else arThrowUser(null);}else if(AR.phase==='after'||AR.phase==='field'||AR.phase==='replay')arSkip();else if(AR.phase==='half')arAfterBanner();else if(AR.phase==='intro')arIntroNext();else if(AR.phase==='cer')imEndCeremony();return;}
- const dx=k==='ArrowLeft'?-0.15:k==='ArrowRight'?0.15:0,dy=k==='ArrowUp'?-0.15:k==='ArrowDown'?0.15:0;
+ const gain=typeof v31InputScale==='function'?v31InputScale():1,sg=typeof v31Horizontal==='function'?v31Horizontal(AR.side):1;const dx=(k==='ArrowLeft'?-0.15:k==='ArrowRight'?0.15:0)*gain*sg,dy=(k==='ArrowUp'?-0.15:k==='ArrowDown'?0.15:0)*gain;
  if(dx||dy){e.preventDefault();if(AR.side==='bat')AR.cursor={x:clamp(AR.cursor.x+dx,-1.9,1.9),y:clamp(AR.cursor.y+dy,-1.9,1.9)};else if(AR.phase==='pre'){const t=AR.target||{x:0,y:0};AR.target={x:clamp(t.x+dx,-1.9,1.9),y:clamp(t.y+dy,-1.9,1.9)};}}
  if(AR.side==='pit'&&AR.phase==='pre'&&/^[1-9]$/.test(k)){const i=parseInt(k)-1;if(AR.m.pa.p.pit.pitches[i]){AR.pitchSel=i;arRenderCtl();}}}
 /* ---- 打撃：CPU投手の投球 ---- */
 function arThrowCpu(){const m=AR.m;if(AR.phase!=='pre'||AR.side!=='bat')return;AR.panel=null;arHideLower();const P=m.throwPitch(null);AR.cur=P;AR.swing=null;AR.swung=false;AR.swingT=null;AR.ev=null;AR.cpuSwingAt=null;AR.caughtSnd=false;arSetPhase('wind');AR.windT0=performance.now();arRenderAll();}
 function arSwing(){const m=AR.m;if(AR.phase!=='flight'||AR.swung)return;const P=AR.cur;const now=performance.now();const dtReal=now-AR.t0-(P.T*AR.speed-70*AR.speed);const dt=dtReal/AR.speed;
- AR.swung=true;AR.swingT=now;const type=AR.swingType;AR.swing={type,cx:AR.cursor.x,cy:AR.cursor.y,dt,ease:arEase()};
+ AR.swung=true;AR.swingT=now;const type=AR.swingType;AR.swing={type,cx:AR.cursor.x,cy:AR.cursor.y,dt,ease:arEase()};if(typeof v31PrepareSwing==='function')AR.swing=v31PrepareSwing(AR.swing);
  AR.ev=m.resolvePitch(P,AR.swing);arSwingSound(AR.ev);}
 function arSwingSound(ev){const k=ev?ev.kind:'miss',h=ev&&ev.sw&&ev.sw.v29Collision,dt=(h&&h.hit?h.time:75)*AR.speed;if(k==='inplay'){setTimeout(()=>arSound(ev.bb&&ev.bb.bunt?'mitt':'hit'),dt);}else if(k==='foul'){arSound('swing');setTimeout(()=>arSound('foul'),dt);}else arSound('swing');}
 /* ---- 投球：ユーザー ---- */

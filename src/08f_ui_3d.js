@@ -373,7 +373,7 @@ function r3PitchScene(now){if(typeof plUseMotion==='function'&&plUseMotion()){pl
    if(ph==='wind'&&AR.windT0){const u=(now-AR.windT0)/windDur;pose=r3ClipPose((stretch?'stretch_':'windup_')+form,u);}
    else if((ph==='flight'||ph==='after')&&AR.windT0&&AR.cur){const u=(now-AR.windT0-windDur)/520;pose=u<1?r3ClipPose('pfollow_'+form,u):RP.ready;}
    else{const w=Math.sin(now/1100);const base=stretch?RP.pset2:RP.pset;pose=Object.assign({},base);pose.dy=w*0.012;pose.head=[(base.head?base.head[0]:0.05)+w*0.04,base.head?base.head[1]:0,0];pose.torso=[w*0.02,0,0];}r.apply(pose);continue;}
-  if(k==='捕'){r.at(0,0,1.6);r.g.scale.x=1;r.face(0,-1);r.g.visible=!(AR.side==='bat'&&S.cam3d!=='wide');const cp=Object.assign({},RP.crouch);cp.dy=RP.crouch.dy+Math.sin(now/900)*0.02;r.apply(cp);r.glove.visible=false;continue;}
+  if(k==='捕'){r.at(0,0,1.6);r.g.scale.x=1;r.face(0,-1);r.g.visible=typeof v31CatcherVisible==='function'?v31CatcherVisible(S):!(AR.side==='bat'&&S.cam3d!=='wide');const cp=Object.assign({},RP.crouch);cp.dy=RP.crouch.dy+Math.sin(now/900)*0.02;r.apply(cp);r.glove.visible=false;continue;}
   r.g.scale.x=1;r.g.visible=true;r.at(p[0],0,-p[1]);r.face(-p[0],p[1]);const rp=Object.assign({},RP.ready);rp.dy=RP.ready.dy+Math.sin(now/700+k.charCodeAt(0))*0.02;r.apply(rp);}
  /* 打者 */{const b=R3.batter;b.g.visible=true;b.setColors(cb,true);b.setNumber(pa?(pa.b.number!=null?pa.b.number:null):null,cb.trim);if(pa)r3Dress(b,pa.b);b.setGear(null);
   b.setExpression(kOut?'sad':(ph==='after'&&ev0&&ev0.kind==='inplay'&&ev0.bb&&['1B','2B','3B','HR'].includes(ev0.bb.res))?'shout':(ph==='wind'||ph==='flight')?'focus':null);b.bat.visible=true;b.g.scale.x=sg<0?-1:1;b.at(-sg*0.86,0,0.1);b.face(sg,0);

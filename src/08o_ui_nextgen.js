@@ -75,9 +75,9 @@ const NGCore=(function ngCoreFactory(){
     const target=edge(1)?1:edge(3)?2:edge(2)?3:edge(0)?4:null;
     if(target!=null&&d.options.some(o=>Number(o.t)===target))ACT.arDecide({t:String(target)});
    }else if(edge(0)||edge(1))ACT.arDecide({v:edge(0)?'1':'0'});return;}
-   const [x,y]=C.stick(p.axes[0],p.axes[1]);const rate=2.4;
+   const [x,y]=C.stick(p.axes[0],p.axes[1]);const rate=2.4*(typeof v31InputScale==='function'?v31InputScale():1);
    if(AR.side==='bat'&&['pre','wind','flight'].includes(AR.phase)&&AR.cursor&&!AR.swung){AR.cursor={x:C.clamp(AR.cursor.x+x*dt*rate,-1.9,1.9),y:C.clamp(AR.cursor.y+y*dt*rate,-1.9,1.9)};}
-   else if(AR.side==='pit'&&AR.phase==='pre'){const t=AR.target||arDefaultTarget();AR.target={x:C.clamp(t.x+x*dt*rate,-1.9,1.9),y:C.clamp(t.y+y*dt*rate,-1.9,1.9)};}
+   else if(AR.side==='pit'&&AR.phase==='pre'){const t=AR.target||arDefaultTarget();AR.target={x:C.clamp(t.x+x*dt*rate*(typeof v31Horizontal==='function'?v31Horizontal('pit'):1),-1.9,1.9),y:C.clamp(t.y+y*dt*rate,-1.9,1.9)};}
    if(AR.side==='bat'&&['pre','wind','flight'].includes(AR.phase)&&!AR.swung){
     const k=edge(2)?'power':edge(1)?'bunt':edge(3)?'meet':null;
     if(k){ACT.arSwingType({k});if(AR.phase==='flight')arSwing();return;}

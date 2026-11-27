@@ -99,12 +99,12 @@ function plPitchFrame(now){const m=AR.m;const d=m.def(),tb=m.bat();const cd=arTe
  const ev0=AR.ev;const kOut=ph==='after'&&ev0&&(ev0.kind==='kSwing'||ev0.kind==='kLook'||ev0.kind==='kBunt');
  for(const k in R3.fielders){const r=R3.fielders[k];r.g.visible=true;r.setColors(cd,false);r.setNumber(numOf(d,k),cd.trim);r.setGear(k==='捕'?'catcher':null);r.glove.visible=true;r.bat.visible=false;r3Dress(r,k==='投'?(pa?pa.p:d.pitcher):r3PlayerOf(d,k));
   r.setExpression(k==='投'?(kOut?((r3Seed(pa?pa.p:d.pitcher)%2)?'smile':'grit'):(ph==='wind'||ph==='flight'||ph==='gauge')?'focus':null):(k==='捕'&&(ph==='wind'||ph==='flight'))?'focus':null);}
- const cat=R3.fielders['捕'];cat.g.visible=!(AR.side==='bat'&&S.cam3d!=='wide');cat.glove.scale.setScalar(1.18);
+ const cat=R3.fielders['捕'];cat.g.visible=typeof v31CatcherVisible==='function'?v31CatcherVisible(S):!(AR.side==='bat'&&S.cam3d!=='wide');cat.glove.scale.setScalar(1.18);
  {const b=R3.batter;b.g.visible=true;b.setColors(cb,true);b.setNumber(pa?(pa.b.number!=null?pa.b.number:null):null,cb.trim);if(pa)r3Dress(b,pa.b);b.setGear(null);b.bat.visible=true;b.glove.visible=false;
   b.setExpression(kOut?'sad':(ph==='after'&&ev0&&ev0.kind==='inplay'&&ev0.bb&&['1B','2B','3B','HR'].includes(ev0.bb.res))?'shout':(ph==='wind'||ph==='flight')?'focus':null);}
  let n=0;for(const k in ctx.ents){if(k[0]!=='R')continue;const r=R3.runners[+k.slice(1)];const pl=ctx.ents[k].run;r.g.visible=true;r.setColors(cb,true);r.setGear(null);r.setNumber(pl.number!=null?pl.number:null,cb.trim);r3Dress(r,pl);r.setExpression(null);r.bat.visible=false;r.glove.visible=false;n++;}
  for(let i=n;i<R3.runners.length;i++)R3.runners[i].g.visible=false;
- for(let i=0;i<3;i++){const u=R3.umps[i];u.g.visible=i>0||AR.side!=='bat'||S.cam3d==='wide';u.bat.visible=false;u.glove.visible=false;}const u2=plPitchRig('U2');u2.g.visible=true;
+ for(let i=0;i<3;i++){const u=R3.umps[i];u.g.visible=i>0||(typeof v31CatcherVisible==='function'?v31CatcherVisible(S):AR.side!=='bat'||S.cam3d==='wide');u.bat.visible=false;u.glove.visible=false;}const u2=plPitchRig('U2');u2.g.visible=true;
  if(PL.ret)moBallResolve(PL.ret.B,{ents:ctx.ents,rig:k=>plPitchRig(k)});
  /* 動き */const res=moFrame({ents:ctx.ents,rig:k=>plPitchRig(k),ts:1},now);
  /* ボール */const ball=R3.ball;const pit=R3.fielders['投'];R3.mitt.visible=!cat.g.visible;
