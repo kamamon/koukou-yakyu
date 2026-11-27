@@ -1,7 +1,7 @@
 /* オフライン用サービスワーカー：本体をキャッシュし、更新は裏で取得 */
 const VERSION='__VERSION__';
 const CACHE='hsb-'+VERSION;
-const SHELL=['./','./index.html','./motion-nextgen.html','./viewer.html','./ui-assets.html','./manifest.webmanifest','./icon-192.png','./icon-512.png','./apple-touch-icon.png'];
+const SHELL=['./','./index.html','./motion-nextgen.html','./viewer.html','./ui-assets.html','./news-patterns.html','./manifest.webmanifest','./icon-192.png','./icon-512.png','./apple-touch-icon.png'];
 const ASSETS=[__ASSETS__];/* 選手モデル・テクスチャ：インストール時はベストエフォート、以後はキャッシュ優先 */
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(SHELL).then(()=>Promise.all(ASSETS.map(a=>c.add(a).catch(()=>{}))))).then(()=>self.skipWaiting()));});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));});

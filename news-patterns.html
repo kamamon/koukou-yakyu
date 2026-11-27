@@ -1,0 +1,178 @@
+<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>白球新報｜5,000記事パターン</title><style>*{box-sizing:border-box}body{margin:0;background:#ede9df;color:#272721;font:14px/1.7 system-ui,sans-serif}header{background:#252925;color:#fff9e9;padding:22px max(16px,calc((100vw - 1060px)/2));border-bottom:4px solid #a42329}header b{font:700 29px "Yu Mincho",serif;letter-spacing:.13em}header p{margin:4px 0;color:#e0d9cb}header a{color:#f0dcae}main{max-width:1100px;padding:16px;margin:auto}.controls{display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding:12px;background:#fffdf6;border:1px solid #c9beab}select,button{font:inherit;padding:8px;border:1px solid #bcb09e;border-radius:4px;background:#fffdf6;color:#252925}button{cursor:pointer}button:disabled{opacity:.4}select{max-width:100%}.count{font-size:12px;color:#766755;margin:12px 0}.layout{display:grid;grid-template-columns:minmax(210px,.8fr) minmax(0,2fr);gap:14px}.list{max-height:75vh;overflow:auto;background:#fffdf6;border:1px solid #c9beab}.list button{width:100%;display:block;text-align:left;border:0;border-bottom:1px solid #e1d9c9;border-radius:0;padding:11px}.list button.on{background:#eee1cc;border-left:4px solid #a42329}.list small{display:block;color:#795c4b;font-size:10px}.article{background:#fffdf6;border:1px solid #c9beab;padding:clamp(15px,4vw,35px);font-family:"Hiragino Mincho ProN","Yu Mincho",serif}.article .tag{font:700 11px system-ui;color:#9d2328;letter-spacing:.1em}.article h1{font-size:clamp(22px,4vw,34px);line-height:1.5;border-bottom:3px double #252925;margin:7px 0 13px;padding-bottom:9px}.article h2{font-size:16px;color:#755b4e}.article p{font-size:16px;line-height:1.95;margin:0 0 1em}.article p:first-of-type{font-weight:700}.article footer{font:11px system-ui;color:#817060;border-top:1px solid #ccc2ae;padding-top:10px}.notice{background:#f9f4e8;border-left:3px solid #9d2328;padding:8px 12px;font-size:12px}@media(max-width:650px){.layout{grid-template-columns:1fr}.list{max-height:220px}.article{padding:16px}.controls select{min-width:120px}}</style></head><body><header><b>白球新報</b><p>記事構成ライブラリ　50テーマ × 100構成 = 5,000パターン</p><a href="index.html">ゲームへ戻る</a></header><main><p class="notice">サンプルの学校・選手・試合・成績は架空の見本です。ゲーム本体の記事では、その時点のゲーム記録を使用します。</p><div class="controls"><label>テーマ <select id="theme"></select></label><label>構成 <select id="pattern"></select></label><button id="prev">前の構成</button><button id="next">次の構成</button></div><p class="count" id="count"></p><div class="layout"><div id="list" class="list"></div><article class="article" id="article"></article></div></main><script>
+/* White Ball Press v33. 50 themes × 10 lead/headline treatments × 10 structures = 5,000 patterns. */
+const V33News=(function newsCore(){
+ // 50 event-specific subjects; each has 10 lead/headline treatments × 10 story structures.
+ const themes=[
+ ["walkoffW","試合","サヨナラ勝ち","最後の得点","最終回の攻防"],
+ ["walkoffL","試合","サヨナラ負け","最終回の失点","最後の守備"],
+ ["comeback","試合","逆転勝利","追う展開からの得点","反撃の過程"],
+ ["blown","試合","逆転負け","先行した展開","リードを失った経過"],
+ ["extraW","試合","延長戦制す","延長の攻防","規定回以降の得点"],
+ ["extraL","試合","延長で敗戦","延長の攻防","決着までの経過"],
+ ["nohit","試合","無安打無得点","被安打ゼロ","投手陣の成績"],
+ ["shutoutW","試合","零封勝利","無失点の守り","投手陣の成績"],
+ ["shutoutL","試合","無得点で敗戦","得点できなかった打線","攻撃の記録"],
+ ["calledW","試合","コールド勝ち","規定による早期決着","得点差"],
+ ["calledL","試合","コールド負け","規定による早期決着","失点経過"],
+ ["bigW","試合","大差で勝利","得点差を広げた攻撃","得点の内訳"],
+ ["bigL","試合","大差で敗戦","得点差が開いた経過","失点の内訳"],
+ ["closeW","試合","接戦に勝利","一点差の攻防","決勝点"],
+ ["closeL","試合","一点差で敗戦","一点を争った展開","得点差"],
+ ["slugW","試合","打撃戦制す","両校の得点","打線の成績"],
+ ["slugL","試合","打撃戦で敗戦","両校の得点","攻守の成績"],
+ ["duelW","試合","投手戦制す","少ない得点での決着","投手陣の数字"],
+ ["win","試合","白星","勝利までの経過","投打の記録"],
+ ["loss","試合","黒星","敗戦までの経過","投打の記録"],
+ ["champion","大会","大会優勝","大会結果","優勝の意味"],
+ ["qualified","大会","出場決定","選考・出場条件","次の大会"],
+ ["eliminated","大会","大会敗退・落選","確定した大会結果","今後の日程"],
+ ["preview","展望","開幕展望","出場校の顔ぶれ","優勝候補と初戦"],
+ ["regional","大会","地区大会の行方","地区の戦績","次の出場条件"],
+ ["rival","大会","ライバル対決","両校の対戦記録","次の対戦"],
+ ["bracket","大会","大会途中経過","確定した勝ち上がり","組み合わせ"],
+ ["schedule","展望","大会・試合日程","予定された日程","準備期間"],
+ ["record","記録","校記録更新","更新した数値","従来の記録との比較"],
+ ["velocity","記録","球速の新記録","計測された球速","投手の成長"],
+ ["recruit","スカウト","進学・入部内定","内定した進路","新年度の編成"],
+ ["junior","中学野球","中学球界の話題","中学大会・進路の情報","高校へのステップ"],
+ ["national","全国","全国の注目校・選手","全国の選手情報","注目される実績"],
+ ["international","U-18","代表の戦い","代表大会の成績","国際舞台での経験"],
+ ["feature","特集","選手特集","選手のプロフィール","持ち味と成績"],
+ ["awakening","特集","才能の開花","成長のきっかけ","今後の育成"],
+ ["mentoring","部内","技術の継承","身につけた技術","先輩から後輩へ"],
+ ["camp","部内","合宿・強化練習","合宿の内容","練習計画"],
+ ["facility","学校","施設・設備整備","導入・改修の内容","練習環境"],
+ ["budget","学校","部の財政・予算","決定した予算","資金の使い道"],
+ ["staff","学校","指導体制の変更","就任・退任の内容","新体制の課題"],
+ ["school","学校","学校・地域の話題","学校での出来事","部活動との関わり"],
+ ["graduation","学校","卒業・新入部員","世代交代の内容","新しいチーム"],
+ ["draft","卒業生","プロ・海外への進路","決定した進路","次の舞台"],
+ ["alumni","卒業生","OBの活躍・転機","卒業後の記録","母校とのつながり"],
+ ["health","部内","コンディション","部員の疲労・負傷状況","練習と休養"],
+ ["roster","部内","チームの現在地","学年別の部員構成","選手層"],
+ ["batStats","成績","打撃成績分析","今季の打撃成績","出場機会と安打"],
+ ["pitStats","成績","投手成績分析","今季の投手成績","投球回と失点"],
+ ["weekly","部内","一週間の育成記録","今週の活動","変化と次週"]
+ ].map(([id,cat,label,focus,angle])=>({id,cat,label,focus,angle}));
+ const byId=Object.fromEntries(themes.map(x=>[x.id,x]));
+ const orders=[
+ ["key","timeline","bat","pit","other","context"],["timeline","key","pit","bat","context","other"],
+ ["bat","key","timeline","pit","other","context"],["pit","timeline","key","bat","other","context"],
+ ["other","timeline","key","bat","pit","context"],["context","key","timeline","pit","bat","other"],
+ ["key","other","pit","bat","timeline","context"],["timeline","bat","other","key","pit","context"],
+ ["bat","pit","key","other","timeline","context"],["key","context","other","timeline","bat","pit"]
+ ];
+ const styles=[
+ ["速報","結果から読む"],["詳報","時系列で読む"],["打撃分析","攻撃に注目"],["投手・守備分析","守りに注目"],["対戦相手","相手側からも見る"],
+ ["背景","大会や学校の事情"],["焦点","決着のポイント"],["データ","数字で振り返る"],["選手","個人の記録を読む"],["次戦展望","今後への視点"]
+ ];
+ const headlines=[
+ (f,t)=>f.headline,(f,t)=>`${f.subject}　${t.label}`,(f,t)=>`${t.label}　${f.subject}`,
+ (f,t)=>`${f.subject}の${t.focus}`,(f,t)=>`${t.label}の記録　${f.subject}`,
+ (f,t)=>`${f.subject}　${t.angle}`,(f,t)=>`${t.focus}を追う　${f.subject}`,
+ (f,t)=>`${f.subject}　数字で見る${t.label}`,(f,t)=>`${t.angle}に焦点　${f.subject}`,
+ (f,t)=>`${f.subject}　${t.label}詳報`
+ ];
+ const clean=x=>String(x??"").trim();
+ const sentence=x=>{x=clean(x);return !x?"":/[。！？!?]$/.test(x)?x:x+"。";};
+ function hash(s){let h=2166136261;for(const c of String(s)){h=Math.imul(h^c.charCodeAt(0),16777619);}return h>>>0;}
+ function select(id,key,recent=[]){let n=hash(key)%100;const avoid=new Set(recent);for(let i=0;i<100&&avoid.has(id+"-"+String(n+1).padStart(3,"0"));i++)n=(n+37)%100;return n;}
+ function compose(id,n,f){
+  const t=byId[id];if(!t||!Number.isInteger(n)||n<0||n>=100)throw Error("invalid news pattern");
+  const a=Math.floor(n/10),b=n%10,blocks=f.blocks||{},main=sentence(f.lead),p=[];
+  const opening=[
+   ()=>main,
+   ()=>`${t.label}の一報が入った。${main}`,
+   ()=>`${t.focus}に動きがあった。${main}`,
+   ()=>`${main}本紙は${t.focus}に注目した。`,
+   ()=>`${main}${t.angle}も見逃せない。`,
+   ()=>`${main}${t.focus}について、記録をもとに整理した。`,
+   ()=>`${main}記録から${t.focus}をたどる。`,
+   ()=>`${main}${t.angle}を数字と事実から読み解く。`,
+   ()=>`${main}今回の焦点は${t.focus}だ。`,
+   ()=>`${main}ここからは${t.angle}を中心に見ていく。`
+  ][a]();
+  const used=new Set([main]);for(const k of orders[b]){const x=sentence(blocks[k]);if(x&&!used.has(x)&&!main.includes(x)){used.add(x);p.push(x);}}
+  // The final editorial sentence is a lens, not an invented observation or quotation.
+  const closers=[
+   `以上が今回の${t.focus}に関する記録だ。`,
+   `${t.angle}については、経過と結果を分けて捉えたい。`,
+   `${t.focus}を評価する際には、一つの数字だけでなく前後の経過も重要になる。`,
+   `${t.angle}は、次に同じ状況を迎えた時の判断材料となる。`,
+   `${t.focus}を見るうえで、相手や周囲の状況も併せて確認する必要がある。`,
+   `${t.angle}を理解するには、今回の結果を従来の取り組みと照らし合わせることが欠かせない。`,
+   `${t.focus}の要点は、結果につながった事実を一つずつ検証することにある。`,
+   `${t.angle}は数字で確認できる部分と、今後の経過を待つべき部分に分けて見ていきたい。`,
+   `${t.focus}に関わる一人一人の取り組みも、引き続き記録していく。`,
+   `${t.angle}が次にどうつながるか。今後の動向にも注目したい。`
+  ][b];
+  if(f.outlook)p.push(sentence(f.outlook));
+  p.push(f.editorial&&f.editorial[b]?sentence(f.editorial[b]):closers);
+  const head=clean(headlines[a](f,t))||f.headline;
+  return {id:id+"-"+String(n+1).padStart(3,"0"),theme:id,genre:t.cat,style:styles[b][0],headline:head,deck:clean(f.deck)||t.angle,lead:main,body:[opening,...p].filter(Boolean).join("\n\n")};
+ }
+ const total=(a,key)=>a.reduce((n,x)=>n+(Number(x[key])||0),0);
+ const fmtIP=n=>Math.floor((n||0)/3)+(n%3?`回${n%3}/3`:"回");
+ function matchFacts(res,ctx,school,stage,venue,rival){
+  const ui=res.ui===1?1:0,sc=res.score.map(Number),won=!!res.won,opp=res.opp||res.teams?.[1-ui]||"対戦校",winner=won?school:opp,loser=won?opp:school,ws=won?sc[0]:sc[1],ls=won?sc[1]:sc[0],innings=res.inn||9,full=ctx.innings||9,label=ctx.label||res.label||"試合";
+  const bat=res.box?.bat||[],pit=res.box?.pit||[],otherBat=res.oppBox?.bat||[],otherPit=res.oppBox?.pit||[],hs=total(bat,"h"),ho=total(otherBat,"h"),hrs=total(bat,"hr"),oppHR=total(otherBat,"hr"),ks=total(pit,"so"),bb=total(pit,"bb"),diff=sc[0]-sc[1];
+  const frames=[];let us=0,them=0,maxDef=0,maxLead=0;const lines=res.line||[[],[]];
+  for(let i=0;i<innings;i++)for(let side=0;side<2;side++){const v=lines[side]?.[i];if(!Number.isFinite(v))continue;const prev=us-them;if(side===ui)us+=v;else them+=v;maxDef=Math.max(maxDef,them-us);maxLead=Math.max(maxLead,us-them);if(v)frames.push({inn:i+1,top:side===0,ours:side===ui,runs:v,us,them,prev,diff:us-them});}
+  const called=res.reason==="コールド",walk=res.reason==="サヨナラ",extra=innings>full;
+  let theme=walk?(won?"walkoffW":"walkoffL"):called?(won?"calledW":"calledL"):won&&sc[1]===0&&ho===0&&res.oppBox&&Array.isArray(res.oppBox.bat)&&innings>=Math.min(full,7)?"nohit":extra?(won?"extraW":"extraL"):won&&maxDef>0?"comeback":!won&&maxLead>0?"blown":sc[1]===0&&won?"shutoutW":sc[0]===0&&!won?"shutoutL":Math.abs(diff)>=6?(won?"bigW":"bigL"):sc[0]>=5&&sc[1]>=5?(won?"slugW":"slugL"):Math.abs(diff)===1?(won?"closeW":"closeL"):won&&sc[0]<=3&&sc[1]<=2?"duelW":won?"win":"loss";
+  const outcome=byId[theme].label,headline=`${school}　${outcome}`,deck=`${sc[0]}－${sc[1]}　${opp}${stage&&won?"／"+stage.winWord:""}`;
+  const lead=`${label}${stage?.rn?"（"+stage.rn+"）":""}が${res.date||""}${venue?"、"+venue+"で":""}行われ、${winner}が${loser}を${ws}－${ls}で下した${called?"（"+innings+"回コールド）":extra?"（延長"+innings+"回）":""}。`;
+  const last=frames.at(-1),best=frames.slice().sort((a,b)=>b.runs-a.runs||a.inn-b.inn)[0],when=x=>`${x.inn}回${x.top?"表":"裏"}`;
+  let key="";
+  if(walk&&last)key=`${when(last)}、${last.ours?school:opp}が${last.runs}点を加え、サヨナラで決着した。`;
+  else if(theme==="comeback")key=`${school}は一時${maxDef}点のリードを許したが、最後は${diff}点差で勝利した。`;
+  else if(theme==="blown")key=`${school}は最大${maxLead}点をリードしたものの、最終的に${-diff}点差で敗れた。`;
+  else if(best)key=`一つの回で最も多く得点したのは${when(best)}。${best.ours?school:opp}が${best.runs}点を挙げた。`;
+  const selected=frames.length<=6?frames:frames.filter((f,i)=>i===0||i===frames.length-1||f===best||f.prev*f.diff<=0).slice(0,5).concat(frames.at(-1));
+  const unique=[...new Set(selected)].sort((a,b)=>a.inn-b.inn||Number(b.top)-Number(a.top));
+  const timeline=unique.length?unique.map(x=>`${when(x)}、${x.ours?school:opp}が${x.runs}点（${school}から見て${x.us}－${x.them}）`).join("。")+"。":"イニング別の得点経過は記録されていない。";
+  const batTop=bat.filter(x=>x.h>0||x.rbi>0||x.sb>0).slice().sort((a,b)=>(b.h*2+b.rbi+b.hr*3+b.sb)-(a.h*2+a.rbi+a.hr*3+a.sb)).slice(0,3);
+  const batText=`${school}は${hs}安打${hrs?"、"+hrs+"本塁打":""}。`+(batTop.length?batTop.map(x=>`${x.name}は${x.ab||0}打数${x.h||0}安打${x.hr?"、"+x.hr+"本塁打":""}${x.rbi?"、"+x.rbi+"打点":""}${x.sb?"、"+x.sb+"盗塁":""}`).join("。")+"。":"");
+  const pitText=pit.length?`${school}の投手陣は${pit.length}人で${ks}奪三振、${bb}四球。`+pit.slice(0,3).map(x=>`${x.name}は${fmtIP(x.ipo)}を投げ、${x.h||0}被安打、${x.r||0}失点、${x.so||0}奪三振`).join("。")+"。":"投手別の成績は記録されていない。";
+  const opTop=otherBat.filter(x=>x.h>0||x.rbi>0).sort((a,b)=>b.h+b.rbi-a.h-a.rbi)[0];
+  const other=`${opp}は${ho}安打${oppHR?"、"+oppHR+"本塁打":""}。`+(opTop?`${opTop.name}が${opTop.h||0}安打${opTop.rbi?"、"+opTop.rbi+"打点":""}。`:"")+(otherPit.length?`投手陣は計${total(otherPit,"so")}奪三振だった。`:"");
+  const context=[stage&&won?`${stage.winWord}となった。`:stage&&!won?`${stage.loseWord}となった。`:"",rival?`ライバルとの通算対戦成績は${rival.w}勝${rival.l}敗。`:"",res.mvpName&&res.mvpLine?`試合の注目選手は${res.mvpName}（${res.mvpLine}）。`:""].filter(Boolean).join("");
+  const log=(res.log||[]).filter(l=>["hr","hit","run","err","out","sub"].includes(l.kind)&&l.text).slice(-5).map(l=>`${l.inn}回${l.top?"表":"裏"}　${l.text}`);
+  const late=frames.filter(x=>x.inn>=Math.max(1,full-2)),lateUs=late.filter(x=>x.ours).reduce((s,x)=>s+x.runs,0),lateOpp=late.filter(x=>!x.ours).reduce((s,x)=>s+x.runs,0);
+  const editorial=[
+   `試合を終えてスコアは${sc[0]}対${sc[1]}。${school}の${won?"白星":"黒星"}が記録された。`,
+   last?`最後に得点が動いたのは${when(last)}。以後、得点は動かなかった。`:`最終スコアは${ws}対${ls}だった。`,
+   `安打数は${school}の${hs}に対し、${opp}は${ho}。得点と安打数を併せて見たい。`,
+   `投手陣の${ks}奪三振と${bb}四球も、試合を振り返る上での材料になる。`,
+   `${opp}の得点は${sc[1]}、${school}の得点は${sc[0]}。両校の数字が対照をなした。`,
+   stage?`大会は${stage.rn}。${won?stage.winWord:stage.loseWord}という結果が残った。`:`この一戦の記録は、次の練習や試合に向けた比較材料となる。`,
+   maxDef||maxLead?`試合中の最大点差は、リードが${maxLead}点、ビハインドが${maxDef}点だった（各半イニング終了時）。`:`両校の得点経過を改めて確認したい。`,
+   `終盤（${Math.max(1,full-2)}回以降）の得点は${school}が${lateUs}、相手が${lateOpp}。終盤の攻防にも目を向けたい。`,
+   batTop.length?`打撃では${batTop[0].name}の${batTop[0].h||0}安打${batTop[0].rbi?"、"+batTop[0].rbi+"打点":""}が記録に残った。`:`個人の成績は投打の記録欄にまとめた。`,
+   won?`この白星を次につなげられるか。次の試合での投打にも注目したい。`:`今回の失点や得点機会を検証し、次の試合への材料としたい。`
+  ];
+  return {theme,subject:school,headline,deck,lead,blocks:{key,timeline,bat:batText,pit:pitText,other,context},stats:{score:sc,hs,ho,hrs,ks,maxDef,maxLead,innings,reason:res.reason||"",ui},log,editorial,people:{bat:batTop.map(x=>({name:x.name,ab:x.ab||0,h:x.h||0,hr:x.hr||0,rbi:x.rbi||0})),pit:pit.slice(0,4).map(x=>({name:x.name,ip:fmtIP(x.ipo),h:x.h||0,r:x.r||0,so:x.so||0}))}};
+ }
+ function topic(n){
+  const s=(n.head||n.title||"")+" "+(n.body||"");
+  if(n.kind==="preview")return "preview";
+  if(n.cat==="記録")return /球速|最速|km\/h|キロ/.test(s)?"velocity":"record";
+  if(n.cat==="大会"){if(/落選|敗退|は準優勝|はベスト/.test(s))return "eliminated";if(/出場決定|出場を決め|甲子園へ|センバツ出場/.test(s))return "qualified";if(/優勝|制覇|日本一|頂点/.test(s))return "champion";return "regional";}
+  if(n.cat==="スカウト")return "recruit";if(n.cat==="中学野球")return "junior";if(n.cat==="全国")return "national";if(n.cat==="U-18")return "international";
+  if(n.cat==="卒業生")return /指名|契約|挑戦|移籍|プロ入り/.test(s)?"draft":"alumni";
+  if(n.cat==="特集")return /覚醒|開花|潜在能力/.test(s)?"awakening":/連覇|制覇/.test(s)?"champion":"feature";
+  if(n.cat==="部内")return /継承|受け継|身につけ/.test(s)?"mentoring":/合宿/.test(s)?"camp":/志望|海外挑戦/.test(s)?"draft":"weekly";
+  if(n.cat==="学校"||n.cat==="お知らせ")return /予算|増額|財政/.test(s)?"budget":/監督|スカウト.*採用|退職/.test(s)?"staff":/施設|改修|設備|整備|導入|寮/.test(s)?"facility":/卒業|新入部/.test(s)?"graduation":"school";
+  if(n.cat==="練習試合"||n.cat==="試合")return /敗戦|敗れ|負け/.test(s)?"loss":"win";return "weekly";
+ }
+ function sample(id){const t=byId[id],base={subject:"白峰高校",headline:`白峰高校　${t.label}`,deck:t.angle,lead:`白峰高校に関する「${t.label}」の報道サンプル。`,blocks:{key:`${t.focus}を確認するための見本データ。`,timeline:"経過欄には日付、回次、出来事を掲載する。",bat:"打撃・個人の記録欄には確定した数字を掲載する。",pit:"投手・守備の記録欄には投球回や失点を掲載する。",other:"関連情報欄は記事のテーマに応じて構成する。",context:"この記事は記事構成確認用で、実際の試合や選手の記録ではない。"}};return base;}
+ return {themes,byId,styles,hash,select,compose,matchFacts,topic,sample};
+})();
+const D=[["九回裏サヨナラ","夏の県大会決勝、白峰高校が青葉高校を4－3で下した。九回裏に1点を挙げ、サヨナラで決着した。","八回終了時点で3－3。","白峰高校は9安打。"],["九回裏に涙","県大会準決勝で白峰高校は青葉高校に2－3で敗れた。九回裏に勝ち越し点を許した。","八回終了時点で2－2。","相手は8安打。"],["3点差を逆転","白峰高校が青葉高校を5－3で下した。四回までに3点を先行されたが、六回に追いつき八回に勝ち越した。","六回に3点、八回に2点。","佐藤は4打数3安打3打点。"],["リード守れず","白峰高校は青葉高校に4－6で敗れた。五回終了時には4－1とリードしていた。","七回に2失点、八回に3失点。","白峰高校は8安打。"],["延長十一回で白星","白峰高校が青葉高校を6－4で下した。九回を3－3で終え、延長十一回に3点を挙げた。","延長十一回の得点は白峰3、青葉1。","田中が計8奪三振。"],["延長十回で惜敗","白峰高校は青葉高校に3－4で敗れた。九回終了時に2－2、延長十回で決着した。","十回の得点は白峰1、青葉2。","相手は計9安打。"],["田中が無安打無得点試合","白峰高校が青葉高校を3－0で下した。田中は9回を投げ、相手に安打を許さなかった。","被安打0、失点0、四球2。","12奪三振を記録。"],["完封リレー","白峰高校が青葉高校に4－0で勝利した。田中と鈴木が無失点でつないだ。","田中は7回、鈴木は2回を投げた。","投手陣は計8奪三振。"],["打線沈黙","白峰高校は青葉高校に0－4で敗れた。九回まで得点を挙げられなかった。","白峰高校は4安打。","相手投手陣は計9奪三振。"],["七回コールド発進","県大会初戦で白峰高校が青葉高校を9－1で破った。七回コールドとなった。","四回に5点。","12安打。"],["七回コールド負け","白峰高校は青葉高校に1－9で敗れた。七回コールドで決着した。","五回までに7失点。","白峰高校は4安打。"],["8点差で白星","練習試合で白峰高校が青葉高校を10－2で下した。","四回に4点、六回に3点。","14安打。"],["大量失点で敗戦","練習試合で白峰高校は青葉高校に2－10で敗れた。","四回に4失点、六回に3失点。","白峰高校は5安打。"],["一点差を守る","白峰高校が青葉高校を3－2で下した。七回に勝ち越した。","七回表に1点。","両校とも7安打。"],["一点届かず","白峰高校は青葉高校に2－3で敗れた。八回に1点を返した。","八回に1点。","白峰高校は6安打。"],["9－7の打撃戦","白峰高校が青葉高校に9－7で勝利した。","白峰高校は六回に4点。","両校合わせて25安打。"],["7得点も及ばず","白峰高校は青葉高校に7－9で敗れた。","八回に2点を返した。","白峰高校は13安打。"],["投手戦を制す","白峰高校が青葉高校を3－1で下した。","六回表に2点。","田中は7回1失点。"],["県大会で白星","白峰高校が青葉高校を5－2で破った。","三回に2点、五回に3点。","佐藤が2安打2打点。"],["県大会で黒星","白峰高校は青葉高校に2－5で敗れた。","三回に2失点、六回に3失点。","白峰高校は6安打。"],["県大会の頂点","白峰高校が夏の県大会決勝を5－2で制し、優勝を決めた。","大会を通じて5勝。","全国大会に出場する。"],["春の選抜へ","選抜大会の出場校が発表され、白峰高校が選ばれた。","秋季地区大会準優勝が選考理由。","開幕は3月下旬の予定。"],["準々決勝で敗退","白峰高校は県大会準々決勝で青葉高校に1－2で敗れた。","大会成績はベスト8。","三年生の夏の大会が終了した。"],["48校が出場","夏の県大会が開幕する。48校が出場する。","本紙予想の筆頭は青葉高校。","白峰高校の初戦は緑川高校。"],["地区大会進出","白峰高校が秋季県大会で準優勝し、地区大会への出場を決めた。","県大会は4勝1敗。","次の組み合わせ発表を待つ。"],["青葉高校との対戦記録","白峰高校と青葉高校の通算対戦成績は2勝3敗となった。","前回は白峰高校が4－3で勝利。","次の対戦日程は未定。"],["県大会 四強出そろう","夏の県大会は準決勝へ進む。白峰、青葉、緑川、北嶺の4校が進出した。","準々決勝で白峰高校は5－2で勝利。","準決勝は白峰対北嶺。"],["県大会まであと二週","白峰高校の次の公式戦は2週間後の夏の県大会の予定だ。","直近に練習試合を予定。","組み合わせは発表後に確認する。"],["佐藤 通算安打の校記録","白峰高校の佐藤が通算55安打に到達し、校記録を更新した。","従来は52安打。","佐藤は3年生。"],["田中 最速145キロ","白峰高校の田中が自己最速145km/hを計測した。","従来は143km/h。","田中は2年生の右投手。"],["山本 白峰高校へ進学","緑川中学校の山本が来春、白峰高校へ進学することを決めた。","山本は遊撃手。","入部内定者は現在6人。"],["緑川中 全国優勝","全国中学校大会の決勝で緑川中学校が北嶺中学校を3－1で破った。","MVPには田村が選ばれた。","高校への進路にも注目。"],["北嶺高校 注目の右腕","北嶺高校の鈴木（3年）を全国の注目選手欄で紹介する。","登録最速は148km/h。","右投右打。"],["佐藤 U-18で活躍","U-18代表の佐藤が大会でMVP級の活躍を記録した。","チームは準優勝。","佐藤は白峰高校の3年生。"],["二年生・田中の現在地","白峰高校の田中（2年・投手）を紹介する。身長177cm、体重70kg。","今季24回、25奪三振。","中学時代は県大会準優勝。"],["田中 潜在能力が開花","白峰高校の田中が大舞台での活躍をきっかけに覚醒した。","今回の試合は7回1失点。","今後の能力の伸びにも注目。"],["山本 先輩から技術継承","白峰高校の山本が先輩の指導で新たな特殊能力を身につけた。","指導は3週間。","山本は1年生の内野手。"],["夏合宿へ","白峰高校野球部は2週間の強化合宿に入った。","残り2週間。","練習量と疲労の管理が課題。"],["屋内練習設備を導入","白峰高校が野球部向けの室内練習設備を整備した。","設備費は200万円。","雨天時の練習環境の充実が期待される。"],["来年度予算増額へ","学校の予算委員会で野球部の来年度予算の増額が決まった。","増額率は10%。","施設や遠征計画に関わる。"],["新監督に高橋氏","白峰高校野球部の監督に高橋氏が就任した。","専門は投手育成。","次の大会に向け新体制で準備する。"],["野球部特集放送","地元局が白峰高校野球部の活動を取り上げた。","番組は練習風景を紹介した。","学校の評判が上がった。"],["三年生12人が卒業","白峰高校野球部の3年生12人が卒業した。","進路は大学、社会人など。","新チームは1、2年生が中心。"],["佐藤 ドラフトで指名","プロ野球ドラフト会議で白峰高校の佐藤が架空球団から2位指名された。","3年生の内野手。","入団交渉はこれから。"],["卒業生・鈴木が首位打者","白峰高校出身の鈴木が所属球団で首位打者のタイトルを獲得した。","高校卒業後にプロ入り。","母校にとっても明るい知らせ。"],["負傷中の部員は2人","今週の白峰高校野球部の平均疲労度は43。負傷中は2人となった。","前週の平均疲労度は51。","疲労度65以上は3人。"],["現役35人","白峰高校野球部の現役部員は35人。","1年12人、2年11人、3年12人。","投手の登録は8人。"],["佐藤 打率3割8分","白峰高校の今季打撃成績で佐藤が打率上位となった。","50打数19安打。","本塁打3本、打点14。"],["田中 今季35奪三振","白峰高校の投手成績を集計した。田中の奪三振は35に達した。","投球回30回。","失点8。"],["今週の部活動","白峰高校の今週の部内状況をまとめた。現役35人。","平均疲労度43、前週51。","次週は練習試合を予定。"]],theme=document.querySelector('#theme'),pattern=document.querySelector('#pattern'),list=document.querySelector('#list'),article=document.querySelector('#article'),count=document.querySelector('#count');let index=0;
+function esc(s){return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+for(const t of V33News.themes){const o=document.createElement('option');o.value=t.id;o.textContent=t.cat+' / '+t.label;theme.appendChild(o);}
+for(let i=0;i<100;i++){const o=document.createElement('option');o.value=i;o.textContent=String(i+1).padStart(3,'0')+' ・ '+V33News.styles[i%10][0];pattern.appendChild(o);}
+function fact(id){const [h,l,k,c]=D[V33News.themes.findIndex(t=>t.id===id)],t=V33News.byId[id];return {subject:'白峰高校',headline:'白峰高校　'+h,deck:t.angle,lead:l,blocks:{key:k,context:c}};}
+function show(rebuild){const id=theme.value,t=V33News.byId[id],f=fact(id),a=V33News.compose(id,index,f);pattern.value=index;count.textContent=t.label+'　100構成のうち '+(index+1)+'番　｜　全50テーマ';if(rebuild){list.innerHTML=Array.from({length:100},(_,i)=>{const p=V33News.compose(id,i,f);return '<button data-i="'+i+'"><small>'+esc(p.id)+'　'+esc(p.style)+'</small>'+esc(p.headline)+'</button>';}).join('');}for(const e of list.querySelectorAll('button'))e.classList.toggle('on',Number(e.dataset.i)===index);article.innerHTML='<div class="tag">'+esc(t.cat)+'　／　'+esc(a.style)+'</div><h1>'+esc(a.headline)+'</h1><h2>'+esc(a.deck)+'</h2>'+a.body.split(/\n\n/).map(x=>'<p>'+esc(x)+'</p>').join('')+'<footer>構成ID '+esc(a.id)+'　｜　架空のサンプル記事</footer>';document.querySelector('#prev').disabled=index===0;document.querySelector('#next').disabled=index===99;}
+theme.onchange=()=>{index=0;show(true)};pattern.onchange=()=>{index=Number(pattern.value);show(false)};list.onclick=e=>{const b=e.target.closest('button[data-i]');if(b){index=Number(b.dataset.i);show(false);}};document.querySelector('#prev').onclick=()=>{index=Math.max(0,index-1);show(false)};document.querySelector('#next').onclick=()=>{index=Math.min(99,index+1);show(false)};show(true);
+</script></body></html>
