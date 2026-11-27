@@ -113,7 +113,7 @@
  };
  const oldCer=r3CeremonyScene;
  r3CeremonyScene=function(now){oldCer(now);if(!actionSettings().v28Motion||!AR.cer||AR.cer.type!=='soil')return;for(const r of Object.values(R3.fielders)){if(!r.g.visible||!(r instanceof R3RigReal))continue;const seed=C.hash(r._v28Key||'soil');const pose=Object.assign({},r.pose||RP.crouch),t=(now-AR.cer.t0+seed%1100)/650;pose.head=[-.48+.08*Math.sin(t),.13*Math.sin(t*.6),0];r.apply(pose);}};
- function live(m){return actionSettings().v28Physics&&AR.m===m&&AR.mode!=='card'&&AR.el&&!AR.el.hidden&&['pre','gauge','wind','flight'].includes(AR.phase);}
+ function live(m){return !(typeof V32Field!=='undefined'&&V32Field.enabled(m))&&actionSettings().v28Physics&&AR.m===m&&AR.mode!=='card'&&AR.el&&!AR.el.hidden&&['pre','gauge','wind','flight'].includes(AR.phase);}
  function fielders(m){
   const d=m.def(),D=plDefPos(d,m);
   return Object.entries(D).filter(([key])=>['投','捕','一','二','三','遊','左','中','右'].includes(key)).map(([key,pos])=>{const p=r3PlayerOf(d,key),b=p&&p.bat||{},f=Number(b.field||b.def||b.catch||55),h=Number(p&&p.height)||175;

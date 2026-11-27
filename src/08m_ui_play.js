@@ -11,7 +11,7 @@ function plRig(key,setup){let r=PL.rigs[key];if(!r||r._model!==actionSettings().
 function plUseMotion(){return actionSettings().model3d!=='chibi'&&typeof moFrame==='function';}
 /* 守備位置（状況で動かす）：走者一塁で併殺態勢、一塁手は走者を抑える */
 function plDefPos(d,m){const P=fwDefPos(d);if(!m)return P;const B=m.bases;const dp=B[0]&&m.outs<2&&!d.infieldIn;if(dp){P['二']=[9.2,36.2];P['遊']=[-9.2,36.2];}
- if(B[0]&&!B[1])P['一']=[20.6,19.2];return P;}
+ if(B[0]&&!B[1]&&!d.infieldIn)P['一']=[18.8,20.2];if(d.buntAlert){P['一']=[12.8,16.2];P['三']=[-12.8,16.2];}return P;}
 /* 投球の場面の計画（キーが変わったときだけ作り直す） */
 function plPitchPlan(now){const m=AR.m,d=m.def(),tb=m.bat(),pa=m.pa;const ph=AR.phase;const P=AR.cur;
  if((ph==='pre'||ph==='gauge')&&PL.retUntil&&now<PL.retUntil&&PL.ctx)return PL.ctx;
@@ -161,33 +161,37 @@ function plEntPos(e,t){const st=moEval(e,t);if(!st)return [0,0];let x=st.x,y=st.
 /* 区間の最後の根元の位置（クリップの end を足す） */
 function plSegEnd(seg){if(seg.k==='move'||seg.k==='glide'){const l=seg.path[seg.path.length-1];return [l.x,l.y];}const d=seg.clip&&MODEF[seg.clip];if(d&&d.end){const o=moL2F(d.end.dx||0,d.end.dz||0,seg.yaw||0,seg.mir||1);return [seg.x+o[0],seg.y+o[1]];}return [seg.x,seg.y];}
 /* ===== 本体 ===== */
-function plBuild(c,play,opt){opt=opt||{};const m=AR.m;const d=m.def(),tb=m.bat();const S=FW_SPEED;const ts=1/S;
+function plBuild(c,play,opt){opt=opt||{};const m=AR.m,plan=typeof V32Field!=='undefined'?V32Field.get(c):null;const d=plan?plan.def:m.def(),tb=plan?plan.bat:m.bat();const S=FW_SPEED;const ts=1/S;
  const sc={t0:performance.now(),T:0,ball:[],fielders:{},runners:[],callouts:[],fx:[],pauseAt:null,kind:'inplay',res:c.res,primary:c.fpos,pois:[],ended:false,throws:[],mo:null};
- const DP0=plDefPos(d,m);const ents={};const E=k=>ents[k];const B=moBallNew();
- const pl=k=>r3PlayerOf(d,k);const hs=m.pa&&m.pa.p&&m.pa.p.throws==='左'?-1:1;const bs=(play&&play.hand?play.hand:(m.pa?m.pa.bHand:'右'))==='左'?-1:1;
- const c0=opt.contact||[bs*0.2,0.45,0.95];const ball=plBallPath(c,c0);
+ const DP0=plan?plan.DP:plDefPos(d,m);const ents={};const E=k=>ents[k];const B=moBallNew();
+ const pl=k=>r3PlayerOf(d,k);const pit=plan?plan.pitcher:m.pa&&m.pa.p?m.pa.p:d.pitcher;const hs=pit&&pit.throws==='左'?-1:1;const bs=(plan?plan.hand:play&&play.hand?play.hand:(m.pa?m.pa.bHand:'右'))==='左'?-1:1;
+ const c0=plan?plan.contact:opt.contact||[bs*0.2,0.45,0.95];const ball=plBallPath(c,c0);
  const type=c.type;const a=c.a||0;const caught=ball.caught;const isHR=ball.isHR;const isHit=['1B','2B','3B'].includes(c.res);const infieldK=['投','捕','一','二','三','遊'];
  /* --- 初期配置（投球の場面の続き） --- */
- const pRoot=[0,R3C.RUBBER-0.15];const pOff=opt.pitchClip!=null?opt.pitchClip:1450;
+ const pRoot=[0,R3C.RUBBER-0.15];const pOff=plan?plan.pOff:opt.pitchClip!=null?opt.pitchClip:1450;
  for(const k of ['投','捕','一','二','三','遊','左','中','右']){const e=ents[k]=plEnt({key:k,mir:k==='投'?hs:1});const p0=DP0[k];
-  if(k==='投'){plAdd(e,{k:'clip',clip:plPitClip(m.pa&&m.pa.p?m.pa.p:d.pitcher),t0:-600,x:pRoot[0],y:pRoot[1],yaw:0,off:pOff-600*ts,rate:ts});continue;}
+  if(k==='投'){plAdd(e,{k:'clip',clip:plPitClip(pit),t0:-600,x:pRoot[0],y:pRoot[1],yaw:0,off:pOff-600*ts,rate:ts});continue;}
   if(k==='捕'){plAdd(e,{k:'pose',pose:'c_crouch',t0:-600,x:0,y:-0.85,yaw:Math.PI});continue;}
   const yaw=moYawTo(p0[0],p0[1],0,0);const of=k==='左'||k==='中'||k==='右';const fw=moL2F(0,of?0.9:0.55,yaw,1);e.home=[p0[0]+fw[0],p0[1]+fw[1]];plAdd(e,{k:'pose',pose:'f_ready',t0:-600,x:e.home[0],y:e.home[1],yaw});}
- ents['投'].home=(()=>{const pe=plPitEnd(plPitClip(m.pa&&m.pa.p?m.pa.p:d.pitcher));const o=moL2F(pe.dx,pe.dz,0,hs);return [pRoot[0]+o[0],pRoot[1]+o[1]];})();ents['捕'].home=[0,-0.85];
+ ents['投'].home=(()=>{const pe=plPitEnd(plPitClip(pit));const o=moL2F(pe.dx||0,pe.dz||0,0,hs);return [pRoot[0]+o[0],pRoot[1]+o[1]];})();ents['捕'].home=[0,-0.85];
  const tPitchEnd=Math.max(0,(1650-pOff)*S);/* 投手のフォローが終わる時刻 */
  const posAt=(k,t)=>{const e=E(k);const segs=e.segs;let s=segs[0];for(const g of segs)if(g.t0<=t)s=g;if(s.k==='move'||s.k==='glide')return moPathAt(s.path,t);if(t>=s.t1-1)return plSegEnd(s);return [s.x,s.y];};
  const freeAt=(k)=>{const e=E(k);const l=e.segs[e.segs.length-1];return Math.max(l.t0+1,k==='投'?tPitchEnd:0);};
  const R=plS(PLX.RT);
  /* 走る（そこへ着く時刻 arrive を指定可）。最後は指定の区間（構え・クリップ）につなぐ */
  const runTo=(k,to,t0,arrive,face,next,o)=>{o=o||{};const e=E(k);t0=Math.max(t0,freeAt(k));const from=posAt(k,t0);const dist=Math.hypot(to[0]-from[0],to[1]-from[1]);const v=plSpeed(pl(k))*(o.vMul||1);
-  let dur=(plRunT(dist,v,5.2)*1000+(o.extra||0))*S;if(arrive!=null)dur=Math.max(plS(220),arrive-t0);if(dist<0.25){if(next){next.t0=t0+Math.max(0,arrive!=null?arrive-t0:0);plAdd(e,next);}return t0+(arrive!=null?arrive-t0:0);}
+  let dur=(plRunT(dist,v,5.2)*1000+(o.extra||0))*S;if(arrive!=null)dur=Math.max(plS(220),arrive-t0);if(plan&&dist>=.25){const natural=moProfile([from,to],v,5.2,4.5,0,{v0:0,v1:o.v1||0,ts:1});dur=Math.max(dur,natural[natural.length-1].t*S);}if(dist<0.25){if(next){next.t0=t0+Math.max(0,arrive!=null?arrive-t0:0);plAdd(e,next);}return t0+(arrive!=null?arrive-t0:0);}
   const path=plRunPath([from,to],t0,t0+dur,v,{v1:o.v1||0});plAdd(e,{k:'move',t0,t1:t0+dur,path,face:face||{mode:'vel'},style:o.style||'run'});if(next){next.t0=t0+dur;plAdd(e,next);}return t0+dur;};
  const ready=(k,t,at,yaw,pose)=>plAdd(E(k),{k:'pose',pose:pose||'f_ready',t0:t,x:at[0],y:at[1],yaw,fade:220});
  /* --- 打球の処理 --- */
  let fielder=c.fpos||fielderOf(c);const ofByAng=a<-15?'左':a<=15?'中':'右';let Tc=null,Pc=null,holdAt=null;/* holdAt：ボールを持つ人と時刻 */
  const look=(k,fn)=>E(k).look.push({t0:-1e9,t1:1e9,target:fn,w:0.75});
  const ballAt=t=>{const p=moPts(ball.pts,t);return p;};
- if(caught){const v=plSpeed(pl(fielder));const from=posAt(fielder,0);const yawB=moYawTo(ball.Pc[0],ball.Pc[1],c0[0],c0[1]);
+ if(plan&&!isHR&&plan.field){
+  const h=plan.field;fielder=h.key;const schedule=(q,fromT)=>{const k=q.key,t=q.t*1000*S,P=q.p,inc=moPts(ball.pts,Math.max(0,t-plS(140))),yaw=moYawTo(P[0],P[1],inc[0],inc[1]),spot=q.spot,clip=q.clip,prep=plS(q.prep*1000);runTo(k,spot,fromT,t-prep,{mode:'vel'},{k:'clip',clip,t0:0,x:spot[0],y:spot[1],yaw,rate:ts,fade:150},{v1:0});E(k).ik.push({t0:t-plS(160),t1:t,side:'l',fade:plS(120),target:tt=>ballAt(Math.min(tt,t))});};
+  if(plan.fumble){const q=plan.fumble;schedule(q,q.react*1000*S);sc.callouts.push({t:q.t*1000*S,x:q.p[0],y:q.p[1],z:1.8,text:'エラー！',kind:'err'});schedule(h,h.react*1000*S);}else schedule(h,h.react*1000*S);
+  Tc=h.t*1000*S;Pc=h.p.slice();holdAt={k:fielder,t:Tc};
+ }else if(caught){const v=plSpeed(pl(fielder));const from=posAt(fielder,0);const yawB=moYawTo(ball.Pc[0],ball.Pc[1],c0[0],c0[1]);
   const clip=type==='line'?'f_line':'f_fly';const cT=type==='line'?160:420;Tc=ball.Tc;Pc=ball.Pc;
   /* 体の位置：グラブ（頭の上、少し前）にボールが入るよう、捕球点の少し手前 */const back=moL2F(-0.12,-0.36,yawB,1);const spot=[Pc[0]+back[0],Pc[1]+back[1]];
   const need=R+plRunT(Math.hypot(spot[0]-from[0],spot[1]-from[1]),v,5.2)*1000*S;const cs=Tc-plS(cT);const arr=Math.min(cs,Math.max(R+plS(250),need));
@@ -224,19 +228,21 @@ function plBuild(c,play,opt){opt=opt||{};const m=AR.m;const d=m.def(),tb=m.bat()
  const outs=[];for(const r of RL)if(r.outAt&&r.outAt>0)outs.push({base:r.outAt,who:r});if(BR&&BR.outAt&&BR.outAt>0)outs.push({base:BR.outAt,who:BR,batter:true});outs.sort((x,y)=>y.base-x.base);
  let throws=[];if(!isHR&&holdAt){if(outs.length){for(const o of outs)throws.push({base:o.base,out:o});}else if(!pend){let lead=0;for(const r of RL)if(r.to<4&&r.to>lead)lead=r.to;if(BR&&BR.to<4&&BR.to>lead)lead=BR.to;
    if(play&&play.throwTo){const tb2=play.throwTo;throws.push({base:tb2,safe:RL.find(r=>r.to===tb2)||(BR&&BR.to===tb2?BR:null)});}else if(caught){const tag=RL.find(r=>r.to===4&&r.from===3);if(tag)throws.push({base:4,safe:tag});}else throws.push({base:Math.min(4,Math.max(2,lead+1)),safe:null,soft:true});}}
- const leftSide=['三','遊','左'].includes(fielder)||a<-6;const cover2=leftSide?'二':'遊';
+ const leftSide=['三','遊','左'].includes(fielder)||(!['一','二','右'].includes(fielder)&&a<0);const cover2=leftSide?'二':'遊';
  const coverOf=(base,thrower)=>{let cv=base===1?'一':base===2?cover2:base===3?'三':'捕';if(cv===thrower){cv=base===1?(thrower==='一'?'投':'二'):base===2?(cv==='二'?'遊':'二'):base===3?'遊':'投';}if(base===1&&thrower==='一'&&Pc&&Math.hypot(Pc[0]-19.4,Pc[1]-19.4)<4)cv=null;/* 一塁手が塁の近くで捕った：自分で踏む */return cv;};
  const throwPlan=[];let holder=holdAt?holdAt.k:null;let tFree=holdAt?holdAt.t:0;let fromP=Pc?Pc.slice(0,2):null;
  /* 捕球後の持ち替え：ボールはグラブ→投げ手。送球の動作の中でリリース */
  const firstClip=holder?(E(holder).segs[E(holder).segs.length-1].clip):null;
  if(holdAt){moBallAdd(B,{k:'hold',t0:holdAt.t,t1:holdAt.t+1,ent:holder,at:'glove'});}
- for(const th of throws){if(!holder)break;const Bp=FW_BASE[th.base];const cv=coverOf(th.base,holder);const tp=posAt(holder,tFree);const dist=Math.hypot(Bp[0]-tp[0],Bp[1]-tp[1]);
+ for(const th of throws){if(!holder)break;const Bp=FW_BASE[th.base];const cv=coverOf(th.base,holder);const tp=posAt(holder,tFree);
+  if(plan&&cv===null&&th.base===1&&holder==='一'){const start=tFree+plS(120),yaw=moYawTo(tp[0],tp[1],Bp[0],Bp[1]),Ta=runTo(holder,Bp,start,null,{mode:'vel'},{k:'pose',pose:'f_ready',t0:0,x:Bp[0],y:Bp[1],yaw,fade:120},{v1:0});throwPlan.push({base:1,Ta,tRel:Ta,out:th.out,safe:th.safe,from:tp,cv:holder,self:true});tFree=Ta;fromP=Bp;continue;}const dist=Math.hypot(Bp[0]-tp[0],Bp[1]-tp[1]);
   const quick=dist<14;const ofK=['左','中','右'].includes(holder);const vT=(ofK?PLX.VOF:holder==='捕'?PLX.VC:PLX.VIF)*(plArm(pl(holder))/30);
   /* 送球の動作：捕球の動作の終わり（持ち替え済み）から。体を送球方向へ向ける */let tStart;const segs=E(holder).segs;const last=segs[segs.length-1];
   if(throwPlan.length===0){tStart=last.clip==='f_gb'?holdAt.t+plS(250):last.clip==='f_fly'?holdAt.t+plS(330):last.clip==='f_line'?holdAt.t+plS(200):holdAt.t+plS(150);}else tStart=tFree+plS(120);
   const clip=th.soft?'f_qthrow':quick?'f_qthrow':(ofK?'f_othrow':'f_throw');const relT=clip==='f_qthrow'?260:420;const yawT=moYawTo(tp[0],tp[1],Bp[0],Bp[1]);
-  const at=plSegEnd(last)||tp;plAdd(E(holder),{k:'clip',clip,t0:tStart,x:at[0],y:at[1],yaw:yawT,rate:ts,fade:plS(140)});const tRel=tStart+plS(relT);
-  const fl=dist/(th.soft?vT*0.6:vT)*1000*S;const Ta=tRel+fl;
+  const fl=dist/(th.soft?vT*0.6:vT)*1000*S;
+  if(plan&&cv){const yawR=moYawTo(Bp[0],Bp[1],tp[0],tp[1]),rb=moL2F(.05,.1,yawR,1),root=[Bp[0]+rb[0],Bp[1]+rb[1]],start=Math.max(R,freeAt(cv)),from=posAt(cv,start),path=moProfile([from,root],plSpeed(pl(cv)),5.2,4.5,0,{v0:0,v1:1.2,ts:1}),ready=start+(path.at(-1).t||0)*S+plS(340);tStart=Math.max(tStart,ready-fl-plS(relT));}
+  const at=plSegEnd(last)||tp;plAdd(E(holder),{k:'clip',clip,t0:tStart,x:at[0],y:at[1],yaw:yawT,rate:ts,fade:plS(140)});const tRel=tStart+plS(relT),Ta=tRel+fl;
   /* 受け手：塁に先に入って捕る */let rclip=th.base===1&&cv==='一'?'f_1b':(th.out&&th.base>1&&!th.out.batter&&!plForced(th.out.who,RL,BR)&&th.base!==1)||th.base===4?'f_tag':'f_cover';if(th.soft)rclip='f_cover';const rcT=rclip==='f_1b'?300:rclip==='f_tag'?240:260;
   let catchP=[Bp[0],Bp[1],1.2];if(cv){const yawR=moYawTo(Bp[0],Bp[1],tp[0],tp[1]);const rb=moL2F(0.05,0.1,yawR,1);const root=[Bp[0]+rb[0],Bp[1]+rb[1]];const arr=Math.min(Ta-plS(rcT),Math.max(freeAt(cv)+plS(300),Ta-plS(rcT)));
    runTo(cv,root,R,arr,{mode:'pt',x:tp[0],y:tp[1]},{k:'clip',clip:rclip,t0:0,x:root[0],y:root[1],yaw:yawR,rate:ts,off:Math.max(0,rcT-(Ta-arr)/S),fade:160},{v1:1.2});
@@ -252,7 +258,7 @@ function plBuild(c,play,opt){opt=opt||{};const m=AR.m;const d=m.def(),tb=m.bat()
  if(holdAt&&!throwPlan.length){/* 送球なし：持ち替えて内野へ返す（ボールは手の中） */const segs=E(holdAt.k).segs;const last=segs[segs.length-1];const xs=holdAt.t+plS(last.clip==='f_gb'?150:250);B.segs[B.segs.length-1].t1=xs;moBallAdd(B,{k:'xfer',t0:xs,t1:xs+plS(140),ent:holdAt.k,from:'glove',to:'r'});moBallAdd(B,{k:'hold',t0:xs+plS(140),t1:1e9,ent:holdAt.k,at:'r'});}
  sc.throws=throwPlan;
  /* 打球の前半（バットから捕球まで） */
- const T0b=0;const endB=holdAt?holdAt.t:(isHR?ball.Tland:ball.Tland);const pre=ball.pts.filter(q=>q.t<=endB);if(!pre.length||pre[pre.length-1].t<endB){const p=moPts(ball.pts,endB);pre.push({t:endB,x:p[0],y:p[1],z:p[2]});}
+ const T0b=0;const endB=holdAt?holdAt.t:(isHR?ball.Tland:ball.Tstop||ball.Tland);const pre=ball.pts.filter(q=>q.t<=endB);if(!pre.length||pre[pre.length-1].t<endB){const p=moPts(ball.pts,endB);pre.push({t:endB,x:p[0],y:p[1],z:p[2]});}
  if(B.err){const e=B.err;const p0=moPts(ball.pts,e.t);B.segs.unshift({k:'path',t0:0,t1:e.t2,pts:pre.filter(q=>q.t<=e.t).concat([{t:e.t,x:p0[0],y:p0[1],z:p0[2]},{t:e.t2,x:e.to[0],y:e.to[1],z:0.05}])});const h=B.segs.find(g=>g.k==='hold');if(h){h.t0=e.t2;}}
  else B.segs.unshift({k:'path',t0:0,t1:endB,pts:pre});if(isHR)moBallAdd(B,{k:'gone',t0:ball.Tland+1,t1:1e9});
  B.segs.sort((x,y)=>x.t0-y.t0);moBallEv(B,{t:0,k:'contact',ent:'B'});if(holdAt)moBallEv(B,{t:holdAt.t,k:'catch',ent:holdAt.k});
@@ -260,15 +266,15 @@ function plBuild(c,play,opt){opt=opt||{};const m=AR.m;const d=m.def(),tb=m.bat()
  /* --- 走者 --- */
  plRunners(sc,ents,RL,BR,{ball,Tc,caught,throwPlan,opt,pend,dec,c,bs,isHR,air:ball.air,tb,ts});
  /* --- ほかの野手：ベースカバー・カバーリング・中継・投手と捕手 --- */
- plSupport(sc,ents,{fielder,ball,Tc,Pc,throwPlan,c,leftSide,cover2,R,runTo,ready,posAt,freeAt,caught,isHR,m,ts});
+ plSupport(sc,ents,{fielder,ball,Tc,Pc,throwPlan,c,leftSide,cover2,R,runTo,ready,posAt,freeAt,caught,isHR,m,ts,initialBases:plan&&plan.initialBases});
  /* --- 審判 --- */
- plUmps(sc,ents,{throwPlan,ball,c,m,Tc,Pc,caught,isHR});
+ plUmps(sc,ents,{throwPlan,ball,c,m,Tc,Pc,caught,isHR,initialBases:plan&&plan.initialBases});
  /* --- 見る先：ボール --- */for(const k in ents){if(!ents[k].look.length)ents[k].look.push({t0:-1e9,t1:1e9,target:t=>sc.mo&&sc.mo.ballF?sc.mo.ballF:moPts(ball.pts,Math.min(t,ball.Tland)),w:0.6});}
  sc.mo={ents,ball:B,ts,contact:c0,pitchClip:pOff};
  /* --- 2D 表示・カメラ用の値（体の位置・ボール） --- */
- plLegacy(sc,ents,B,ball);
+ plLegacy(sc,ents,B,ball);if(plan){const tEnd=holdAt?holdAt.t:ball.Tstop,pre=ball.pts.filter(q=>q.t<tEnd);sc.ball=pre.concat(sc.ball.filter(q=>q.t>=tEnd));sc.v32={fielder,catchTime:Tc,firstBounce:ball.Tland,stopTime:ball.Tstop,bounces:plan.path.bounces,events:plan.path.events};}
  /* --- 終了時刻 --- */let T=Math.max((Tc||ball.Tland)+plS(900),...throwPlan.map(x=>x.Ta+plS(700)));for(const r of sc.runners){const pp=r.path2||r.path;const tl=r.arriveT!=null?r.arriveT:(r.holdEnd!=null?r.holdEnd:pp[pp.length-1].t);T=Math.max(T,tl+plS(450));}for(const cl of sc.callouts)T=Math.max(T,cl.t+(cl.dur||900));if(isHR)T=Math.max(T,ball.Tland+2400);
- sc.T=pend?sc.pauseAt+10:T;sc.Tfull=T;sc.rate=clamp(T/4200,1,2.4);sc.colBat=arTeamColors(tb);sc.colDef=arTeamColors(d);sc.defTeam=d;sc.batTeam=tb;return sc;}
+ sc.T=pend?sc.pauseAt+10:T;sc.Tfull=T;sc.rate=plan?1:clamp(T/4200,1,2.4);sc.colBat=arTeamColors(tb);sc.colDef=arTeamColors(d);sc.defTeam=d;sc.batTeam=tb;return sc;}
 function plForced(who,RL,BR){if(!who)return false;if(who===BR)return true;/* 前の塁がすべて埋まっていれば封殺 */const occ=new Set(RL.map(r=>r.from));let b=who.from;for(let x=1;x<b;x++)if(!occ.has(x))return false;return true;}
 /* 走者のリードの位置（投球の場面の第2リードの位置と同じ） */
 function plLeadPos(i){const A=FW_BASE[i],N=FW_BASE[i+1];const L=Math.hypot(N[0]-A[0],N[1]-A[1]);const ux=(N[0]-A[0])/L,uy=(N[1]-A[1])/L;const lead=(i===1?3.6:i===2?4.6:3.0)+1.6;const off=i===3?-0.9:i===2?-0.6:0;return [A[0]+ux*lead-uy*off,A[1]+uy*lead+ux*off];}
@@ -337,7 +343,7 @@ function plRunners(sc,ents,RL,BR,X){const S=FW_SPEED;const ts=X.ts;const tb=X.tb
   else if(rr&&!th.soft){sc.callouts.push({t:Math.max(th.Ta,rr.safeAt?rr.safeAt.t:th.Ta),x:Bp[0],y:Bp[1],z:2.2,text:'セーフ！',kind:'safe',base:th.base});}}
  if(X.caught&&BR&&BR.outAt===0){const p=sc.pick;sc.callouts.push({t:X.Tc+plS(350),x:p[0],y:p[1],z:2.5,text:'アウト！',kind:'out',base:0});}}
 /* ほかの野手の動き */
-function plSupport(sc,ents,X){const S=FW_SPEED;const R=X.R;const thr=X.throwPlan;const busy=k=>ents[k].segs.length>1||(k==='投'&&false);const m=X.m;const anyOn=m.bases.some(Boolean)||sc.runners.some(r=>!r.isBatter);
+function plSupport(sc,ents,X){const S=FW_SPEED;const R=X.R;const thr=X.throwPlan;const busy=k=>ents[k].segs.length>1||(k==='投'&&false);const m=X.m;const anyOn=(X.initialBases||m.bases).some(Boolean)||sc.runners.some(r=>!r.isBatter);
  const at=(k,t)=>X.posAt(k,t);const go=(k,to,face,pose,o)=>{if(busy(k)&&!(o&&o.force))return;const yaw=face&&face.mode==='pt'?moYawTo(to[0],to[1],face.x,face.y):moYawTo(to[0],to[1],0,0);X.runTo(k,to,R+(o&&o.delay||0),null,face||{mode:'vel'},{k:'pose',pose:pose||'f_ready',t0:0,x:to[0],y:to[1],yaw,fade:250},{v1:0,vMul:o&&o.vMul||0.92});};
  const backup=(base,from,dist)=>{const Bp=FW_BASE[base];const d=[Bp[0]-from[0],Bp[1]-from[1]];const L=Math.hypot(d[0],d[1])||1;return [Bp[0]+d[0]/L*(dist||7),Bp[1]+d[1]/L*(dist||7)];};
  const f=X.fielder;const ofF=['左','中','右'].includes(f);const groundIF=!X.ball.air&&!ofF;const pick=X.Pc||X.ball.land;
@@ -348,7 +354,7 @@ function plSupport(sc,ents,X){const S=FW_SPEED;const R=X.R;const thr=X.throwPlan
   if(!busy('一')&&f!=='一')go('一',[19.0,19.9],{mode:'pt',x:pick[0],y:pick[1]},'f_ready');
   if(!busy(X.cover2))go(X.cover2,[X.cover2==='二'?0.9:-0.9,38.4],{mode:'pt',x:pick[0],y:pick[1]},'f_ready');
   if(!busy('三')&&f!=='三')go('三',[-18.6,19.9],{mode:'pt',x:pick[0],y:pick[1]},'f_ready');
-  if(!busy('投')&&(f==='一'||f==='二'||X.c.a>8))go('投',[15.5,15.2],{mode:'pt',x:pick[0],y:pick[1]},'f_ready');}
+  if(!busy('投')&&f==='一')go('投',[18.9,19.8],{mode:'pt',x:pick[0],y:pick[1]},'f_ready');}
  else if(ofF||X.ball.air){/* 外野へ：中継・ベースカバー・外野手のカバー */const lead=Math.max(0,...sc.runners.map(r=>r.outAt?r.outAt.base:(r.safeAt?r.safeAt.base:0)));const tgtB=thr.length?thr[0].base:(lead>=2?3:2);
   if(ofF&&!X.isHR){const relay=pick[0]<4?'遊':'二';const other=relay==='遊'?'二':'遊';const Bt=FW_BASE[Math.min(4,tgtB)];const rp=[pick[0]+(Bt[0]-pick[0])*0.55,pick[1]+(Bt[1]-pick[1])*0.55];
    if(!busy(relay))go(relay,rp,{mode:'pt',x:pick[0],y:pick[1]},'f_ready',{vMul:1});if(!busy(other))go(other,[0.8,38.6],{mode:'pt',x:pick[0],y:pick[1]},'f_ready');
@@ -364,7 +370,7 @@ function plSupport(sc,ents,X){const S=FW_SPEED;const R=X.R;const thr=X.throwPlan
  /* 何もしない野手：打球の方を向いて構え直す */
  for(const k of ['一','二','三','遊','左','中','右']){if(busy(k))continue;const p=at(k,0);const yaw=moYawTo(p[0],p[1],pick[0],pick[1]);plAdd(ents[k],{k:'pose',pose:'f_ready',t0:R+plS(200),x:p[0],y:p[1],yaw,fade:plS(400)});}}
 /* 審判：判定する塁へ90度の角度で寄り、アウト・セーフをコール */
-function plUmps(sc,ents,X){const m=X.m;const on=m.bases.some(Boolean);const U=[[0.35,-1.95,Math.PI],[23.6,17.0,null],[on?-2.5:-4.5,on?29.5:43.5,null],[-23.6,17.0,null]];
+function plUmps(sc,ents,X){const m=X.m;const on=(X.initialBases||m.bases).some(Boolean);const U=[[0.35,-1.95,Math.PI],[23.6,17.0,null],[on?-2.5:-4.5,on?29.5:43.5,null],[-23.6,17.0,null]];
  U.forEach((u,i)=>{const e=ents['U'+i]=plEnt({key:'U'+i});const yaw=u[2]!=null?u[2]:moYawTo(u[0],u[1],0,i===2?0:20);plAdd(e,{k:'pose',pose:i===0?'u_set':'u_base',t0:-600,x:u[0],y:u[1],yaw});e.look.push({t0:-1e9,t1:1e9,target:t=>sc.mo&&sc.mo.ballF?sc.mo.ballF:moPts(X.ball.pts,Math.min(t,X.ball.Tland)),w:0.7});});
  const R=plS(250);const up=(i,t,p,yaw,pose)=>{const e=ents['U'+i];const from=(()=>{const g=e.segs[e.segs.length-1];return g.k==='move'?[g.path[g.path.length-1].x,g.path[g.path.length-1].y]:[g.x,g.y];})();const d=Math.hypot(p[0]-from[0],p[1]-from[1]);if(d<0.3){plAdd(e,{k:'pose',pose:pose||'f_stand',t0:t,x:p[0],y:p[1],yaw,fade:300});return;}const dur=plS(d/5.0*1000+300);const path=plRunPath([from,p],t,t+dur,5.5,{v1:0});plAdd(e,{k:'move',t0:t,t1:t+dur,path,style:'jog',fade:200});plAdd(e,{k:'pose',pose:pose||'u_base',t0:t+dur,x:p[0],y:p[1],yaw,fade:250});};
  /* 球審：マスクの後ろから一歩出て見る */up(0,plS(200),[on?-0.8:-1.2,-1.6],moYawTo(-1,-1.6,X.Pc?X.Pc[0]:0,X.Pc?X.Pc[1]:30),'f_stand');
@@ -373,7 +379,7 @@ function plUmps(sc,ents,X){const m=X.m;const on=m.bases.some(Boolean);const U=[[
   const th=X.throwPlan.find(t=>t.base===base);const from=th?th.from:[0,18];const d=[Bp[0]-from[0],Bp[1]-from[1]];const L=Math.hypot(d[0],d[1])||1;let n=[-d[1]/L,d[0]/L];if(n[0]*(0-Bp[0])+n[1]*(19.4-Bp[1])<0&&base!==4)n=[-n[0],-n[1]];/* 送球の線に直角、内野側 */
   const spot=base===4?[-2.2,-1.4]:[Bp[0]+n[0]*5.2,Bp[1]+n[1]*5.2];const yaw=moYawTo(spot[0],spot[1],Bp[0],Bp[1]);up(i,Math.max(R,cl.t-plS(1400)),spot,yaw,'u_base');plAdd(ents['U'+i],{k:'clip',clip:cl.kind==='out'?'u_out':'u_safe',t0:cl.t-plS(60),x:spot[0],y:spot[1],yaw,rate:1/FW_SPEED,fade:120});}}
 /* 2D表示・カメラ用：体の位置の時系列、ボールの位置の時系列 */
-function plLegacy(sc,ents,B,ball){const T=Math.max(ball.Tland,...sc.throws.map(x=>x.Ta))+plS(3500);const step=60;
+function plLegacy(sc,ents,B,ball){const T=Math.max(ball.Tland,sc.Tpick||0,...sc.throws.map(x=>x.Ta))+plS(3500);const step=60;
  for(const k of ['投','捕','一','二','三','遊','左','中','右']){const e=ents[k];const path=[],pose=[];let lastP=null;for(let t=0;t<=T;t+=step){const p=plEntPos(e,t);path.push({t,x:p[0],y:p[1]});const st=p[2];const g=st&&st.seg;let ps=g?(g.k==='move'?'run':g.clip==='f_gb'||g.clip==='f_tag'||g.clip==='f_cover'||g.clip==='f_1b'?'catchLow':g.clip==='f_fly'||g.clip==='f_line'?'catchHigh':/throw/.test(g.clip||'')?'throw':g.pose==='f_ready'?'ready':'stand'):'stand';if(ps!==lastP){pose.push({t,p:ps});lastP=ps;}}
   sc.fielders[k]={path,pose,face:k==='捕'?1:-1};}
  for(const r of sc.runners){const e=ents[r.key];if(!e)continue;const path=[];for(let t=0;t<=T;t+=step){const p=plEntPos(e,t);path.push({t,x:p[0],y:p[1]});}r.path2=r.path;r.path=path;}

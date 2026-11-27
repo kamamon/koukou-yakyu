@@ -2,11 +2,11 @@
  ワールド座標：X=一塁側が+（m）、Y=センター方向が+（m）、Z=高さ（m）。本塁が原点。
  シーンは時刻(ms)をキーにした各エンティティの経路で表し、毎フレーム補間して描く。 */
 const FW_BASE=[[0,0],[19.4,19.4],[0,38.8],[-19.4,19.4],[0,0]];
-const FW_SPEED=0.74; /* 実時間に対する演出の速さ（小さいほど速く進む） */
+const FW_SPEED=1; /* v32: 実時間。打球と野手の計算時間を圧縮しない */
 function fwPolar(d,a){const r=a*Math.PI/180;return [d*Math.sin(r),d*Math.cos(r)];}
 function fwDist(a,b){return Math.hypot(a[0]-b[0],a[1]-b[1]);}
 function fwLerp(a,b,u){return [a[0]+(b[0]-a[0])*u,a[1]+(b[1]-a[1])*u];}
-function fwDefPos(d){const P={投:[0,18.4],捕:[0,-2.2],一:[19,21.9],二:[10.9,40.6],三:[-19,21.9],遊:[-10.9,40.6],左:[-38.6,75.7],中:[0,95],右:[38.6,75.7]};
+function fwDefPos(d){const P={投:[0,18.4],捕:[0,-2.2],一:[17.8,23.0],二:[12.0,37.8],三:[-17.8,23.0],遊:[-12.0,37.8],左:[-43,73],中:[0,91],右:[43,73]};
  if(d&&d.infieldIn){P.一=[15.5,17.5];P.二=[8.5,31];P.三=[-15.5,17.5];P.遊=[-8.5,31];}
  if(d&&d.ofDeep){P.左=[-43,85];P.中=[0,106];P.右=[43,85];}if(d&&d.ofIn){P.左=[-33,64];P.中=[0,80];P.右=[33,64];}
  return P;}
@@ -20,7 +20,7 @@ function fwRunnerPath(from,to,t0,v,arriveAt,lead){const pts=fwBasePath(from,to);
  let dur=len/v*1000*FW_SPEED;if(arriveAt!=null){dur=Math.max(250,arriveAt-t0);}
  const path=[{t:t0,x:pts[0][0],y:pts[0][1]}];let acc=0;for(let i=1;i<pts.length;i++){acc+=fwDist(pts[i-1],pts[i]);path.push({t:t0+dur*(len?acc/len:1),x:pts[i][0],y:pts[i][1]});}return path;}
 /* ====== インプレーのシーン構築 ====== */
-function fwBuildScene(c,play,opt){opt=opt||{};const m=AR.m;const d=m.def();const DP=fwDefPos(d);const S=FW_SPEED;
+function fwBuildScene(c,play,opt){opt=opt||{};const m=AR.m,plan=typeof V32Field!=='undefined'?V32Field.get(c):null;const d=plan?plan.def:m.def();const DP=plan?plan.positions:fwDefPos(d);const S=FW_SPEED;
  const sc={t0:performance.now(),T:0,ball:[],fielders:{},runners:[],callouts:[],fx:[],pauseAt:null,kind:'inplay',res:c.res,primary:c.fpos,pois:[],ended:false};
  for(const k in DP)sc.fielders[k]={path:[{t:0,x:DP[k][0],y:DP[k][1]}],pose:[],face:k==='捕'?1:-1};
  const an=c.anim=c.anim||{roll:rf(0.5,1),bob:rf(0,1),ang:gauss(0,1)};
@@ -28,7 +28,7 @@ function fwBuildScene(c,play,opt){opt=opt||{};const m=AR.m;const d=m.def();const
  const launch=[0,0.6,1.0];
  let Tland,Tcatch,pick=null,Tpick=null,land;
  const isHR=c.res==='HR';
- if(air){const land0=fwPolar(dist,a);land=land0;const fd=FENCE(a);
+ if(plan){const o=V32Field.sceneBall(c,plan);sc.ball=o.pts.slice();Tland=o.Tland;land=o.land;sc.hrCross=o.hrCross;if(caught&&plan.field){Tcatch=plan.field.t*1000*S;Tpick=Tcatch;pick=plan.field.p.slice(0,2);}}else if(air){const land0=fwPolar(dist,a);land=land0;const fd=FENCE(a);
   /* 物理軌道（重力＋空気抵抗＋バックスピン）。到達距離はエンジンの判定（dist）に合わせて初速を補正する */
   let la=c.la==null?(type==='fly'?32:type==='line'?14:62):c.la;if(isHR)la=Math.max(la,24);let path=null;
   try{path=phHitPath(c.ev||(type==='pop'?90:110),la,a,isHR?Math.max(dist,fd+6):dist,{x0:0,y0:0.4,z0:1.0});}catch(e){path=null;}
@@ -54,7 +54,8 @@ function fwBuildScene(c,play,opt){opt=opt||{};const m=AR.m;const d=m.def();const
  const infield=['投','捕','一','二','三','遊'].includes(fielder);
  const fp=sc.fielders;
  const runTo=(k,pt,arrive,t0)=>{const f=fp[k];const st=f.path[f.path.length-1];const dd=fwDist([st.x,st.y],pt);const v=7.6;let dur=dd/v*1000*S;if(arrive!=null){dur=Math.max(120,arrive-(t0||st.t));}f.path.push({t:(t0||st.t)+dur,x:pt[0],y:pt[1]});return (t0||st.t)+dur;};
- if(caught){/* 捕球点へ走り込む */runTo(fielder,pick,Tcatch);fp[fielder].pose.push({t:Tcatch-150*S,p:type==='pop'||type==='fly'?'catchHigh':'catchLow'});fp[fielder].pose.push({t:Tcatch+400*S,p:'throw'});sc.callouts.push({t:Tcatch,x:pick[0],y:pick[1],z:2,text:'キャッチ！',kind:'catch'});Tpick=Tcatch;}
+ if(plan&&!isHR&&plan.field){const q=plan.field;fielder=q.key;pick=q.p.slice(0,2);Tpick=q.t*1000*S;Tcatch=caught?Tpick:null;const fp0=fp[fielder];const from=DP[fielder];const movement=plan.fielders.find(f=>f.key===fielder);if(plan.fumble){const h=plan.fumble;fp0.path.push({t:h.react*1000*S,x:from[0],y:from[1]},{t:(h.t-h.prep)*1000*S,x:h.spot[0],y:h.spot[1]},{t:h.t*1000*S,x:h.spot[0],y:h.spot[1]});sc.callouts.push({t:h.t*1000*S,x:h.p[0],y:h.p[1],z:2,text:'エラー！',kind:'err'});}const start=fp0.path.at(-1);fp0.path.push({t:Math.max(start.t,q.react*1000*S),x:start.x,y:start.y},{t:Math.max(start.t+1,(q.t-q.prep)*1000*S),x:q.spot[0],y:q.spot[1]},{t:Tpick,x:q.spot[0],y:q.spot[1]});sc.ball=sc.ball.filter(p=>p.t<Tpick);sc.ball.push({t:Tpick,x:q.p[0],y:q.p[1],z:q.p[2]});fp0.pose.push({t:Tpick-q.prep*1000*S,p:q.clip==='f_gb'?'catchLow':'catchHigh'},{t:Tpick+plS(220),p:'throw'});if(caught)sc.callouts.push({t:Tpick,x:pick[0],y:pick[1],z:2,text:'キャッチ！',kind:'catch'});
+ }else if(caught){/* 捕球点へ走り込む */runTo(fielder,pick,Tcatch);fp[fielder].pose.push({t:Tcatch-150*S,p:type==='pop'||type==='fly'?'catchHigh':'catchLow'});fp[fielder].pose.push({t:Tcatch+400*S,p:'throw'});sc.callouts.push({t:Tcatch,x:pick[0],y:pick[1],z:2,text:'キャッチ！',kind:'catch'});Tpick=Tcatch;}
  else if(isHR){const fd=FENCE(a);const fence=fwPolar(fd-2,a);runTo(fielder,fence,Tland*0.9);fp[fielder].pose.push({t:Tland*0.5,p:'lookUp'});const cross=sc.hrCross!=null?sc.hrCross:Tland*(fd/Math.max(dist,fd+6));sc.callouts.push({t:cross+100,x:land[0],y:land[1],z:4,text:'ホームラン！！',kind:'hr',dur:1800});sc.fx.push({t:cross,x:land[0],y:land[1],kind:'fireworks'});Tpick=Tland+600;}
  else if(!air){/* ゴロ：捕球地点＝野手が追いつける最初の点 */const f0=DP[fielder];let best=null;for(let i=1;i<sc.ball.length;i++){const bp=sc.ball[i];const need=fwDist(f0,[bp.x,bp.y])/7.6*1000*S;if(need<=bp.t+60){best=bp;break;}}
   if(c.res==='E'){const bp=best||sc.ball[Math.min(2,sc.ball.length-1)];runTo(fielder,[bp.x,bp.y],bp.t);fp[fielder].pose.push({t:bp.t-100,p:'catchLow'});/* はじく */const off=fwPolar(4+an.bob*4,a+(an.ang>0?35:-35));sc.ball.splice(sc.ball.findIndex(x=>x.t>=bp.t)+1);sc.ball.push({t:bp.t+500*S,x:bp.x+off[0],y:bp.y+off[1],z:0,arc:1});sc.callouts.push({t:bp.t+80,x:bp.x,y:bp.y,z:2,text:'エラー！',kind:'err'});pick=[bp.x+off[0],bp.y+off[1]];Tpick=runTo(fielder,pick,null,bp.t+350*S)+150;fp[fielder].pose.push({t:Tpick,p:'throw'});land=pick;}
@@ -66,7 +67,7 @@ function fwBuildScene(c,play,opt){opt=opt||{};const m=AR.m;const d=m.def();const
   /* 落下点に野手が届かず：ポーズ */if(dist>=45&&!isHR)fp[who].pose.push({t:Tland*0.5,p:'run'});}
  sc.primary=fielder;sc.Tpick=Tpick;sc.pick=pick||land;
  /* ====== 走者と送球 ====== */
- const t=m.bat();const cb=arTeamColors(t);const cd=arTeamColors(d);sc.colBat=cb;sc.colDef=cd;sc.defTeam=d;sc.batTeam=t;
+ const t=plan?plan.bat:m.bat();const cb=arTeamColors(t);const cd=arTeamColors(d);sc.colBat=cb;sc.colDef=cd;sc.defTeam=d;sc.batTeam=t;
  const pend=!play;const vOf=sp=>6.6+(sp-50)/22;
  const runners=play?play.runners:[];const batterRec=play?play.batter:null;
  const dec=opt.dec;
@@ -128,7 +129,7 @@ function fwBuildScene(c,play,opt){opt=opt||{};const m=AR.m;const d=m.def();const
  if(caught&&BR&&BR.outAt===0){const p=sc.pick;sc.callouts.push({t:Tcatch+350,x:p[0],y:p[1],z:2.5,text:'アウト！',kind:'out'});}
  /* 終了時刻 */let T=Math.max(Tpick+600,lastThrowEnd+500);for(const r of sc.runners){const tl=r.path[r.path.length-1].t;T=Math.max(T,tl+350);}for(const cl of sc.callouts)T=Math.max(T,cl.t+(cl.dur||900));
  if(isHR)T=Math.max(T,Tland+2400);
- sc.T=pend?sc.pauseAt+10:T;sc.Tfull=T;sc.rate=clamp(T/4200,1,2.4);
+ sc.T=pend?sc.pauseAt+10:T;sc.Tfull=T;sc.rate=plan?1:clamp(T/4200,1,2.4);
  return sc;}
 /* ====== 走者プレー（盗塁・牽制・暴投）のシーン ====== */
 function fwBuildRunnerScene(rp){const m=AR.m;const d=m.def();const DP=fwDefPos(d);const S=FW_SPEED;const cb=arTeamColors(m.bat());

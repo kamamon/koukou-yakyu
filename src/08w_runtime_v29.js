@@ -53,7 +53,7 @@
  Match.prototype.applyInplay=function(ev,choice){
   if(!ev.v29Committed&&choice==null&&actionSettings().v29Live&&userLive(this,ev.P)&&ev.bb&&!ev.bb.bunt&&ev.bb.res!=='HR'&&Number.isFinite(ev.bb.ev)){
    const c=ev.bb,cp=ev.sw&&ev.sw.v29Collision&&ev.sw.v29Collision.hit?ev.sw.v29Collision.point:[(ev.P.x||0)*.25,.2,.8-(ev.P.y||0)*.3];
-   try{const path=V28Physics.trace(c,cp,c.ngWind||[0,0,0]);if(path.hr){c.res='HR';c.dist=Math.round(Math.hypot(path.land.p[0],path.land.p[1]));return oldApplyPlay.call(this,ev,choice);}
+   try{const plan=typeof V32Field!=='undefined'?V32Field.get(c):null;const path=plan?plan.path:V28Physics.trace(c,cp,c.ngWind||[0,0,0]);if(path.hr){c.res='HR';c.dist=Math.round(Math.hypot(path.land.p[0],path.land.p[1]));return oldApplyPlay.call(this,ev,choice);}
     ev.v29Live=true;ev.v29Path=path;ev.decision={kind:'v29live'};this.pending=ev;return ev;
    }catch(e){console.warn('direct play fallback',e);}
   }
@@ -62,7 +62,7 @@
  const oldFinish=Match.prototype.finishInplay;
  Match.prototype.finishInplay=function(choice){if(this.pending&&this.pending.v29Live){this.pending.v29Committed=true;this.pending.v29Live=false;}return oldFinish.call(this,choice);};
  function startLive(ev){
-  const m=AR.m,c=ev.bb,d=m.def(),t=m.bat(),f=window.V28Runtime.fielders(m).map(x=>({...x,speed:x.v,player:r3PlayerOf(d,x.key)}));
+  const m=AR.m,c=ev.bb,d=m.def(),t=m.bat(),plan=typeof V32Field!=='undefined'?V32Field.get(c):null,f=(plan?plan.fielders:window.V28Runtime.fielders(m)).map(x=>({...x,speed:x.v,player:r3PlayerOf(d,x.key)}));
   const runners=[{id:String(m.pa.b.id),player:m.pa.b,from:0,speed:V28Physics.speed(m.pa.be.speed)}];m.bases.forEach((p,i)=>{if(p)runners.push({id:String(p.id),player:p,from:i+1,speed:V28Physics.speed(m.runnerSpeed(p))});});
   const live=L.create({path:ev.v29Path,fielders:f,runners,side:t.isUser?'bat':'pit',outs:m.outs,air:c.type!=='ground'&&c.type!=='bunt'});
   S.live={s:live,ev,m,t,d,outs:m.outs,before:m.bases.slice(),eventN:0,started:performance.now()};S.acc=0;S.last=performance.now();S.keys.clear();S.touch=null;S.pad={index:null,buttons:[]};AR.field=null;AR.pending=ev;AR.ev=ev;AR.panel=null;arHideLower();arOverlay('','');arSetPhase('v29live');arRenderTop();arRenderCtl();AR.foot='直接操作：打球と走者の位置から結果を判定';arRenderFoot();

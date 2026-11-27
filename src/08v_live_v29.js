@@ -6,7 +6,7 @@ const V29Live=(function liveFactory(){
  function create(opt){
   const f=opt.fielders.map(x=>actor({...x,x:x.pos[0],y:x.pos[1]})),r=opt.runners.map(x=>actor({...x,x:B[x.from][0],y:B[x.from][1],last:x.from,max:x.from,target:x.from,manual:false,out:false,outBase:null,outTime:null,scored:false,scoreTime:null,return:false,safeAt:0}));
   const s={t:0,dt:DT,side:opt.side,outs:opt.outs||0,path:opt.path,fielders:f,runners:r,ball:{mode:"path",p:sample(opt.path.pts,0),prev:sample(opt.path.pts,0),holder:null,throw:null},catch:false,catchTime:null,third:null,events:[],done:false,selectedF:null,selectedR:r.find(x=>x.from===0)?.id,settle:0,throwTarget:1,land:opt.path.land.t,initial:r.map(q=>q.from),forceEnded:false,timeout:false,air:!!opt.air,assist:!!opt.assist};
-  const choice=f.slice().sort((a,b)=>interceptScore(s,a)-interceptScore(s,b))[0];s.selectedF=choice?.key;
+  const prediction=typeof V32Core!=='undefined'?V32Core.fieldPlan(opt.path,opt.fielders.map(q=>({...q,v:q.speed||q.v})),true):null;const pick=prediction&&(prediction.catch||prediction.pick);const choice=pick?f.find(q=>q.key===pick.key):f.slice().sort((a,b)=>interceptScore(s,a)-interceptScore(s,b))[0];s.selectedF=choice?.key;s.aiPrimary=choice?.key;s.pickPlan=pick||null;
   for(const q of r)q.target=forced(s,q,q.from+1)?q.from+1:q.from;
   return s;
  }
@@ -39,6 +39,7 @@ const V29Live=(function liveFactory(){
  function interceptScore(s,f){let best=1e4;for(const p of s.path.pts){if(p.t<.12||p.z>f.reach)continue;const dt=d([f.x,f.y],[p.x,p.y])/f.speed+.15;if(dt<=p.t+.14)return p.t;best=Math.min(best,p.t+dt);}return best;}
  function aimField(s,f){
   const b=s.ball;if(b.mode==="path"){
+   if(s.pickPlan&&s.pickPlan.key===f.key&&s.t<=s.pickPlan.t+.35)return s.pickPlan.spot||s.pickPlan.p;
    for(let t=s.t;t<Math.min(s.path.T,s.t+3);t+=.075){const p=sample(s.path.pts,t);if(p[2]>f.reach)continue;const need=d([f.x,f.y],p)/f.speed;if(need<=t-s.t+.13)return p;}
    return sample(s.path.pts,Math.min(s.path.T,s.t+.6));
   }
@@ -60,8 +61,11 @@ const V29Live=(function liveFactory(){
   }
  }
  function baseCover(s,f){
-  const covers={"投":1,"捕":4,"一":1,"二":2,"三":3,"遊":2};
-  const b=covers[f.key];return b?B[b]:null;
+  const primary=s.side==="pit"?s.selectedF:s.aiPrimary, left=["三","遊","左"].includes(primary)||primary==="中"&&s.ball.p[0]<0,second=left?"二":"遊";
+  if(f.key==="投")return primary==="一"?B[1]:[0,-7];
+  if(f.key==="捕")return B[4];if(f.key==="一")return B[1];if(f.key==="三")return B[3];if(f.key===second)return B[2];
+  if(["二","遊"].includes(f.key)&&["左","中","右"].includes(primary)){const p=s.pickPlan?.p||s.ball.p;return [p[0]*.55,p[1]*.55+10];}
+  return null;
  }
  function chooseReceiver(s,b,holder){return s.fielders.filter(f=>f!==holder).sort((a,c)=>d([a.x,a.y],B[b])-d([c.x,c.y],B[b]))[0]||holder;}
  function throwBall(s,b){
@@ -101,7 +105,8 @@ const V29Live=(function liveFactory(){
   if(ball.mode==="path"){ball.p=sample(s.path.pts,s.t);if(s.t>=s.path.T)ball.mode="loose";}
   else if(ball.mode==="throw"){const th=ball.throw;if(s.t<th.start)ball.p=th.from.slice();else{const u=cl((s.t-th.start)/(th.end-th.start),0,1);ball.p=[th.from[0]+(th.to[0]-th.from[0])*u,th.from[1]+(th.to[1]-th.from[1])*u,th.from[2]+(th.to[2]-th.from[2])*u+1.1*4*u*(1-u)];}}
   // Fielders move to an interception point, or to their cover bases. A human selected fielder is never teleported.
-  const chosen=s.side==="pit"?activeF(s):s.fielders.slice().sort((a,b)=>d([a.x,a.y],aimField(s,a)||ball.p)-d([b.x,b.y],aimField(s,b)||ball.p))[0];
+  if(ball.mode==="loose"&&s.side!=="pit"){s.aiPrimary=s.fielders.slice().sort((a,b)=>d([a.x,a.y],ball.p)-d([b.x,b.y],ball.p))[0]?.key;s.pickPlan=null;}
+  const chosen=s.side==="pit"?activeF(s):s.fielders.find(f=>f.key===s.aiPrimary)||s.fielders[0];
   for(const f of s.fielders){
    let target=null,axis=[0,0];const human=s.side==="pit"&&f===activeF(s),held=ball.mode==="held"&&ball.holder===f.key,th=ball.throw;
    if(human)axis=input;
@@ -112,7 +117,7 @@ const V29Live=(function liveFactory(){
   if(s.done)return s;
   if(ball.mode==="throw"&&ball.throw&&s.t>=ball.throw.end){const th=ball.throw,f=s.fielders.find(f=>f.key===th.receiver);if(f&&d([f.x,f.y],th.to)<1.1){receive(s,f,false);f.heldAt=s.t;basePlay(s,f,th.base);}else{ball.mode="loose";ball.throw=null;ball.p=[th.to[0],th.to[1],.0366];event(s,"loose",{});}}
   if(ball.mode==="path"||ball.mode==="loose"){
-   const eligible=s.fielders.filter(f=>{const human=s.side==="pit"&&f.key===s.selectedF,reach=f.diveUntil>s.t?1.45:.78,hi=f.diveUntil>s.t?f.reach+.22:f.reach;return ball.p[2]<=hi&&d([f.x,f.y],ball.p)<reach&&(human||s.side==="bat"||f===chosen);}).sort((a,b)=>d([a.x,a.y],ball.p)-d([b.x,b.y],ball.p));
+   const eligible=s.fielders.filter(f=>{const human=s.side==="pit"&&f.key===s.selectedF,reach=f.diveUntil>s.t?1.45:.78,hi=f.diveUntil>s.t?f.reach+.22:f.reach;return s.t>=(f.react||.15)&&ball.p[2]<=hi&&d([f.x,f.y],ball.p)<reach&&(human||f===chosen);}).sort((a,b)=>d([a.x,a.y],ball.p)-d([b.x,b.y],ball.p));
    if(eligible.length){const f=eligible[0],air=ball.mode==="path"&&s.t<s.land-.004&&s.air&&ball.p[2]>.25;receive(s,f,air);f.heldAt=s.t;}
   }
   if(s.done)return s;
